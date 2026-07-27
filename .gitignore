@@ -1,17 +1,33 @@
+# ---- Java / Maven ----
 target/
 *.class
 *.jar
 !.mvn/wrapper/*.jar
+dependency-reduced-pom.xml
+
+# ---- IDE ----
 .idea/
 *.iml
+*.ipr
+*.iws
 .vscode/
 .settings/
 .classpath
 .project
-*.log
-logs/
-.DS_Store
-.env
 
+# ---- 环境变量（敏感信息不入库） ----
+.env
+docker/.env
+!.env.example
+!docker/.env.example
+
+# ---- 日志与临时文件 ----
+logs/
+*.log
+.DS_Store
+Thumbs.db
+
+# ---- 其他 ----
+.flattened-pom.xml
 .codebuddy/
-plans/  
+plans/

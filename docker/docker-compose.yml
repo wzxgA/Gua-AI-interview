@@ -1,0 +1,134 @@
+name: aims-infra-wzxg
+
+# AIMS P1 本地开发基础设施：PostgreSQL(pgvector) / Redis / Kafka(KRaft) / MinIO
+# 启动：./dev.ps1 up  （或 docker compose --env-file .env -f docker-compose.yml up -d）
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aims-postgres-wzxg
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aims}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aims123}
+      POSTGRES_DB: ${POSTGRES_DB:-aims}
+      TZ: Asia/Shanghai
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-aims} -d $${POSTGRES_DB:-aims}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: aims-redis-wzxg
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-aims123}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-aims123}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: aims-kafka-wzxg
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # PLAINTEXT 供容器间访问；EXTERNAL 供宿主机访问（宿主机端口映射为 ${KAFKA_PORT}）
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: aimsKafkaKRaftCluster00001
+    ports:
+      # 宿主机 localhost:9092 -> 容器 19092(EXTERNAL)，应用直接连 localhost:9092
+      - "${KAFKA_PORT:-9092}:19092"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  kafka-init:
+    image: apache/kafka:3.8.0
+    container_name: aims-kafka-init-wzxg
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic interview.evaluation.requested --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic interview.report.requested --partitions 3 --replication-factor 1
+        echo "[kafka-init] 预留 topic 创建完成"
+    restart: "no"
+
+  minio:
+    image: minio/minio:latest
+    container_name: aims-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-aims}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-aims12345}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: aims-minio-init-wzxg
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-aims}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-aims12345}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" > /dev/null
+        mc mb --ignore-existing local/aims-resume
+        mc mb --ignore-existing local/aims-audio
+        mc mb --ignore-existing local/aims-report
+        echo "[minio-init] 预留 bucket 创建完成"
+    restart: "no"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: aims-kafka-ui-wzxg
+    profiles: ["ui"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: aims
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8085:8080"
+
+volumes:
+  pgdata:
+  redisdata:
+  kafkadata:
+  miniodata:

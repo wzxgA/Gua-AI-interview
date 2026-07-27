@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: aims-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  ai:
+    model:
+      # Spring AI 自动装配关闭：ChatModel/EmbeddingModel 由 interview-ai 按档位手动装配
+      chat: none
+      embedding: none
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+aims:
+  ai:
+    default-tier: STANDARD
+    providers:
+      # 通义千问（DashScope OpenAI 兼容模式）
+      dashscope:
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+        api-key: ${DASHSCOPE_API_KEY}
+      deepseek:
+        base-url: https://api.deepseek.com/v1
+        api-key: ${DEEPSEEK_API_KEY}
+    tiers:
+      # 档位 -> 提供商/模型/参数映射；fallback 形如 provider:model
+      FLAGSHIP:
+        provider: dashscope
+        model: qwen-max
+        temperature: 0.7
+        max-tokens: 2048
+        fallback: deepseek:deepseek-chat
+      STANDARD:
+        provider: deepseek
+        model: deepseek-chat
+        temperature: 0.2
+        max-tokens: 2048
+      ECONOMY:
+        provider: dashscope
+        model: qwen-turbo
+        temperature: 0.3
+        max-tokens: 1024
+      EMBEDDING:
+        provider: dashscope
+        model: text-embedding-v3
+        dimensions: 1024
+    # 价目表：元/千 tokens（成本估算用，可按需调整）
+    pricing:
+      qwen-max:
+        input: 0.04
+        output: 0.12
+      qwen-turbo:
+        input: 0.0003
+        output: 0.0006
+      deepseek-chat:
+        input: 0.002
+        output: 0.008
+    retry:
+      max-attempts: 2
+      initial-backoff: 500ms
