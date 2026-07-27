@@ -1,0 +1,17 @@
+target/
+*.class
+*.jar
+!.mvn/wrapper/*.jar
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.log
+logs/
+.DS_Store
+.env
+
+.codebuddy/
+plans/  
