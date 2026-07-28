@@ -96,7 +96,7 @@ export function QuestionListPage() {
       difficulty: question.difficulty,
       content: question.content,
       standardAnswer: question.standardAnswer ?? '',
-      tags: question.tags.join(', '),
+      tags: (question.tags ?? []).join(', '),
     });
     setModalOpen(true);
   };
