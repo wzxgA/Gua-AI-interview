@@ -46,37 +46,37 @@ springdoc:
 
 aims:
   ai:
-    default-tier: STANDARD
+    default-tier: ${AIMS_DEFAULT_TIER:STANDARD}
     providers:
       # 通义千问（DashScope OpenAI 兼容模式）
       dashscope:
-        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+        base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${DASHSCOPE_API_KEY}
       deepseek:
-        base-url: https://api.deepseek.com/v1
+        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
         api-key: ${DEEPSEEK_API_KEY}
     tiers:
       # 档位 -> 提供商/模型/参数映射；fallback 形如 provider:model
       FLAGSHIP:
-        provider: dashscope
-        model: qwen-max
+        provider: ${AIMS_FLAGSHIP_PROVIDER:dashscope}
+        model: ${AIMS_FLAGSHIP_MODEL:qwen-max}
         temperature: 0.7
         max-tokens: 2048
         fallback: deepseek:deepseek-chat
       STANDARD:
-        provider: deepseek
-        model: deepseek-chat
+        provider: ${AIMS_STANDARD_PROVIDER:deepseek}
+        model: ${AIMS_STANDARD_MODEL:deepseek-chat}
         temperature: 0.2
         max-tokens: 2048
       ECONOMY:
-        provider: dashscope
-        model: qwen-turbo
+        provider: ${AIMS_ECONOMY_PROVIDER:dashscope}
+        model: ${AIMS_ECONOMY_MODEL:qwen-turbo}
         temperature: 0.3
         max-tokens: 1024
       EMBEDDING:
-        provider: dashscope
-        model: text-embedding-v3
-        dimensions: 1024
+        provider: ${AIMS_EMBEDDING_PROVIDER:dashscope}
+        model: ${AIMS_EMBEDDING_MODEL:text-embedding-v3}
+        dimensions: ${AIMS_EMBEDDING_DIMENSIONS:1024}
     # 价目表：元/千 tokens（成本估算用，可按需调整）
     pricing:
       qwen-max:
