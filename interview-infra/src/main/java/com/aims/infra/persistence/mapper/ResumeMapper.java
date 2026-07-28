@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Update;
 /**
  * 简历 Mapper。
  *
- * <p>embedding 列为 pgvector vector(1024) 类型，通过 {@link #updateEmbedding} 写入、 {@link #hasEmbedding}
+ * <p>embedding 列为 pgvector vector(2048) 类型，通过 {@link #updateEmbedding} 写入、 {@link #hasEmbedding}
  * 检查存在性，绕过 MyBatis-Plus 自动映射。
  */
 public interface ResumeMapper extends BaseMapper<ResumeEntity> {

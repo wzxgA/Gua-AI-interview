@@ -123,7 +123,7 @@ public class ChatClientConfig {
                                     .model(tierConfig.model())
                                     .dimensions(
                                             tierConfig.dimensions() == null
-                                                    ? 1024
+                                                    ? 2048
                                                     : tierConfig.dimensions())
                                     .build());
             return ModelHandle.embedding(tier, tierConfig, embeddingModel, gate);

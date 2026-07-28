@@ -10,7 +10,7 @@ import java.time.Instant;
  * 简历持久化实体（对应 resume 表）。
  *
  * <p>parsedJson 字段存储 {@link com.aims.core.resume.ParsedResume} 的 JSON 字符串。 embedding 字段为 pgvector
- * vector(1024) 类型，MyBatis-Plus 无法直接映射，标记 {@code exist=false}， 通过 {@link
+ * vector(2048) 类型，MyBatis-Plus 无法直接映射，标记 {@code exist=false}， 通过 {@link
  * com.aims.infra.persistence.mapper.ResumeMapper#updateEmbedding} 自定义 SQL 读写。
  */
 @TableName("resume")

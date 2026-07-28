@@ -76,7 +76,7 @@ aims:
       EMBEDDING:
         provider: ${AIMS_EMBEDDING_PROVIDER:dashscope}
         model: ${AIMS_EMBEDDING_MODEL:text-embedding-v3}
-        dimensions: ${AIMS_EMBEDDING_DIMENSIONS:1024}
+        dimensions: ${AIMS_EMBEDDING_DIMENSIONS:2048}
     # 价目表：元/千 tokens（成本估算用，可按需调整）
     pricing:
       qwen-max:

@@ -3,12 +3,14 @@ package com.aims.ai.router;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.aims.ai.config.AiModelProperties;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.AiException;
 import com.aims.core.common.exception.AiOutputParseException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,36 @@ class ModelRouterTest {
                 new AiModelProperties.TierConfig(
                         "deepseek", "deepseek-chat", 0.2, 2048, null, null);
         return ModelHandle.chat(ModelTier.STANDARD, config, primary, null, null, new Semaphore(32));
+    }
+
+    @Test
+    void embeddingDimensionIsValidated() {
+        org.springframework.ai.embedding.EmbeddingModel embeddingModel =
+                mock(org.springframework.ai.embedding.EmbeddingModel.class);
+        AiModelProperties.TierConfig config =
+                new AiModelProperties.TierConfig("dashscope", "text-embedding-v3", null, null, 2048, null);
+        ModelHandle handle = ModelHandle.embedding(ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
+        ModelRouter router = new ModelRouter(Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
+        when(embeddingModel.embed("text")).thenReturn(new float[1024]);
+
+        AiException exception = assertThrows(AiException.class, () -> router.embed("text"));
+
+        assertEquals(ErrorCode.EMBEDDING_FAILED, exception.getErrorCode());
+    }
+
+    @Test
+    void embeddingBatchValidatesCountAndDimensions() {
+        org.springframework.ai.embedding.EmbeddingModel embeddingModel =
+                mock(org.springframework.ai.embedding.EmbeddingModel.class);
+        AiModelProperties.TierConfig config =
+                new AiModelProperties.TierConfig("dashscope", "text-embedding-v3", null, null, 2048, null);
+        ModelHandle handle = ModelHandle.embedding(ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
+        ModelRouter router = new ModelRouter(Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
+        when(embeddingModel.embed(List.of("a", "b"))).thenReturn(List.of(new float[2048]));
+
+        AiException exception = assertThrows(AiException.class, () -> router.embedBatch(List.of("a", "b")));
+
+        assertEquals(ErrorCode.EMBEDDING_FAILED, exception.getErrorCode());
     }
 
     @Test

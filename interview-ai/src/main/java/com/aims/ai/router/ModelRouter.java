@@ -21,6 +21,7 @@ import reactor.core.publisher.Flux;
 public class ModelRouter {
 
     private static final Logger log = LoggerFactory.getLogger(ModelRouter.class);
+    private static final int DEFAULT_EMBEDDING_DIMENSIONS = 2048;
 
     private final Map<ModelTier, ModelHandle> handles;
     private final ModelTier defaultTier;
@@ -112,7 +113,11 @@ public class ModelRouter {
             throw new AiException(ErrorCode.EMBEDDING_FAILED, "EMBEDDING 档位未装配 EmbeddingModel");
         }
         try {
-            return handle.embeddingModel().embed(text);
+            float[] embedding = handle.embeddingModel().embed(text);
+            validateEmbedding(embedding, handle, "单条");
+            return embedding;
+        } catch (AiException e) {
+            throw e;
         } catch (Exception e) {
             throw new AiException(
                     ErrorCode.EMBEDDING_FAILED, "向量化失败 text=" + truncate(text, 100), e);
@@ -133,9 +138,34 @@ public class ModelRouter {
             throw new AiException(ErrorCode.EMBEDDING_FAILED, "EMBEDDING 档位未装配 EmbeddingModel");
         }
         try {
-            return handle.embeddingModel().embed(texts);
+            List<float[]> embeddings = handle.embeddingModel().embed(texts);
+            if (embeddings == null || embeddings.size() != texts.size()) {
+                throw new AiException(
+                        ErrorCode.EMBEDDING_FAILED,
+                        "批量向量数量不匹配 expected=" + texts.size()
+                                + " actual=" + (embeddings == null ? 0 : embeddings.size()));
+            }
+            for (float[] embedding : embeddings) {
+                validateEmbedding(embedding, handle, "批量");
+            }
+            return embeddings;
+        } catch (AiException e) {
+            throw e;
         } catch (Exception e) {
             throw new AiException(ErrorCode.EMBEDDING_FAILED, "批量向量化失败 size=" + texts.size(), e);
+        }
+    }
+
+    /** 验证模型返回向量与数据库维度一致。 */
+    private static void validateEmbedding(float[] embedding, ModelHandle handle, String mode) {
+        int expected = handle.config().dimensions() == null
+                ? DEFAULT_EMBEDDING_DIMENSIONS
+                : handle.config().dimensions();
+        if (embedding == null || embedding.length != expected) {
+            throw new AiException(
+                    ErrorCode.EMBEDDING_FAILED,
+                    mode + "向量维度不匹配 expected=" + expected
+                            + " actual=" + (embedding == null ? 0 : embedding.length));
         }
     }
 
