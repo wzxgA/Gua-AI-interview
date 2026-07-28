@@ -56,13 +56,15 @@ public class PositionController {
 
     @Operation(summary = "分页查询岗位列表", description = "支持按名称模糊搜索和部门精确过滤")
     @GetMapping("")
-    public Result<IPage<PositionEntity>> page(
+    public Result<IPage<PositionResponse>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String department) {
         PageQuery pageQuery = PageQuery.of(page, size);
-        return Result.ok(positionService.page(pageQuery, title, department));
+        IPage<PositionEntity> entityPage = positionService.page(pageQuery, title, department);
+        IPage<PositionResponse> responsePage = entityPage.convert(PositionResponse::from);
+        return Result.ok(responsePage);
     }
 
     @Operation(summary = "删除岗位", description = "软删除，将状态置为 INACTIVE")

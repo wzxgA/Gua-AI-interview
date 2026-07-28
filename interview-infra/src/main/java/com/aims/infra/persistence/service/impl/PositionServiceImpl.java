@@ -94,7 +94,12 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, PositionEnt
             wrapper.eq(PositionEntity::getDepartment, department);
         }
         wrapper.orderByDesc(PositionEntity::getCreatedAt);
-        return baseMapper.selectPage(page, wrapper);
+        IPage<PositionEntity> result = baseMapper.selectPage(page, wrapper);
+        result.getRecords()
+                .forEach(
+                        entity ->
+                                entity.setHasEmbedding(baseMapper.existsEmbedding(entity.getId())));
+        return result;
     }
 
     @Override
