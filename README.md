@@ -38,29 +38,6 @@ ai-ms/
 
 依赖方向：`gateway -> agent -> ai -> core`，`gateway -> infra -> ai -> core`
 
-> P2 实现中 `interview-infra` 新增了对 `interview-ai` 的依赖（Service 需注入 `ModelRouter` 做向量化），不构成循环依赖。
-
-## 文档导航
-
-| 文档 | 说明 |
-|------|------|
-| [plans/AI智能面试Agent平台技术方案.md](plans/AI智能面试Agent平台技术方案.md) | 总体技术方案、架构、选型对照表 |
-| [plans/states/总体.md](plans/states/总体.md) | 8 期分期计划与关键路径 |
-| [plans/states/P1-工程基座搭建.md](plans/states/P1-工程基座搭建.md) | P1 详细方案（已完成） |
-| [plans/states/P2-核心数据与RAG.md](plans/states/P2-核心数据与RAG.md) | P2 详细方案（已完成） |
-| [plans/states/P3-面试主流程MVP.md](plans/states/P3-面试主流程MVP.md) | P3 详细方案（已完成） |
-| [plans/frontend/前端实现计划书.md](plans/frontend/前端实现计划书.md) | 前端 React 暗黑星空风格实现计划 |
-
-## 当前进度
-
-| 期次 | 内容 | 状态 |
-|------|------|------|
-| P1 | 工程基座：多模块骨架、基础设施、多模型路由、Advisor | ✅ 已完成 |
-| P2 | 核心数据与 RAG：7 张表、岗位/题库/简历 CRUD、简历解析、向量化 ETL、pgvector 检索 | ✅ 已完成 |
-| P3 | 面试主流程 MVP：会话状态机、WebSocket 流式问答、InterviewerAgent、面试计划生成、Redis ChatMemory | ✅ 已完成 |
-| 前端 F1 | 管理端骨架（对齐 P2 接口） | ⏳ 待启动，P3 协议已定稿，可并行启动 |
-
-P3 已完成，WebSocket 协议与会话状态机已定稿。前端 F1/F2 现在可以并行启动，不再有协议变更风险。
 
 ## 前置条件
 
@@ -130,7 +107,7 @@ mvn -pl interview-gateway spring-boot:run
 
 ## API 接口
 
-### 冒烟测试接口（P1，仅 local/dev）
+### 冒烟测试接口（仅 local/dev）
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -139,7 +116,7 @@ mvn -pl interview-gateway spring-boot:run
 | `/api/smoke/entity` | GET | 结构化输出（返回 JSON 对象） |
 | `/api/smoke/infra` | GET | 基础设施连通性检查 |
 
-### 业务接口（P2）
+### 业务接口
 
 | 模块 | 路径前缀 | 端点 | 说明 |
 |------|----------|------|------|

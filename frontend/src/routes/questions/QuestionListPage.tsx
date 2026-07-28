@@ -273,6 +273,12 @@ export function QuestionListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/questions/${question.id}`}
+                          className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
+                        >
+                          查看
+                        </Link>
                         <button
                           onClick={() => openEdit(question)}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"

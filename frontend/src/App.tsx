@@ -5,6 +5,7 @@ import { DashboardPage } from '@/routes/dashboard/DashboardPage';
 import { PositionListPage } from '@/routes/positions/PositionListPage';
 import { PositionDetailPage } from '@/routes/positions/PositionDetailPage';
 import { QuestionListPage } from '@/routes/questions/QuestionListPage';
+import { QuestionDetailPage } from '@/routes/questions/QuestionDetailPage';
 import { QuestionImportPage } from '@/routes/questions/QuestionImportPage';
 import { ResumeListPage } from '@/routes/resumes/ResumeListPage';
 import { ResumeDetailPage } from '@/routes/resumes/ResumeDetailPage';
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="positions" element={<PositionListPage />} />
           <Route path="positions/:id" element={<PositionDetailPage />} />
           <Route path="questions" element={<QuestionListPage />} />
+          <Route path="questions/:id" element={<QuestionDetailPage />} />
           <Route path="questions/import" element={<QuestionImportPage />} />
           <Route path="resumes" element={<ResumeListPage />} />
           <Route path="resumes/:id" element={<ResumeDetailPage />} />
