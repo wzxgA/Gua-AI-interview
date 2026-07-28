@@ -1,10 +1,12 @@
 package com.aims.infra.persistence.entity;
 
+import com.aims.infra.persistence.handler.JsonbTypeHandler;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.Instant;
+import org.apache.ibatis.type.JdbcType;
 
 /**
  * 简历持久化实体（对应 resume 表）。
@@ -13,7 +15,7 @@ import java.time.Instant;
  * vector(2048) 类型，MyBatis-Plus 无法直接映射，标记 {@code exist=false}， 通过 {@link
  * com.aims.infra.persistence.mapper.ResumeMapper#updateEmbedding} 自定义 SQL 读写。
  */
-@TableName("resume")
+@TableName(value = "resume", autoResultMap = true)
 public class ResumeEntity {
 
     @TableId(type = IdType.AUTO)
@@ -30,7 +32,10 @@ public class ResumeEntity {
     private String rawText;
 
     /** {@link com.aims.core.resume.ParsedResume} 的 JSON 字符串。 */
-    @TableField("parsed_json")
+    @TableField(
+            value = "parsed_json",
+            typeHandler = JsonbTypeHandler.class,
+            jdbcType = JdbcType.OTHER)
     private String parsedJson;
 
     @TableField("file_url")
