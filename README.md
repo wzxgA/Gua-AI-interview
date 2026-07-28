@@ -10,9 +10,11 @@
 | 框架 | Spring Boot 3.5.3 / Spring AI 1.1.2 |
 | AI 模型 | 通义千问（DashScope）/ DeepSeek，OpenAI 兼容模式接入 |
 | 数据库 | PostgreSQL 16 + pgvector 向量扩展 |
+| 持久层 | MyBatis-Plus 3.5.12 + Flyway 11.7（DDL 版本化管理） |
 | 缓存 | Redis 7 |
 | 消息队列 | Kafka 3.8（KRaft 模式，无 ZooKeeper） |
 | 对象存储 | MinIO |
+| 文档抽取 | Apache PDFBox 3.0（简历 PDF 文本抽取） |
 | API 文档 | springdoc-openapi（Swagger UI） |
 | 代码格式化 | Spotless + Google Java Format |
 
@@ -20,11 +22,11 @@
 
 ```
 ai-ms/
-├── interview-core        # 核心层：统一响应体、错误码、异常体系、分页参数、链路追踪
-├── interview-ai          # AI 层：多模型路由(ModelRouter)、ChatClient 封装(AiChatFacade)、三个基础 Advisor
+├── interview-core        # 核心层：领域模型(7模块)、统一响应体、错误码、异常体系、分页参数
+├── interview-ai          # AI 层：多模型路由(ModelRouter)、ChatClient 封装(AiChatFacade)、三个基础 Advisor、embed/embedBatch
 ├── interview-agent       # Agent 编排层：P1 占位，P3/P5 交付会话状态机与多 Agent 编排
-├── interview-infra       # 基础设施层：Jackson 配置、MinIO 客户端、健康检查指标
-├── interview-gateway      # 网关层：Spring Boot 启动入口、冒烟接口、全局异常处理、OpenAPI 配置
+├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、MinIO、Flyway、健康检查
+├── interview-gateway      # 网关层：Spring Boot 启动入口、业务 Controller、全局异常处理、OpenAPI 配置
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
 ├── plans/                # 技术方案与状态文档
 ├── dev.ps1               # 一键管理本地基础设施
@@ -32,7 +34,7 @@ ai-ms/
 └── .env.example          # 应用环境变量模板
 ```
 
-依赖方向：`gateway → agent → ai → core`，`gateway → infra → core`
+依赖方向：`gateway -> agent -> ai -> core`，`gateway -> infra -> ai -> core`
 
 ## 前置条件
 
@@ -54,10 +56,12 @@ ai-ms/
 
 | 服务 | 容器端口 | 宿主机端口 | 说明 |
 |------|----------|------------|------|
-| PostgreSQL 16 (pgvector) | 5432 | 5432 | 数据库 + 向量扩展 |
-| Redis 7 | 6379 | 6379 | 缓存 |
+| PostgreSQL 16 (pgvector) | 5432 | 15432 | 数据库 + 向量扩展 |
+| Redis 7 | 6379 | 16379 | 缓存 |
 | Kafka 3.8 (KRaft) | 9092 | 9092 | 消息队列（已预建 2 个 topic） |
 | MinIO | 9000 / 9001 | 9000 / 9001 | 对象存储（已预建 3 个 bucket） |
+
+> 宿主机端口与 `application-local.yml` 默认值对齐，避免与本机已安装的服务冲突。
 
 ```powershell
 # 其他管理命令
@@ -98,9 +102,9 @@ mvn -pl interview-gateway spring-boot:run
 - Swagger UI：http://localhost:8080/swagger-ui.html
 - 健康检查：http://localhost:8080/actuator/health
 
-## 冒烟测试接口
+## API 接口
 
-P1 提供以下接口验证 AI 管线与基础设施连通性（仅 local/dev 环境加载）：
+### 冒烟测试接口（P1，仅 local/dev）
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
@@ -109,11 +113,20 @@ P1 提供以下接口验证 AI 管线与基础设施连通性（仅 local/dev �
 | `/api/smoke/entity` | GET | 结构化输出（返回 JSON 对象） |
 | `/api/smoke/infra` | GET | 基础设施连通性检查 |
 
+### 业务接口（P2）
+
+| 模块 | 路径前缀 | 端点 | 说明 |
+|------|----------|------|------|
+| 岗位管理 | `/api/v1/positions` | CRUD + `/{id}/embed` | 岗位增删改查 + JD 向量化 |
+| 题库管理 | `/api/v1/questions` | CRUD + `/import` + `/reembed` | 题库增删改查 + 批量导入 + 向量化 ETL |
+| 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + CRUD + `/{id}/embed` | 简历上传 + 结构化解析 + 向量化 |
+| RAG 检索 | `/api/v1/rag` | `/questions` + `/resumes` | 题库/简历相似度检索（仅 local/dev） |
+
 **模型档位说明**：
 
 | 档位 | 默认模型 | 用途 | 降温策略 |
 |------|----------|------|----------|
-| `FLAGSHIP` | qwen-max | 高质量对话 | fallback → deepseek-chat |
+| `FLAGSHIP` | qwen-max | 高质量对话 | fallback -> deepseek-chat |
 | `STANDARD` | deepseek-chat | 日常推理 | 无 fallback |
 | `ECONOMY` | qwen-turbo | 轻量任务 | 无 fallback |
 | `EMBEDDING` | text-embedding-v3 | 向量嵌入 | 无 fallback |
@@ -159,6 +172,14 @@ mvn spotless:check
 mvn spotless:apply
 ```
 
+### 数据库迁移
+
+项目使用 Flyway 管理 DDL，迁移脚本位于 `interview-infra/src/main/resources/db/migration/`：
+
+- 脚本命名：`V{版本号}__{描述}.sql`（如 `V2_0_0__create_core_tables.sql`）
+- 应用启动时自动执行，已执行的脚本不会重复执行
+- 表结构变更一律走增量迁移脚本，禁止手改数据库
+
 ### 环境变量一览
 
 | 变量名 | 默认值 | 说明 |
@@ -166,10 +187,10 @@ mvn spotless:apply
 | `SPRING_PROFILES_ACTIVE` | local | Spring Profile |
 | `DASHSCOPE_API_KEY` | - | 通义千问 API Key（必填） |
 | `DEEPSEEK_API_KEY` | - | DeepSeek API Key（必填） |
-| `POSTGRES_PORT` | 5432 | PostgreSQL 端口 |
+| `POSTGRES_PORT` | 15432 | PostgreSQL 端口 |
 | `POSTGRES_USER` | aims | PostgreSQL 用户名 |
 | `POSTGRES_PASSWORD` | aims123 | PostgreSQL 密码 |
-| `REDIS_PORT` | 6379 | Redis 端口 |
+| `REDIS_PORT` | 16379 | Redis 端口 |
 | `REDIS_PASSWORD` | aims123 | Redis 密码 |
 | `KAFKA_PORT` | 9092 | Kafka 端口 |
 | `MINIO_API_PORT` | 9000 | MinIO API 端口 |
@@ -184,4 +205,3 @@ mvn spotless:apply
 - Spring AI：`1.1.2`
 
 待官方 GA 发布后统一升级。
-

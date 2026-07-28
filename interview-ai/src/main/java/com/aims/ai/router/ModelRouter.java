@@ -4,6 +4,7 @@ import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.AiException;
 import com.aims.core.common.exception.AiOutputParseException;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
@@ -98,6 +99,50 @@ public class ModelRouter {
                     return Flux.defer(
                             () -> action.apply(handle.fallbackClient(), handle.fallbackModel()));
                 });
+    }
+
+    /**
+     * 向量化：单条文本 -> 向量。
+     *
+     * <p>从 EMBEDDING 档位取 EmbeddingModel，调用 embed(text)。 失败按 EMBEDDING_FAILED 抛出，TokenMeter 自动计量。
+     */
+    public float[] embed(String text) {
+        ModelHandle handle = resolve(ModelTier.EMBEDDING);
+        if (handle.embeddingModel() == null) {
+            throw new AiException(ErrorCode.EMBEDDING_FAILED, "EMBEDDING 档位未装配 EmbeddingModel");
+        }
+        try {
+            return handle.embeddingModel().embed(text);
+        } catch (Exception e) {
+            throw new AiException(
+                    ErrorCode.EMBEDDING_FAILED, "向量化失败 text=" + truncate(text, 100), e);
+        }
+    }
+
+    /**
+     * 向量化：批量文本 -> 批量向量。
+     *
+     * <p>利用 Spring AI EmbeddingModel 的 batch 能力，减少 RTT。
+     */
+    public List<float[]> embedBatch(List<String> texts) {
+        if (texts == null || texts.isEmpty()) {
+            return List.of();
+        }
+        ModelHandle handle = resolve(ModelTier.EMBEDDING);
+        if (handle.embeddingModel() == null) {
+            throw new AiException(ErrorCode.EMBEDDING_FAILED, "EMBEDDING 档位未装配 EmbeddingModel");
+        }
+        try {
+            return handle.embeddingModel().embed(texts);
+        } catch (Exception e) {
+            throw new AiException(ErrorCode.EMBEDDING_FAILED, "批量向量化失败 size=" + texts.size(), e);
+        }
+    }
+
+    /** 截断文本用于日志输出。 */
+    private static String truncate(String text, int maxLen) {
+        if (text == null) return "";
+        return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
     }
 
     private void recordFallback(ModelTier tier, String from, String to, Throwable cause) {

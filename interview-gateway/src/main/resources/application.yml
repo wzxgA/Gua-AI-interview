@@ -13,6 +13,18 @@ spring:
       # Spring AI 自动装配关闭：ChatModel/EmbeddingModel 由 interview-ai 按档位手动装配
       chat: none
       embedding: none
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  mybatis-plus:
+    configuration:
+      map-underscore-to-camel-case: true
+    global-config:
+      db-config:
+        logic-delete-field: deleted
+        logic-delete-value: '1'
+        logic-not-delete-value: '0'
 
 server:
   port: 8080

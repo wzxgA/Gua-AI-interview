@@ -19,10 +19,35 @@
             <groupId>com.aims</groupId>
             <artifactId>interview-core</artifactId>
         </dependency>
+        <!-- AI 能力层：AiChatFacade / ModelRouter / ModelTier（简历解析与向量化调用） -->
+        <dependency>
+            <groupId>com.aims</groupId>
+            <artifactId>interview-ai</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -49,6 +74,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- spring-web：MultipartFile 接口（简历上传服务签名引用） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
         </dependency>
         <!-- HealthIndicator API -->
         <dependency>

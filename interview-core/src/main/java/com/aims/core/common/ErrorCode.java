@@ -21,7 +21,14 @@ public enum ErrorCode {
     INFRA_UNAVAILABLE(3001, "基础设施不可用"),
     REDIS_CONNECT_FAILED(3002, "Redis 连接失败"),
     KAFKA_CONNECT_FAILED(3003, "Kafka 连接失败"),
-    MINIO_CONNECT_FAILED(3004, "MinIO 连接失败");
+    MINIO_CONNECT_FAILED(3004, "MinIO 连接失败"),
+
+    // ---- 业务 4xxx（P2 起） ----
+    RESUME_PARSE_FAILED(4001, "简历解析失败"),
+    EMBEDDING_FAILED(4002, "向量化失败"),
+    RAG_SEARCH_FAILED(4003, "RAG 检索失败"),
+    FILE_UPLOAD_FAILED(4004, "文件上传失败"),
+    QUESTION_IMPORT_PARTIAL(4005, "题库批量导入部分失败");
 
     private final int code;
     private final String message;

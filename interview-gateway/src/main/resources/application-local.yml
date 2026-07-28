@@ -1,14 +1,15 @@
 # 本地开发环境（默认 profile）：连接 docker-compose 启动的基础设施
+# 端口与 docker/.env 对齐（非标准端口避免与本机已安装的服务冲突）
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/aims
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:15432}/aims
     username: ${POSTGRES_USER:aims}
     password: ${POSTGRES_PASSWORD:aims123}
     driver-class-name: org.postgresql.Driver
   data:
     redis:
       host: localhost
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
       password: ${REDIS_PASSWORD:aims123}
   kafka:
     bootstrap-servers: localhost:${KAFKA_PORT:9092}
