@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 背景层 */
+  --space-900: #050714;
+  --space-800: #0a0f24;
+  --space-700: #111936;
+  --space-600: #1a2347;
+
+  /* 文字 */
+  --text-primary: #e8ecff;
+  --text-secondary: #a8b0d0;
+  --text-muted: #6b7299;
+
+  /* 银色流光强调 */
+  --silver-100: #f0f4ff;
+  --silver-200: #d4dce8;
+  --silver-300: #a8b4c8;
+  --silver-glow: #c8d4e8;
+  --silver-dim: #6b7890;
+
+  /* 语义色 */
+  --success: #5dffac;
+  --warning: #ffc24d;
+  --danger: #ff5ea8;
+  --info: var(--silver-200);
+}
+
+* {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--space-900);
+  color: var(--text-primary);
+  font-family: 'Inter', 'HarmonyOS Sans SC', 'PingFang SC', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 180, 200, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 180, 200, 0.3);
+}
+
+/* 选中文本 */
+::selection {
+  background: rgba(200, 212, 232, 0.2);
+  color: var(--silver-100);
+}
+
+/* 输入框 placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
