@@ -50,7 +50,7 @@ aims:
     providers:
       # 通义千问（DashScope OpenAI 兼容模式）
       dashscope:
-        base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+        base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
         api-key: ${DASHSCOPE_API_KEY}
       deepseek:
         base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
@@ -75,7 +75,7 @@ aims:
         max-tokens: 1024
       EMBEDDING:
         provider: ${AIMS_EMBEDDING_PROVIDER:dashscope}
-        model: ${AIMS_EMBEDDING_MODEL:text-embedding-v3}
+        model: ${AIMS_EMBEDDING_MODEL:text-embedding-v4}
         dimensions: ${AIMS_EMBEDDING_DIMENSIONS:2048}
     # 价目表：元/千 tokens（成本估算用，可按需调整）
     pricing:
@@ -91,3 +91,8 @@ aims:
     retry:
       max-attempts: 2
       initial-backoff: 500ms
+
+logging:
+  level:
+    org.springframework.web.client: DEBUG
+    org.springframework.ai.openai.api: DEBUG

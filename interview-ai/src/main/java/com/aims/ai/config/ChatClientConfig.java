@@ -65,13 +65,28 @@ public class ChatClientConfig {
         properties
                 .providers()
                 .forEach(
-                        (name, cfg) ->
-                                apis.put(
-                                        name,
-                                        OpenAiApi.builder()
-                                                .baseUrl(cfg.baseUrl())
-                                                .apiKey(cfg.effectiveApiKey())
-                                                .build()));
+                        (name, cfg) -> {
+                            log.info(
+                                    "装配 Provider: {} base-url={} key={}",
+                                    name,
+                                    cfg.baseUrl(),
+                                    cfg.effectiveApiKey() != null
+                                            ? cfg.effectiveApiKey()
+                                                            .substring(
+                                                                    0,
+                                                                    Math.min(
+                                                                            10,
+                                                                            cfg.effectiveApiKey()
+                                                                                    .length()))
+                                                    + "***"
+                                            : "null");
+                            apis.put(
+                                    name,
+                                    OpenAiApi.builder()
+                                            .baseUrl(cfg.baseUrl())
+                                            .apiKey(cfg.effectiveApiKey())
+                                            .build());
+                        });
 
         // 2. 每档位预构建句柄
         Map<ModelTier, ModelHandle> handles = new EnumMap<>(ModelTier.class);

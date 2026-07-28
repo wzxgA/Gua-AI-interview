@@ -155,7 +155,7 @@ mvn -pl interview-gateway spring-boot:run
 | `FLAGSHIP` | qwen-max | 高质量对话 | fallback -> deepseek-chat |
 | `STANDARD` | deepseek-chat | 日常推理 | 无 fallback |
 | `ECONOMY` | qwen-turbo | 轻量任务 | 无 fallback |
-| `EMBEDDING` | text-embedding-v3 | 向量嵌入 | 无 fallback |
+| `EMBEDDING` | text-embedding-v4 | 2048 维向量嵌入 | 无 fallback |
 
 ## 测试
 

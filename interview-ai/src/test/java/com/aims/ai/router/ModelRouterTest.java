@@ -41,9 +41,14 @@ class ModelRouterTest {
         org.springframework.ai.embedding.EmbeddingModel embeddingModel =
                 mock(org.springframework.ai.embedding.EmbeddingModel.class);
         AiModelProperties.TierConfig config =
-                new AiModelProperties.TierConfig("dashscope", "text-embedding-v3", null, null, 2048, null);
-        ModelHandle handle = ModelHandle.embedding(ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
-        ModelRouter router = new ModelRouter(Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
+                new AiModelProperties.TierConfig(
+                        "dashscope", "text-embedding-v4", null, null, 2048, null);
+        ModelHandle handle =
+                ModelHandle.embedding(
+                        ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
+        ModelRouter router =
+                new ModelRouter(
+                        Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
         when(embeddingModel.embed("text")).thenReturn(new float[1024]);
 
         AiException exception = assertThrows(AiException.class, () -> router.embed("text"));
@@ -56,12 +61,18 @@ class ModelRouterTest {
         org.springframework.ai.embedding.EmbeddingModel embeddingModel =
                 mock(org.springframework.ai.embedding.EmbeddingModel.class);
         AiModelProperties.TierConfig config =
-                new AiModelProperties.TierConfig("dashscope", "text-embedding-v3", null, null, 2048, null);
-        ModelHandle handle = ModelHandle.embedding(ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
-        ModelRouter router = new ModelRouter(Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
+                new AiModelProperties.TierConfig(
+                        "dashscope", "text-embedding-v4", null, null, 2048, null);
+        ModelHandle handle =
+                ModelHandle.embedding(
+                        ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
+        ModelRouter router =
+                new ModelRouter(
+                        Map.of(ModelTier.EMBEDDING, handle), ModelTier.EMBEDDING, meterRegistry);
         when(embeddingModel.embed(List.of("a", "b"))).thenReturn(List.of(new float[2048]));
 
-        AiException exception = assertThrows(AiException.class, () -> router.embedBatch(List.of("a", "b")));
+        AiException exception =
+                assertThrows(AiException.class, () -> router.embedBatch(List.of("a", "b")));
 
         assertEquals(ErrorCode.EMBEDDING_FAILED, exception.getErrorCode());
     }

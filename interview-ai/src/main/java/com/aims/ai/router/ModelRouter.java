@@ -142,8 +142,10 @@ public class ModelRouter {
             if (embeddings == null || embeddings.size() != texts.size()) {
                 throw new AiException(
                         ErrorCode.EMBEDDING_FAILED,
-                        "批量向量数量不匹配 expected=" + texts.size()
-                                + " actual=" + (embeddings == null ? 0 : embeddings.size()));
+                        "批量向量数量不匹配 expected="
+                                + texts.size()
+                                + " actual="
+                                + (embeddings == null ? 0 : embeddings.size()));
             }
             for (float[] embedding : embeddings) {
                 validateEmbedding(embedding, handle, "批量");
@@ -158,14 +160,18 @@ public class ModelRouter {
 
     /** 验证模型返回向量与数据库维度一致。 */
     private static void validateEmbedding(float[] embedding, ModelHandle handle, String mode) {
-        int expected = handle.config().dimensions() == null
-                ? DEFAULT_EMBEDDING_DIMENSIONS
-                : handle.config().dimensions();
+        int expected =
+                handle.config().dimensions() == null
+                        ? DEFAULT_EMBEDDING_DIMENSIONS
+                        : handle.config().dimensions();
         if (embedding == null || embedding.length != expected) {
             throw new AiException(
                     ErrorCode.EMBEDDING_FAILED,
-                    mode + "向量维度不匹配 expected=" + expected
-                            + " actual=" + (embedding == null ? 0 : embedding.length));
+                    mode
+                            + "向量维度不匹配 expected="
+                            + expected
+                            + " actual="
+                            + (embedding == null ? 0 : embedding.length));
         }
     }
 
