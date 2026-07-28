@@ -15,4 +15,12 @@
     <description>领域核心：纯领域代码，无框架依赖</description>
 
     <!-- 纯领域模块：刻意不引入 Spring / spring-ai 等框架依赖（ArchUnit 约束见 P1 方案 3.1） -->
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

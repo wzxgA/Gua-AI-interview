@@ -1,12 +1,14 @@
 package com.aims.ai.facade;
 
 import com.aims.ai.advisor.AiAdvisorContext;
+import com.aims.ai.memory.ConversationMemory;
 import com.aims.ai.router.ModelRouter;
 import com.aims.ai.router.ModelTier;
 import com.aims.core.common.exception.AiOutputParseException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
@@ -17,9 +19,14 @@ import reactor.core.publisher.Flux;
 public class DefaultAiChatFacade implements AiChatFacade {
 
     private final ModelRouter modelRouter;
+    private final ConversationMemory conversationMemory;
 
-    public DefaultAiChatFacade(ModelRouter modelRouter) {
+    @Autowired
+    public DefaultAiChatFacade(
+            ModelRouter modelRouter,
+            @Autowired(required = false) ConversationMemory conversationMemory) {
         this.modelRouter = modelRouter;
+        this.conversationMemory = conversationMemory;
     }
 
     @Override
@@ -73,7 +80,22 @@ public class DefaultAiChatFacade implements AiChatFacade {
     @Override
     public Flux<String> streamWithMemory(
             ModelTier tier, String conversationId, String systemPrompt, String userPrompt) {
-        throw new UnsupportedOperationException("P3 交付：接入 ChatMemory 后开放");
+        if (conversationMemory == null) {
+            return stream(tier, systemPrompt, userPrompt);
+        }
+        String history = conversationMemory.asPrompt(conversationId, 20);
+        String prompt =
+                history.isBlank() ? userPrompt : "历史对话：\n" + history + "\n\n当前请求：\n" + userPrompt;
+        return stream(tier, systemPrompt, prompt)
+                .collectList()
+                .doOnNext(
+                        chunks ->
+                                conversationMemory.addAssistant(
+                                        conversationId, String.join("", chunks), null))
+                .flatMapMany(Flux::fromIterable)
+                .doOnSubscribe(
+                        subscription ->
+                                conversationMemory.addUser(conversationId, userPrompt, null));
     }
 
     /** 构造请求并写入 Advisor 归因参数（tier/model），降级时 model 自动切换为 fallback 模型。 */

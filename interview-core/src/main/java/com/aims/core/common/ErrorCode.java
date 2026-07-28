@@ -28,7 +28,15 @@ public enum ErrorCode {
     EMBEDDING_FAILED(4002, "向量化失败"),
     RAG_SEARCH_FAILED(4003, "RAG 检索失败"),
     FILE_UPLOAD_FAILED(4004, "文件上传失败"),
-    QUESTION_IMPORT_PARTIAL(4005, "题库批量导入部分失败");
+    QUESTION_IMPORT_PARTIAL(4005, "题库批量导入部分失败"),
+
+    // ---- 面试会话 4100+（P3） ----
+    SESSION_NOT_FOUND(4101, "面试会话不存在"),
+    SESSION_STATUS_CONFLICT(4102, "会话状态不允许该操作"),
+    SESSION_PLAN_FAILED(4103, "面试计划生成失败"),
+    SESSION_ROUND_CONFLICT(4104, "面试轮次冲突或已存在"),
+    SESSION_LOCKED(4105, "会话已被其他连接占用"),
+    SESSION_MESSAGE_INVALID(4106, "WebSocket 消息格式或内容非法");
 
     private final int code;
     private final String message;

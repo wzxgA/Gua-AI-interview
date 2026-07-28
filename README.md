@@ -25,9 +25,9 @@
 ai-ms/
 ├── interview-core        # 核心层：领域模型(7模块)、统一响应体、错误码、异常体系、分页参数
 ├── interview-ai          # AI 层：多模型路由(ModelRouter)、ChatClient 封装(AiChatFacade)、三个基础 Advisor、embed/embedBatch
-├── interview-agent       # Agent 编排层：P1 占位，P3/P5 交付会话状态机与多 Agent 编排
-├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、MinIO、Flyway、健康检查
-├── interview-gateway      # 网关层：Spring Boot 启动入口、业务 Controller、全局异常处理、OpenAPI 配置
+├── interview-agent       # Agent 编排层：InterviewerAgent（问题生成）、InterviewPlanGenerator（计划生成）
+├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、Redis 会话快照、MinIO、Flyway、健康检查
+├── interview-gateway     # 网关层：Spring Boot 启动入口、业务 Controller、面试 WebSocket Handler、全局异常处理、OpenAPI
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
 ├── plans/                # 技术方案、分期状态文档、前端实现计划书
 ├── frontend/             # 前端工程（尚未创建，见 plans/frontend/前端实现计划书.md）
@@ -48,7 +48,7 @@ ai-ms/
 | [plans/states/总体.md](plans/states/总体.md) | 8 期分期计划与关键路径 |
 | [plans/states/P1-工程基座搭建.md](plans/states/P1-工程基座搭建.md) | P1 详细方案（已完成） |
 | [plans/states/P2-核心数据与RAG.md](plans/states/P2-核心数据与RAG.md) | P2 详细方案（已完成） |
-| [plans/states/P3-面试主流程MVP.md](plans/states/P3-面试主流程MVP.md) | P3 详细方案（下一期） |
+| [plans/states/P3-面试主流程MVP.md](plans/states/P3-面试主流程MVP.md) | P3 详细方案（已完成） |
 | [plans/frontend/前端实现计划书.md](plans/frontend/前端实现计划书.md) | 前端 React 暗黑星空风格实现计划 |
 
 ## 当前进度
@@ -57,10 +57,10 @@ ai-ms/
 |------|------|------|
 | P1 | 工程基座：多模块骨架、基础设施、多模型路由、Advisor | ✅ 已完成 |
 | P2 | 核心数据与 RAG：7 张表、岗位/题库/简历 CRUD、简历解析、向量化 ETL、pgvector 检索 | ✅ 已完成 |
-| P3 | 面试主流程 MVP：会话状态机、WebSocket 流式问答、InterviewerAgent | ⏳ 下一步 |
-| 前端 F1 | 管理端骨架（对齐 P2 接口） | ⏳ 待启动，建议 P3 协议定稿后并行 |
+| P3 | 面试主流程 MVP：会话状态机、WebSocket 流式问答、InterviewerAgent、面试计划生成、Redis ChatMemory | ✅ 已完成 |
+| 前端 F1 | 管理端骨架（对齐 P2 接口） | ⏳ 待启动，P3 协议已定稿，可并行启动 |
 
-前端尚未创建工程。推荐顺序是先完成 P3 后端（WebSocket 协议、会话状态机定稿），再启动前端 F1/F2，避免协议变更导致返工。
+P3 已完成，WebSocket 协议与会话状态机已定稿。前端 F1/F2 现在可以并行启动，不再有协议变更风险。
 
 ## 前置条件
 
