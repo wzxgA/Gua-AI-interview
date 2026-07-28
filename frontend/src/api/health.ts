@@ -5,9 +5,7 @@ export function useHealth() {
     queryKey: ['health'],
     queryFn: async () => {
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE || 'http://localhost:8080'}/actuator/health`,
-        );
+        const res = await fetch('/actuator/health');
         if (!res.ok) return { status: 'DOWN' };
         const data = await res.json();
         return data as { status: string };

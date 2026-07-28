@@ -1,4 +1,4 @@
-# AI 智能面试 Agent 平台（AIMS）
+# 瓜分Offer AI 智能面试 Agent 平台（AIMS）
 
 基于 Spring Boot 3.5 + Spring AI 1.1 + Java 21 虚拟线程构建的 AI 面试 Agent 服务平台。
 
