@@ -1,6 +1,6 @@
 # AI 智能面试 Agent 平台（AIMS）
 
-基于 Spring Boot 3.5 + Spring AI 1.1 + Java 21 虚拟线程构建的 AI 面试 Agent 后端服务平台。
+基于 Spring Boot 3.5 + Spring AI 1.1 + Java 21 虚拟线程构建的 AI 面试 Agent 服务平台。
 
 ## 技术栈
 
@@ -17,6 +17,7 @@
 | 文档抽取 | Apache PDFBox 3.0（简历 PDF 文本抽取） |
 | API 文档 | springdoc-openapi（Swagger UI） |
 | 代码格式化 | Spotless + Google Java Format |
+| 前端（规划中） | React 19 + TypeScript + Vite + Tailwind CSS 4 + shadcn/ui + Zustand + TanStack Query |
 
 ## 模块结构
 
@@ -28,13 +29,38 @@ ai-ms/
 ├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、MinIO、Flyway、健康检查
 ├── interview-gateway      # 网关层：Spring Boot 启动入口、业务 Controller、全局异常处理、OpenAPI 配置
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
-├── plans/                # 技术方案与状态文档
+├── plans/                # 技术方案、分期状态文档、前端实现计划书
+├── frontend/             # 前端工程（尚未创建，见 plans/frontend/前端实现计划书.md）
 ├── dev.ps1               # 一键管理本地基础设施
 ├── pom.xml               # 父 POM（版本锁定 + 依赖管理）
 └── .env.example          # 应用环境变量模板
 ```
 
 依赖方向：`gateway -> agent -> ai -> core`，`gateway -> infra -> ai -> core`
+
+> P2 实现中 `interview-infra` 新增了对 `interview-ai` 的依赖（Service 需注入 `ModelRouter` 做向量化），不构成循环依赖。
+
+## 文档导航
+
+| 文档 | 说明 |
+|------|------|
+| [plans/AI智能面试Agent平台技术方案.md](plans/AI智能面试Agent平台技术方案.md) | 总体技术方案、架构、选型对照表 |
+| [plans/states/总体.md](plans/states/总体.md) | 8 期分期计划与关键路径 |
+| [plans/states/P1-工程基座搭建.md](plans/states/P1-工程基座搭建.md) | P1 详细方案（已完成） |
+| [plans/states/P2-核心数据与RAG.md](plans/states/P2-核心数据与RAG.md) | P2 详细方案（已完成） |
+| [plans/states/P3-面试主流程MVP.md](plans/states/P3-面试主流程MVP.md) | P3 详细方案（下一期） |
+| [plans/frontend/前端实现计划书.md](plans/frontend/前端实现计划书.md) | 前端 React 暗黑星空风格实现计划 |
+
+## 当前进度
+
+| 期次 | 内容 | 状态 |
+|------|------|------|
+| P1 | 工程基座：多模块骨架、基础设施、多模型路由、Advisor | ✅ 已完成 |
+| P2 | 核心数据与 RAG：7 张表、岗位/题库/简历 CRUD、简历解析、向量化 ETL、pgvector 检索 | ✅ 已完成 |
+| P3 | 面试主流程 MVP：会话状态机、WebSocket 流式问答、InterviewerAgent | ⏳ 下一步 |
+| 前端 F1 | 管理端骨架（对齐 P2 接口） | ⏳ 待启动，建议 P3 协议定稿后并行 |
+
+前端尚未创建工程。推荐顺序是先完成 P3 后端（WebSocket 协议、会话状态机定稿），再启动前端 F1/F2，避免协议变更导致返工。
 
 ## 前置条件
 
