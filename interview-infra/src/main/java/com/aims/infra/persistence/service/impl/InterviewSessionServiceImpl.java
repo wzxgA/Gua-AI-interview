@@ -6,6 +6,9 @@ import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.mapper.InterviewSessionMapper;
 import com.aims.infra.persistence.service.InterviewSessionService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.time.Instant;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,16 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     }
 
     @Override
+    public IPage<InterviewSessionEntity> page(Page<InterviewSessionEntity> page, String status) {
+        LambdaQueryWrapper<InterviewSessionEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(InterviewSessionEntity::getId);
+        if (status != null && !status.isBlank()) {
+            wrapper.eq(InterviewSessionEntity::getStatus, status);
+        }
+        return sessionMapper.selectPage(page, wrapper);
+    }
+
+    @Override
     @Transactional
     public InterviewSessionEntity updateStatus(Long id, SessionStatus target) {
         InterviewSessionEntity entity = getById(id);
@@ -65,9 +78,9 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     @Transactional
     public InterviewSessionEntity savePlan(Long id, String planJson) {
         InterviewSessionEntity entity = getById(id);
+        sessionMapper.updatePlanJson(id, planJson);
         entity.setPlanJson(planJson);
         entity.setUpdatedAt(Instant.now());
-        sessionMapper.updateById(entity);
         return entity;
     }
 

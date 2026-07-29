@@ -2,6 +2,8 @@ package com.aims.infra.persistence.service;
 
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.util.function.Function;
 
 /** 面试会话持久化服务。 */
@@ -12,6 +14,9 @@ public interface InterviewSessionService {
 
     /** 查询会话详情，不存在抛 BizException。 */
     InterviewSessionEntity getById(Long id);
+
+    /** 分页查询面试会话列表。 */
+    IPage<InterviewSessionEntity> page(Page<InterviewSessionEntity> page, String status);
 
     /** 更新会话状态（校验合法迁移）。 */
     InterviewSessionEntity updateStatus(Long id, SessionStatus target);

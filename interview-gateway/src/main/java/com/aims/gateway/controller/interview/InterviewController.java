@@ -14,6 +14,8 @@ import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 面试会话 REST API。 */
@@ -66,6 +69,17 @@ public class InterviewController {
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
         this.objectMapper = objectMapper;
+    }
+
+    @Operation(summary = "分页查询面试会话列表")
+    @GetMapping("")
+    public Result<IPage<InterviewResponse>> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status) {
+        IPage<InterviewSessionEntity> result = sessionService.page(new Page<>(page, size), status);
+        IPage<InterviewResponse> mapped = result.convert(InterviewResponse::from);
+        return Result.ok(mapped);
     }
 
     @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED")

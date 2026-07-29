@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, FileQuestion, FileText, Search, Settings } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileQuestion, FileText, Users, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const menuItems = [
@@ -7,6 +7,7 @@ const menuItems = [
   { to: '/positions', label: '岗位管理', icon: Briefcase },
   { to: '/questions', label: '题库管理', icon: FileQuestion },
   { to: '/resumes', label: '简历管理', icon: FileText },
+  { to: '/interviews', label: '面试管理', icon: Users },
   { to: '/rag', label: 'RAG 调试', icon: Search },
   { to: '/settings', label: '设置', icon: Settings },
 ];
