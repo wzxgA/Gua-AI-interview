@@ -30,6 +30,7 @@ Thumbs.db
 # ---- 其他 ----
 .flattened-pom.xml
 .codebuddy/
+.trae/
 plans/
 
 # ---- Frontend (Node.js / Vite) ----

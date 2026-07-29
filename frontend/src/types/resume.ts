@@ -50,7 +50,14 @@ export interface ResumeSearchResult {
   candidateName: string;
   phone: string | null;
   email: string | null;
+  currentTitle: string | null;
+  yearsOfExperience: number | null;
+  skills: string[];
   score: number;
+  vectorScore: number;
+  keywordScore: number;
+  matchedSnippet: string | null;
+  embeddingModel: string | null;
 }
 
 /** 列表查询参数 */

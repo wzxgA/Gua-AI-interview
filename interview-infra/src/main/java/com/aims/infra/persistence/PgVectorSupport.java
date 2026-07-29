@@ -12,7 +12,7 @@ public final class PgVectorSupport {
 
     /**
      * 将 float[] 转为 pgvector 字符串格式："[0.1,0.2,0.3]" 用于 SQL 参数绑定（如 UPDATE ... SET embedding =
-     * ?::vector）。
+     * ?::halfvec）。
      */
     public static String toVectorString(float[] embedding) {
         if (embedding == null) {

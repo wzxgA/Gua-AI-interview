@@ -9,9 +9,9 @@ import org.apache.ibatis.annotations.Update;
 /** 岗位 Mapper：继承 MyBatis-Plus BaseMapper，额外提供 embedding 自定义 SQL。 */
 public interface PositionMapper extends BaseMapper<PositionEntity> {
 
-    /** 更新 JD 向量（pgvector 需 {@code ::vector} 转换）。 */
+    /** 更新 JD 向量（pgvector 需 {@code ::halfvec} 转换）。 */
     @Update(
-            "UPDATE position SET embedding = #{embedding}::vector, updated_at = now() WHERE id ="
+            "UPDATE position SET embedding = #{embedding}::halfvec, updated_at = now() WHERE id ="
                     + " #{id}")
     int updateEmbedding(@Param("id") Long id, @Param("embedding") String embedding);
 

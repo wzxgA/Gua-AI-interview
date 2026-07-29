@@ -4,6 +4,8 @@ package com.aims.core.resume;
 public enum ResumeStatus {
     /** 待解析 */
     PENDING,
+    /** 解析处理中 */
+    PROCESSING,
     /** 解析成功 */
     PARSED,
     /** 解析失败 */

@@ -1,15 +1,18 @@
 package com.aims.infra.persistence.service.impl;
 
+import com.aims.agent.ResumePromptBuilder;
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelRouter;
 import com.aims.ai.router.ModelTier;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.PageQuery;
 import com.aims.core.common.exception.BizException;
+import com.aims.core.resume.EmbeddingStatus;
 import com.aims.core.resume.ParsedResume;
 import com.aims.core.resume.ResumeStatus;
 import com.aims.core.resume.WorkExperience;
 import com.aims.infra.persistence.PgVectorSupport;
+import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.ResumeMapper;
 import com.aims.infra.persistence.service.ResumeService;
@@ -23,6 +26,10 @@ import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,9 +38,9 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 简历服务实现。
  *
- * <p>upload 流程：先入库拿 ID -> MinIO 上传 -> 文本抽取 -> 更新原文 -> 虚拟线程异步解析。 parse 流程：取 rawText -> 调
- * AiChatFacade.callForEntity(ECONOMY) -> 序列化为 JSON 存入 parsed_json -> PARSED / FAILED。 embed 流程：
- * 拼接结构化文本 -> modelRouter.embed -> mapper.updateEmbedding（pgvector 字符串）。
+ * <p>upload 流程：先入库拿 ID -> MinIO 上传 -> 文本抽取 -> 更新原文 -> 虚拟线程异步解析。 parse 流程：条件抢占 -> 调
+ * AiChatFacade.callForEntity(ECONOMY) -> 序列化为 JSON 存入 parsed_json -> PARSED / FAILED，成功后自动清空旧向量。
+ * embed 流程：条件抢占 -> 拼接结构化文本 -> modelRouter.embed -> mapper.markEmbedded（pgvector 字符串）。
  */
 @Service
 public class ResumeServiceImpl implements ResumeService {
@@ -43,14 +50,15 @@ public class ResumeServiceImpl implements ResumeService {
     /** MinIO 简历 bucket（docker-compose minio-init 已预建）。 */
     private static final String BUCKET = "aims-resume";
 
-    /** 简历解析系统提示词。 */
-    private static final String PARSE_SYSTEM_PROMPT =
-            "你是简历解析专家。请将输入的简历文本解析为结构化 JSON。字段说明：candidateName(姓名), phone(电话), email(邮箱),"
-                + " yearsOfExperience(工作年限), education(学历), currentTitle(当前职位), skills(技能列表),"
-                + " workExperiences(工作或实习经历列表，含 type/company/title/period/description，type 只能为 WORK"
-                + " 或 INTERNSHIP), projectExperiences(项目经历列表，含"
-                + " name/role/period/description/highlights，highlights"
-                + " 为当前项目对应的项目亮点列表)。没有对应数据时返回空数组。只输出 JSON，不要额外说明。";
+    /** 期望的 Embedding 向量维度（text-embedding-v4, 2048 维）。 */
+    private static final int EXPECTED_EMBEDDING_DIMENSION = 2048;
+
+    /** 最大上传文件大小：10 MB。 */
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+    /** 批量重新向量化任务状态（内存级，应用重启后丢失）。 */
+    private final ConcurrentHashMap<String, BatchReembedTask> batchTasks =
+            new ConcurrentHashMap<>();
 
     private final ResumeMapper resumeMapper;
     private final MinioClient minioClient;
@@ -74,12 +82,15 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     public ResumeEntity upload(
             MultipartFile file, String candidateName, String phone, String email) {
+        validateUploadFile(file);
+
         // 1. 先入库拿 ID
         ResumeEntity entity = new ResumeEntity();
         entity.setCandidateName(candidateName);
         entity.setPhone(phone);
         entity.setEmail(email);
         entity.setParseStatus(ResumeStatus.PENDING.name());
+        entity.setEmbeddingStatus(EmbeddingStatus.PENDING.name());
         resumeMapper.insert(entity);
         Long id = entity.getId();
 
@@ -132,15 +143,19 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Override
     public ResumeEntity parse(Long id) {
-        ResumeEntity entity = resumeMapper.selectById(id);
-        if (entity == null) {
-            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+        // 3. 抢占解析任务，避免自动触发和手动触发重复调用 AI
+        if (resumeMapper.claimParse(id) == 0) {
+            ResumeEntity existing = resumeMapper.selectById(id);
+            if (existing == null) {
+                throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+            }
+            return existing;
         }
 
+        ResumeEntity entity = resumeMapper.selectById(id);
         String rawText = entity.getRawText();
         if (rawText == null || rawText.isBlank()) {
-            entity.setParseStatus(ResumeStatus.FAILED.name());
-            resumeMapper.updateById(entity);
+            resumeMapper.markParseFailed(id, "简历原文为空，无法解析");
             throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历原文为空，无法解析: " + id);
         }
 
@@ -148,21 +163,27 @@ public class ResumeServiceImpl implements ResumeService {
             // 调 ECONOMY 档位进行结构化解析
             ParsedResume parsed =
                     aiChatFacade.callForEntity(
-                            ModelTier.ECONOMY, PARSE_SYSTEM_PROMPT, rawText, ParsedResume.class);
-            // 序列化为 JSON 存入 parsed_json
+                            ModelTier.ECONOMY,
+                            ResumePromptBuilder.parseSystem(),
+                            rawText,
+                            ParsedResume.class);
+            validateParsedResume(parsed);
             String parsedJson = objectMapper.writeValueAsString(parsed);
-            entity.setParsedJson(parsedJson);
-            entity.setParseStatus(ResumeStatus.PARSED.name());
-            resumeMapper.updateById(entity);
-            return entity;
+            resumeMapper.markParsed(id, parsedJson);
+            resumeMapper.invalidateEmbedding(id);
+            // 解析成功后自动异步触发向量化
+            Thread.startVirtualThread(
+                    () -> {
+                        try {
+                            embed(id);
+                        } catch (Exception e) {
+                            log.error("解析后自动向量化失败 id={}", id, e);
+                        }
+                    });
+            return resumeMapper.selectById(id);
         } catch (Exception e) {
             log.error("简历解析失败 id={}", id, e);
-            entity.setParseStatus(ResumeStatus.FAILED.name());
-            try {
-                resumeMapper.updateById(entity);
-            } catch (Exception updateEx) {
-                log.error("更新解析状态为 FAILED 失败 id={}", id, updateEx);
-            }
+            resumeMapper.markParseFailed(id, errorSummary(e));
             throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历解析失败: " + id, e);
         }
     }
@@ -216,16 +237,163 @@ public class ResumeServiceImpl implements ResumeService {
         if (entity == null) {
             throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
         }
+        if (resumeMapper.claimEmbedding(id) == 0) {
+            return;
+        }
 
-        // 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences
-        String text = buildEmbeddingText(entity);
+        try {
+            String text = buildEmbeddingText(entity);
+            float[] vector = modelRouter.embed(text);
+            if (vector.length != EXPECTED_EMBEDDING_DIMENSION) {
+                throw new BizException(
+                        ErrorCode.EMBEDDING_FAILED,
+                        "向量维度不匹配: expected="
+                                + EXPECTED_EMBEDDING_DIMENSION
+                                + " actual="
+                                + vector.length);
+            }
+            String vectorString = PgVectorSupport.toVectorString(vector);
+            String modelName = modelRouter.resolve(ModelTier.EMBEDDING).config().model();
+            resumeMapper.markEmbedded(id, vectorString, modelName, vector.length);
+        } catch (Exception e) {
+            log.error("简历向量化失败 id={}", id, e);
+            resumeMapper.markEmbeddingFailed(id, errorSummary(e));
+            throw new BizException(ErrorCode.EMBEDDING_FAILED, "简历向量化失败: " + id, e);
+        }
+    }
 
-        // 调 EMBEDDING 档位向量化
-        float[] vector = modelRouter.embed(text);
+    @Override
+    public void reembed(Long id) {
+        ResumeEntity entity = resumeMapper.selectById(id);
+        if (entity == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+        }
+        if (!ResumeStatus.PARSED.name().equals(entity.getParseStatus())) {
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历尚未解析成功，无法向量化: " + id);
+        }
+        resumeMapper.invalidateEmbedding(id);
+        embed(id);
+    }
 
-        // 转为 pgvector 字符串写入 embedding 列
-        String vectorString = PgVectorSupport.toVectorString(vector);
-        resumeMapper.updateEmbedding(id, vectorString);
+    @Override
+    public String reembedBatch(int batchSize) {
+        int total = resumeMapper.countNeedingReembed();
+        String taskId = UUID.randomUUID().toString();
+        Instant startedAt = Instant.now();
+
+        BatchReembedTask initial =
+                new BatchReembedTask(taskId, "RUNNING", total, 0, 0, startedAt, null, null);
+        batchTasks.put(taskId, initial);
+
+        Thread.startVirtualThread(
+                () -> {
+                    int success = 0;
+                    int failed = 0;
+                    int offset = 0;
+                    try {
+                        while (true) {
+                            List<Long> ids =
+                                    resumeMapper.selectIdsNeedingReembed(batchSize, offset);
+                            if (ids.isEmpty()) {
+                                break;
+                            }
+                            for (Long id : ids) {
+                                try {
+                                    embed(id);
+                                    success++;
+                                } catch (Exception e) {
+                                    log.warn("批量重新向量化失败 id={}", id, e);
+                                    failed++;
+                                }
+                            }
+                            offset += batchSize;
+                        }
+                        BatchReembedTask completed =
+                                new BatchReembedTask(
+                                        taskId,
+                                        "COMPLETED",
+                                        total,
+                                        success,
+                                        failed,
+                                        startedAt,
+                                        Instant.now(),
+                                        null);
+                        batchTasks.put(taskId, completed);
+                    } catch (Exception e) {
+                        log.error("批量重新向量化任务异常 taskId={}", taskId, e);
+                        BatchReembedTask errorTask =
+                                new BatchReembedTask(
+                                        taskId,
+                                        "FAILED",
+                                        total,
+                                        success,
+                                        failed,
+                                        startedAt,
+                                        Instant.now(),
+                                        e.getMessage());
+                        batchTasks.put(taskId, errorTask);
+                    }
+                });
+
+        log.info("批量重新向量化任务已启动 taskId={} total={}", taskId, total);
+        return taskId;
+    }
+
+    @Override
+    public BatchReembedTask getBatchReembedStatus(String taskId) {
+        return batchTasks.get(taskId);
+    }
+
+    private String errorSummary(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        return message.length() > 500 ? message.substring(0, 500) : message;
+    }
+
+    /** 校验上传文件：非空、大小、文件名、扩展名。 */
+    private void validateUploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "上传文件不能为空");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BizException(
+                    ErrorCode.FILE_UPLOAD_FAILED,
+                    "文件过大: " + file.getSize() + " bytes，最大 " + MAX_FILE_SIZE + " bytes");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "文件名不能为空");
+        }
+        String lower = filename.toLowerCase();
+        if (!lower.endsWith(".pdf") && !lower.endsWith(".txt")) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "仅支持 PDF 和 TXT 文件: " + filename);
+        }
+    }
+
+    /**
+     * 校验解析结果，修正空列表并校验关键约束。
+     *
+     * <p>AI 返回的列表字段可能为 null，统一转为空列表；校验 workExperience.type 和 yearsOfExperience 的合法性。
+     */
+    private void validateParsedResume(ParsedResume parsed) {
+        if (parsed == null) {
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "解析结果为空");
+        }
+        if (parsed.yearsOfExperience() != null && parsed.yearsOfExperience() < 0) {
+            throw new BizException(
+                    ErrorCode.RESUME_PARSE_FAILED, "工作年限不能为负数: " + parsed.yearsOfExperience());
+        }
+        if (parsed.workExperiences() != null) {
+            for (WorkExperience we : parsed.workExperiences()) {
+                if (we.type() != null
+                        && !"WORK".equals(we.type())
+                        && !"INTERNSHIP".equals(we.type())) {
+                    throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "工作经历类型非法: " + we.type());
+                }
+            }
+        }
     }
 
     @Override
@@ -235,16 +403,11 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     /**
-     * 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences 拼接。
+     * 构造向量化输入文本：结构化拼接候选人信息。
      *
-     * <p>优先使用 parsedJson 中的结构化字段；若未解析则退化为 candidateName + rawText 摘要。
+     * <p>优先使用 parsedJson 中的结构化字段，格式化为可读的稳定文本； 若未解析则退化为 candidateName + rawText 摘要。
      */
     private String buildEmbeddingText(ResumeEntity entity) {
-        StringBuilder sb = new StringBuilder();
-        if (entity.getCandidateName() != null) {
-            sb.append(entity.getCandidateName());
-        }
-
         ParsedResume parsed = null;
         if (entity.getParsedJson() != null) {
             try {
@@ -254,37 +417,81 @@ public class ResumeServiceImpl implements ResumeService {
             }
         }
 
-        if (parsed != null) {
-            if (parsed.skills() != null) {
-                sb.append(" ").append(String.join(" ", parsed.skills()));
+        if (parsed == null) {
+            // 未解析时退化为 candidateName + rawText 摘要
+            StringBuilder fallback = new StringBuilder();
+            if (entity.getCandidateName() != null) {
+                fallback.append("候选人：").append(entity.getCandidateName());
             }
-            if (parsed.workExperiences() != null) {
-                for (WorkExperience we : parsed.workExperiences()) {
-                    sb.append(" ").append(we.company()).append(" ").append(we.title());
-                }
-            }
-            if (parsed.projectExperiences() != null) {
-                for (var project : parsed.projectExperiences()) {
-                    sb.append(" ").append(project.name());
-                    if (project.role() != null) {
-                        sb.append(" ").append(project.role());
-                    }
-                    if (project.description() != null) {
-                        sb.append(" ").append(project.description());
-                    }
-                    if (project.highlights() != null) {
-                        sb.append(" ").append(String.join(" ", project.highlights()));
-                    }
-                }
-            }
-        } else {
-            // 未解析时退化为 rawText 摘要
             String rawText = entity.getRawText();
-            if (rawText != null) {
-                sb.append(" ").append(rawText.length() > 500 ? rawText.substring(0, 500) : rawText);
+            if (rawText != null && !rawText.isBlank()) {
+                fallback.append("\n")
+                        .append(rawText.length() > 500 ? rawText.substring(0, 500) : rawText);
+            }
+            return fallback.toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        appendField(sb, "候选人", parsed.candidateName());
+        appendField(sb, "当前职位", parsed.currentTitle());
+        if (parsed.yearsOfExperience() != null) {
+            appendField(sb, "工作年限", parsed.yearsOfExperience() + "年");
+        }
+        appendField(sb, "学历", parsed.education());
+
+        if (parsed.skills() != null && !parsed.skills().isEmpty()) {
+            sb.append("技能：").append(String.join("、", parsed.skills())).append("\n");
+        }
+
+        if (parsed.workExperiences() != null && !parsed.workExperiences().isEmpty()) {
+            sb.append("工作经历：\n");
+            for (WorkExperience we : parsed.workExperiences()) {
+                sb.append("- ");
+                if (we.company() != null) {
+                    sb.append(we.company());
+                }
+                if (we.title() != null) {
+                    sb.append(" / ").append(we.title());
+                }
+                if (we.period() != null) {
+                    sb.append("（").append(we.period()).append("）");
+                }
+                if (we.description() != null) {
+                    sb.append("：").append(we.description());
+                }
+                sb.append("\n");
             }
         }
 
-        return sb.toString();
+        if (parsed.projectExperiences() != null && !parsed.projectExperiences().isEmpty()) {
+            sb.append("项目经历：\n");
+            for (var project : parsed.projectExperiences()) {
+                sb.append("- ");
+                if (project.name() != null) {
+                    sb.append(project.name());
+                }
+                if (project.role() != null) {
+                    sb.append(" / ").append(project.role());
+                }
+                if (project.period() != null) {
+                    sb.append("（").append(project.period()).append("）");
+                }
+                if (project.description() != null) {
+                    sb.append("：").append(project.description());
+                }
+                if (project.highlights() != null && !project.highlights().isEmpty()) {
+                    sb.append(" 亮点：").append(String.join("；", project.highlights()));
+                }
+                sb.append("\n");
+            }
+        }
+
+        return sb.toString().trim();
+    }
+
+    private void appendField(StringBuilder sb, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            sb.append(label).append("：").append(value).append("\n");
+        }
     }
 }

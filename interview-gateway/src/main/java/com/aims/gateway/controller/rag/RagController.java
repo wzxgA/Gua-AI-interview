@@ -2,12 +2,17 @@ package com.aims.gateway.controller.rag;
 
 import com.aims.core.common.Result;
 import com.aims.infra.persistence.dto.QuestionFilter;
+import com.aims.infra.persistence.dto.RagSearchResponse;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeSearchResult;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeRagService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -37,18 +42,22 @@ public class RagController {
     @GetMapping("/questions")
     public Result<List<QuestionSearchResult>> questions(
             @RequestParam @NotBlank(message = "query 不能为空") String query,
-            @RequestParam(defaultValue = "5") int topK,
+            @RequestParam(defaultValue = "5") @Min(1) @Max(50) int topK,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String difficulty) {
         return Result.ok(
                 questionRagService.search(query, new QuestionFilter(category, difficulty), topK));
     }
 
-    @Operation(summary = "简历检索", description = "按查询文本语义检索 Top-K 相关简历")
+    @Operation(
+            summary = "简历检索",
+            description = "按查询文本语义检索 Top-K 相关简历，支持 minScore 过滤和 resumeId 指定候选人")
     @GetMapping("/resumes")
-    public Result<List<ResumeSearchResult>> resumes(
+    public Result<RagSearchResponse<ResumeSearchResult>> resumes(
             @RequestParam @NotBlank(message = "query 不能为空") String query,
-            @RequestParam(defaultValue = "5") int topK) {
-        return Result.ok(resumeRagService.search(query, topK));
+            @RequestParam(defaultValue = "5") @Min(1) @Max(50) int topK,
+            @RequestParam(required = false) @DecimalMin("0.0") @DecimalMax("1.0") Double minScore,
+            @RequestParam(required = false) Long resumeId) {
+        return Result.ok(resumeRagService.search(query, resumeId, topK, minScore));
     }
 }
