@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -9,7 +9,7 @@ import { MessageTimeline } from '@/components/chat/MessageTimeline';
 import { AnswerInput } from '@/components/chat/AnswerInput';
 import { DisconnectOverlay } from '@/components/chat/DisconnectOverlay';
 import { ActionButtons } from '@/components/interview/ActionButtons';
-import { useInterview, useResumeInterview } from '@/api/interview';
+import { useInterview, useInterviewRounds, useResumeInterview } from '@/api/interview';
 import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
 
@@ -19,21 +19,42 @@ export function InterviewRoomPage() {
   const interviewId = id ? Number(id) : undefined;
 
   const { data: interview, isLoading, isError, error } = useInterview(interviewId);
+  const { data: rounds } = useInterviewRounds(interviewId);
   const resumeMutation = useResumeInterview();
 
   const session = useInterviewSession({ sessionId: interviewId ?? null });
   const setSession = useSessionStore((s) => s.setSession);
   const resetStore = useSessionStore((s) => s.reset);
+  const addQuestion = useSessionStore((s) => s.addQuestion);
+  const addAnswer = useSessionStore((s) => s.addAnswer);
   const { connect, disconnect } = session;
 
-  // 连接 WebSocket，挂载时重置 store
+  // 历史消息是否已恢复（避免重复恢复）
+  const historyRestoredRef = useRef(false);
+
+  // 恢复历史消息 + 连接 WebSocket
   useEffect(() => {
-    if (interviewId) {
-      resetStore();
-      connect();
+    if (!interviewId) return;
+
+    resetStore();
+    historyRestoredRef.current = false;
+
+    // 先恢复历史消息
+    if (rounds && rounds.length > 0 && !historyRestoredRef.current) {
+      rounds.forEach((r) => {
+        addQuestion(r.id, r.question);
+        if (r.answer) {
+          addAnswer(r.answer);
+        }
+      });
+      historyRestoredRef.current = true;
     }
+
+    // 再建立 WebSocket 连接
+    connect();
+
     return () => disconnect();
-  }, [interviewId, connect, disconnect, resetStore]);
+  }, [interviewId, rounds, connect, disconnect, resetStore, addQuestion, addAnswer]);
 
   // 同步 REST 状态到 store
   useEffect(() => {
@@ -99,7 +120,6 @@ export function InterviewRoomPage() {
         </div>
         <ActionButtons
           status={status}
-          onStart={() => navigate(`/interviews/${interview.id}`)}
           onCancel={() => session.cancelInterview()}
           onPause={() => session.pauseInterview()}
           onFinish={() => session.finishInterview()}

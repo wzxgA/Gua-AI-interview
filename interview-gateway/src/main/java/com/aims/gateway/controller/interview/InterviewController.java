@@ -6,10 +6,12 @@ import com.aims.core.common.Result;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.session.SessionStatus;
+import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
@@ -50,6 +52,7 @@ public class InterviewController {
     private static final int ESTIMATED_MINUTES = 30;
 
     private final InterviewSessionService sessionService;
+    private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
@@ -58,12 +61,14 @@ public class InterviewController {
 
     public InterviewController(
             InterviewSessionService sessionService,
+            InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
+        this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
@@ -173,6 +178,17 @@ public class InterviewController {
         sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
         InterviewSessionEntity entity = sessionService.getById(id);
         return Result.ok(InterviewResponse.from(entity));
+    }
+
+    @Operation(summary = "查询面试轮次列表", description = "按 seq 排序返回所有轮次，用于面试间重连恢复历史消息")
+    @GetMapping("/{id}/rounds")
+    public Result<List<RoundResponse>> listRounds(@PathVariable Long id) {
+        // 校验会话存在
+        sessionService.getById(id);
+        List<InterviewRoundEntity> rounds = roundService.listBySession(id);
+        List<RoundResponse> response =
+                rounds.stream().map(RoundResponse::from).collect(Collectors.toList());
+        return Result.ok(response);
     }
 
     @Operation(summary = "删除面试会话", description = "级联删除轮次数据，不可恢复")

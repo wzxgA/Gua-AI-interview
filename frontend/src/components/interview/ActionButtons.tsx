@@ -3,7 +3,7 @@ import type { SessionStatus } from '@/types/interview';
 
 interface ActionButtonsProps {
   status: SessionStatus;
-  onStart: () => void;
+  onStart?: () => void;
   onCancel: () => void;
   onEnterRoom?: () => void;
   onPause?: () => void;
@@ -27,7 +27,9 @@ export function ActionButtons({
     case 'CREATED':
       return (
         <div className="flex flex-wrap gap-2">
-          <SilverButton onClick={onStart}>开始</SilverButton>
+          {onStart && (
+            <SilverButton onClick={onStart}>开始</SilverButton>
+          )}
           <SilverButton variant="danger" onClick={onCancel}>
             取消
           </SilverButton>

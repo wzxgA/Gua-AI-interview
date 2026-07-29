@@ -5,6 +5,7 @@ import type {
   InterviewResponse,
   CreateInterviewRequest,
   InterviewQuery,
+  RoundResponse,
 } from '@/types/interview';
 
 const KEY = 'interviews';
@@ -30,6 +31,15 @@ export function useInterview(id: number | undefined) {
     enabled: !!id,
     refetchInterval: (query) =>
       query.state.data?.status === 'PLANNING' ? 2000 : false,
+  });
+}
+
+/** 查询面试轮次列表（用于面试间重连恢复历史消息） */
+export function useInterviewRounds(id: number | undefined) {
+  return useQuery({
+    queryKey: [KEY, id, 'rounds'],
+    queryFn: () => http.get<RoundResponse[]>(`/api/v1/interviews/${id}/rounds`),
+    enabled: !!id,
   });
 }
 

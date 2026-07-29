@@ -1,7 +1,6 @@
 package com.aims.gateway.ws;
 
 import com.aims.agent.InterviewContext;
-import com.aims.agent.InterviewPlanGenerator;
 import com.aims.agent.InterviewerAgent;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.core.common.ErrorCode;
@@ -40,10 +39,12 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
  * <p>职责：
  *
  * <ul>
- *   <li>连接建立：校验会话、获取连接锁、发送 SESSION_READY
- *   <li>消息分发：START / ANSWER / HEARTBEAT / PAUSE / FINISH / CANCEL
+ *   <li>连接建立：校验会话、获取连接锁、发送 SESSION_READY；IN_PROGRESS 时自动触发首题或补发下一题
+ *   <li>消息分发：ANSWER / HEARTBEAT / PAUSE / FINISH / CANCEL
  *   <li>连接关闭：释放连接锁、IN_PROGRESS 自动转 PAUSED
  * </ul>
+ *
+ * <p>面试计划生成由 REST {@code POST /api/v1/interviews/{id}/start} 唯一负责，WebSocket 只读取已保存的 plan_json。
  *
  * <p>线程安全：每个 WebSocket 会话独立，发送消息时使用 synchronized 防止并发写入。
  */
@@ -59,7 +60,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     // ---- 业务常量 ----
     private static final int RESUME_SUMMARY_MAX = 2000;
     private static final int RAG_TOP_K = 10;
-    private static final int ESTIMATED_MINUTES = 30;
     private static final int MAX_ANSWER_LENGTH = 10000;
     private static final int RECENT_HISTORY_LIMIT = 5;
     private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(2);
@@ -68,7 +68,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final InterviewRoundService roundService;
     private final InterviewSessionStore sessionStore;
     private final InterviewerAgent interviewerAgent;
-    private final InterviewPlanGenerator planGenerator;
     private final PositionService positionService;
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
@@ -80,7 +79,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             InterviewRoundService roundService,
             InterviewSessionStore sessionStore,
             InterviewerAgent interviewerAgent,
-            InterviewPlanGenerator planGenerator,
             PositionService positionService,
             ResumeService resumeService,
             QuestionRagService questionRagService,
@@ -90,7 +88,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.roundService = roundService;
         this.sessionStore = sessionStore;
         this.interviewerAgent = interviewerAgent;
-        this.planGenerator = planGenerator;
         this.positionService = positionService;
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
@@ -137,6 +134,59 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         log.info("WebSocket 连接建立 sessionId={} connectionId={}", sessionId, connectionId);
         send(session, WsOutbound.sessionReady(sessionId, entity.getStatus()));
+
+        // 若状态为 IN_PROGRESS，根据轮次记录决定是否自动生成首题或补发下一题
+        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
+        if (current == SessionStatus.IN_PROGRESS) {
+            handleReconnectOrStart(session, sessionId, entity);
+        }
+    }
+
+    /**
+     * 连接建立后，根据轮次记录决定后续动作：
+     *
+     * <ul>
+     *   <li>无轮次记录：首次进入面试间，自动生成首题
+     *   <li>最后一条轮次已回答且未达上限：补发下一题
+     *   <li>最后一条轮次已回答且已达上限：直接完成
+     *   <li>最后一条轮次未回答：等待用户提交答案，不做处理
+     * </ul>
+     */
+    private void handleReconnectOrStart(
+            WebSocketSession session, Long sessionId, InterviewSessionEntity entity) {
+        List<InterviewRoundEntity> rounds = roundService.listBySession(sessionId);
+
+        if (rounds.isEmpty()) {
+            // 首次进入面试间，生成首题
+            log.info("首次进入面试间，自动生成首题 sessionId={}", sessionId);
+            generateAndSendQuestion(session, sessionId);
+            return;
+        }
+
+        // 检查最后一条轮次是否已回答
+        InterviewRoundEntity lastRound = rounds.get(rounds.size() - 1);
+        boolean hasUnansweredQuestion =
+                lastRound.getAnswer() == null || lastRound.getAnswer().isBlank();
+
+        if (!hasUnansweredQuestion) {
+            // 最后一条轮次已回答，检查是否达到题数上限
+            int answeredCount = roundService.countAnswered(sessionId);
+            int totalRounds = getTotalRounds(entity);
+            if (totalRounds > 0 && answeredCount >= totalRounds) {
+                // 已达上限，直接完成
+                log.info(
+                        "重连时发现已达题数上限，直接完成 sessionId={} answeredCount={}", sessionId, answeredCount);
+                sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
+                sessionService.markEnded(sessionId);
+                sessionStore.forceUnlock(sessionId);
+                send(session, WsOutbound.completed(sessionId));
+            } else {
+                // 补发下一题
+                log.info("重连后补发下一题 sessionId={} answeredCount={}", sessionId, answeredCount);
+                generateAndSendQuestion(session, sessionId);
+            }
+        }
+        // 若存在未回答的问题，等待用户提交答案，不做处理
     }
 
     @Override
@@ -165,7 +215,11 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         log.debug("收到 WebSocket 消息 sessionId={} type={}", sessionId, inbound.type());
         try {
             if (inbound.isType("START")) {
-                handleStart(session, sessionId);
+                send(
+                        session,
+                        WsOutbound.error(
+                                ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
+                                "面试计划请通过 REST /start 接口生成，WebSocket 不再支持 START 消息"));
             } else if (inbound.isType("ANSWER")) {
                 handleAnswer(session, sessionId, inbound.text());
             } else if (inbound.isType("HEARTBEAT")) {
@@ -222,39 +276,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     // ==================== 消息处理 ====================
-
-    /** START：生成面试计划并开始，生成首题。 */
-    private void handleStart(WebSocketSession session, Long sessionId) {
-        InterviewSessionEntity entity = sessionService.getById(sessionId);
-        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
-        if (current != SessionStatus.CREATED) {
-            send(
-                    session,
-                    WsOutbound.error(
-                            ErrorCode.SESSION_STATUS_CONFLICT.getCode(),
-                            "会话状态不允许 START，当前: " + current));
-            return;
-        }
-
-        // 生成面试计划
-        InterviewPlan plan;
-        try {
-            plan = generatePlan(sessionId, entity);
-        } catch (Exception e) {
-            log.error("生成面试计划失败 sessionId={}", sessionId, e);
-            safeFail(sessionId);
-            send(session, WsOutbound.error(ErrorCode.SESSION_PLAN_FAILED.getCode(), "面试计划生成失败"));
-            return;
-        }
-
-        // 进入 IN_PROGRESS 并标记开始
-        sessionService.updateStatus(sessionId, SessionStatus.IN_PROGRESS);
-        sessionService.markStarted(sessionId);
-        send(session, WsOutbound.status(sessionId, SessionStatus.IN_PROGRESS.name()));
-
-        // 生成首题
-        generateAndSendQuestion(session, sessionId);
-    }
 
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
     private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
@@ -362,40 +383,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     // ==================== 核心业务方法 ====================
-
-    /** 生成面试计划（与 Controller 的 /start 流程一致）。 */
-    private InterviewPlan generatePlan(Long sessionId, InterviewSessionEntity entity) {
-        // 进入 PLANNING
-        sessionService.updateStatus(sessionId, SessionStatus.PLANNING);
-
-        PositionEntity position = positionService.getById(entity.getPositionId());
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
-
-        // RAG 检索
-        List<QuestionSearchResult> ragResults =
-                questionRagService.search(position.getJdText(), RAG_TOP_K);
-        String ragQuestions = formatRagQuestions(ragResults);
-
-        // 生成计划
-        InterviewPlan plan =
-                planGenerator.generate(
-                        resume.getCandidateName(),
-                        position.getTitle(),
-                        position.getJdText(),
-                        buildResumeSummary(resume),
-                        ragQuestions,
-                        ESTIMATED_MINUTES);
-
-        // 序列化并保存
-        try {
-            String planJson = objectMapper.writeValueAsString(plan);
-            sessionService.savePlan(sessionId, planJson);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("序列化面试计划失败", e);
-        }
-
-        return plan;
-    }
 
     /** 流式生成问题并发送给客户端。 */
     private void generateAndSendQuestion(WebSocketSession session, Long sessionId) {
@@ -559,15 +546,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         } catch (JsonProcessingException e) {
             log.warn("反序列化面试计划失败 sessionId={}", entity.getId(), e);
             return 0;
-        }
-    }
-
-    /** 安全地将会话置为 FAILED（忽略二次异常）。 */
-    private void safeFail(Long sessionId) {
-        try {
-            sessionService.updateStatus(sessionId, SessionStatus.FAILED);
-        } catch (Exception ex) {
-            log.warn("将会话置为 FAILED 失败 sessionId={}", sessionId, ex);
         }
     }
 

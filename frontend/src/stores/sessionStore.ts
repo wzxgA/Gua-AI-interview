@@ -20,6 +20,7 @@ interface SessionStore {
   appendChunk: (text: string) => void;
   finalizeQuestion: () => void;
   addAnswer: (text: string) => void;
+  addQuestion: (roundId: number, text: string) => void;
   setConnected: (connected: boolean) => void;
   incrementRetry: () => void;
   resetRetry: () => void;
@@ -104,6 +105,21 @@ export const useSessionStore = create<SessionStore>((set) => ({
           role: 'answer',
           text,
           timestamp: new Date().toISOString(),
+        },
+      ],
+    })),
+
+  addQuestion: (roundId, text) =>
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        {
+          id: nextId(),
+          role: 'question',
+          text,
+          roundId,
+          timestamp: new Date().toISOString(),
+          streaming: false,
         },
       ],
     })),

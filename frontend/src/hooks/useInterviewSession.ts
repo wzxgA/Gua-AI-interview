@@ -18,7 +18,9 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
       switch (msg.type) {
         case 'SESSION_READY':
           store.setConnected(true);
-          if (msg.sessionId) store.setSession(msg.sessionId, 'IN_PROGRESS');
+          if (msg.sessionId && msg.status) {
+            store.setSession(msg.sessionId, msg.status);
+          }
           break;
 
         case 'QUESTION_START':
@@ -71,11 +73,6 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
     wsReconnect();
   }, [wsReconnect, store]);
 
-  /** 开始面试 */
-  const startInterview = useCallback(() => {
-    send({ type: 'START' } satisfies WsClientMessage);
-  }, [send]);
-
   /** 提交回答 */
   const submitAnswer = useCallback(
     (text: string) => {
@@ -114,7 +111,6 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
     connect,
     disconnect,
     reconnect,
-    startInterview,
     submitAnswer,
     pauseInterview,
     finishInterview,

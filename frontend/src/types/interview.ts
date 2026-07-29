@@ -58,7 +58,6 @@ export interface PlannedQuestion {
 
 /** WebSocket 客户端 -> 服务端消息 */
 export type WsClientMessage =
-  | { type: 'START' }
   | { type: 'ANSWER'; text: string }
   | { type: 'HEARTBEAT' }
   | { type: 'PAUSE' }
@@ -99,4 +98,13 @@ export interface InterviewQuery {
   page?: number;
   size?: number;
   status?: SessionStatus;
+}
+
+/** 面试轮次响应 */
+export interface RoundResponse {
+  id: number;
+  seq: number;
+  question: string;
+  answer: string | null;
+  createdAt: string;
 }
