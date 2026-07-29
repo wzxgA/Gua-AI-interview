@@ -12,7 +12,7 @@ import java.time.Instant;
  * 题库实体（对应 question_bank 表）。
  *
  * <p>embedding 列为 pgvector 的 vector(2048) 类型，使用 {@link FieldStrategy#NEVER} 策略 禁止 MyBatis-Plus 自动
- * INSERT/UPDATE（vector 需要 {@code ::vector} 转型语法）， 但允许 SELECT 读取以判断是否已向量化（hasEmbedding）。
+ * INSERT/UPDATE（halfvec 需要 {@code ::halfvec} 转型语法）， 但允许 SELECT 读取以判断是否已向量化（hasEmbedding）。
  */
 @TableName(value = "question_bank", autoResultMap = true)
 public class QuestionEntity {

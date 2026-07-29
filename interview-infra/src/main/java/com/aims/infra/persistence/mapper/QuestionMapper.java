@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Update;
 /**
  * 题库 Mapper。
  *
- * <p>embedding 列为 pgvector vector 类型，通过自定义 SQL（{@code ::vector} 转型）写入， 不依赖 MyBatis-Plus 自动 CRUD。
+ * <p>embedding 列为 pgvector halfvec 类型，通过自定义 SQL（{@code ::halfvec} 转型）写入， 不依赖 MyBatis-Plus 自动 CRUD。
  */
 public interface QuestionMapper extends BaseMapper<QuestionEntity> {
 
@@ -23,8 +23,8 @@ public interface QuestionMapper extends BaseMapper<QuestionEntity> {
      * @return 受影响行数
      */
     @Update(
-            "UPDATE question_bank SET embedding = #{embedding}::vector, updated_at = now() WHERE id"
-                    + " = #{id}")
+            "UPDATE question_bank SET embedding = #{embedding}::halfvec, updated_at = now() WHERE"
+                    + " id = #{id}")
     int updateEmbedding(@Param("id") Long id, @Param("embedding") String embedding);
 
     /**
@@ -37,9 +37,9 @@ public interface QuestionMapper extends BaseMapper<QuestionEntity> {
     @Select(
             "SELECT id, category, topic, difficulty, content, "
                     + "standard_answer AS standardAnswer, "
-                    + "1 - (embedding <=> #{queryVector}::vector) AS score "
+                    + "1 - (embedding <=> #{queryVector}::halfvec) AS score "
                     + "FROM question_bank WHERE embedding IS NOT NULL "
-                    + "ORDER BY embedding <=> #{queryVector}::vector LIMIT #{topK}")
+                    + "ORDER BY embedding <=> #{queryVector}::halfvec LIMIT #{topK}")
     List<QuestionSearchResult> searchByVector(
             @Param("queryVector") String queryVector, @Param("topK") int topK);
 

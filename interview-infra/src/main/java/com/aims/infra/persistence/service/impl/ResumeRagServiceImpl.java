@@ -41,7 +41,7 @@ public class ResumeRagServiceImpl implements ResumeRagService {
                     + "(parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
                     + "parsed_json->'skills' AS skills_json, "
                     + "embedding_model, "
-                    + "1 - (embedding <=> ?::vector) AS vector_score, "
+                    + "1 - (embedding <=> ?::halfvec) AS vector_score, "
                     + "CASE WHEN raw_text ILIKE '%' || ? || '%' THEN 1.0 "
                     + "WHEN COALESCE(parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN 0.9 "
                     + "WHEN candidate_name ILIKE '%' || ? || '%' THEN 0.8 "
@@ -203,7 +203,7 @@ public class ResumeRagServiceImpl implements ResumeRagService {
         }
 
         // ORDER BY 按混合得分排序（PostgreSQL 内计算）
-        sql.append(" ORDER BY (1 - (embedding <=> ?::vector)) * ")
+        sql.append(" ORDER BY (1 - (embedding <=> ?::halfvec)) * ")
                 .append(VECTOR_WEIGHT)
                 .append(" + CASE WHEN raw_text ILIKE '%' || ? || '%' THEN 1.0")
                 .append(" WHEN COALESCE(parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN 0.9")
@@ -228,7 +228,7 @@ public class ResumeRagServiceImpl implements ResumeRagService {
                         + "(parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
                         + "parsed_json->'skills' AS skills_json, "
                         + "embedding_model, "
-                        + "1 - (embedding <=> ?::vector) AS vector_score, "
+                        + "1 - (embedding <=> ?::halfvec) AS vector_score, "
                         + "0.0 AS keyword_score "
                         + "FROM resume WHERE embedding IS NOT NULL";
         List<Object> params = new ArrayList<>();
@@ -239,7 +239,7 @@ public class ResumeRagServiceImpl implements ResumeRagService {
             fullSql.append(" AND id = ?");
             params.add(resumeId);
         }
-        fullSql.append(" ORDER BY embedding <=> ?::vector LIMIT ?");
+        fullSql.append(" ORDER BY embedding <=> ?::halfvec LIMIT ?");
         params.add(vectorStr);
         params.add(topK);
 

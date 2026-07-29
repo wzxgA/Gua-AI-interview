@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 /**
  * 题库 RAG 检索实现：调用 {@link ModelRouter#embed} 生成查询向量，再用 JdbcTemplate 执行 pgvector 余弦距离检索。
  *
- * <p>使用 JdbcTemplate 而非 MyBatis-Plus：RAG 查询涉及 {@code ::vector} 类型转换与动态过滤拼接，JdbcTemplate 更灵活。
+ * <p>使用 JdbcTemplate 而非 MyBatis-Plus：RAG 查询涉及 {@code ::halfvec} 类型转换与动态过滤拼接，JdbcTemplate 更灵活。
  */
 @Service
 public class QuestionRagServiceImpl implements QuestionRagService {
@@ -27,7 +27,7 @@ public class QuestionRagServiceImpl implements QuestionRagService {
 
     private static final String BASE_SQL =
             "SELECT id, category, topic, difficulty, content, standard_answer, "
-                    + "1 - (embedding <=> ?::vector) AS score "
+                    + "1 - (embedding <=> ?::halfvec) AS score "
                     + "FROM question_bank WHERE embedding IS NOT NULL";
 
     private static final RowMapper<QuestionSearchResult> ROW_MAPPER =
@@ -63,7 +63,7 @@ public class QuestionRagServiceImpl implements QuestionRagService {
 
         StringBuilder sql = new StringBuilder(BASE_SQL);
         List<Object> params = new ArrayList<>();
-        // SELECT 中的 ?::vector（计算相似度得分）
+        // SELECT 中的 ?::halfvec（计算相似度得分）
         params.add(vectorStr);
 
         if (filter != null) {
@@ -77,8 +77,8 @@ public class QuestionRagServiceImpl implements QuestionRagService {
             }
         }
 
-        // ORDER BY 中的 ?::vector（按余弦距离排序）
-        sql.append(" ORDER BY embedding <=> ?::vector LIMIT ?");
+        // ORDER BY 中的 ?::halfvec（按余弦距离排序）
+        sql.append(" ORDER BY embedding <=> ?::halfvec LIMIT ?");
         params.add(vectorStr);
         params.add(topK);
 

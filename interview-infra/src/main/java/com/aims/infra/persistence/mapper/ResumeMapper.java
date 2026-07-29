@@ -23,7 +23,7 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
      * @return 影响行数
      */
     @Update(
-            "UPDATE resume SET embedding = #{embedding}::vector, updated_at = now() WHERE id ="
+            "UPDATE resume SET embedding = #{embedding}::halfvec, updated_at = now() WHERE id ="
                     + " #{id}")
     int updateEmbedding(@Param("id") Long id, @Param("embedding") String embedding);
 
@@ -65,7 +65,7 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
 
     /** 写入向量并标记向量化成功。 */
     @Update(
-            "UPDATE resume SET embedding = #{embedding}::vector, embedding_status = 'COMPLETED',"
+            "UPDATE resume SET embedding = #{embedding}::halfvec, embedding_status = 'COMPLETED',"
                     + " embedding_error = NULL, embedding_model = #{model},"
                     + " embedding_dimension = #{dimension}, embedded_at = now(), updated_at = now()"
                     + " WHERE id = #{id}")

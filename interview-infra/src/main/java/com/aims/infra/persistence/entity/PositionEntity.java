@@ -10,7 +10,7 @@ import java.time.Instant;
 /**
  * 岗位持久化实体，映射 {@code position} 表。
  *
- * <p>embedding 为 pgvector 类型，不走 MyBatis-Plus 自动映射（需 {@code ::vector} 转换）， 通过自定义 SQL 处理。
+ * <p>embedding 为 pgvector halfvec 类型，不走 MyBatis-Plus 自动映射（需 {@code ::halfvec} 转换）， 通过自定义 SQL 处理。
  */
 @TableName("position")
 public class PositionEntity {
