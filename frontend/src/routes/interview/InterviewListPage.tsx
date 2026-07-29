@@ -11,6 +11,7 @@ import { PageHeader, EmptyState, ErrorState } from '@/components/common/PageHead
 import {
   useInterviewList,
   useCancelInterview,
+  useDeleteInterview,
 } from '@/api/interview';
 import type { SessionStatus } from '@/types/interview';
 import { PAGE_SIZE_DEFAULT, SESSION_STATUSES, SESSION_STATUS_LABELS } from '@/lib/constants';
@@ -21,6 +22,7 @@ export function InterviewListPage() {
     page: 1,
   });
   const [cancelTarget, setCancelTarget] = useState<{ id: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number } | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useInterviewList({
     page: query.page,
@@ -28,6 +30,7 @@ export function InterviewListPage() {
     status: query.status,
   });
   const cancelMutation = useCancelInterview();
+  const deleteMutation = useDeleteInterview();
 
   const confirmCancel = () => {
     if (!cancelTarget) return;
@@ -37,6 +40,17 @@ export function InterviewListPage() {
         setCancelTarget(null);
       },
       onError: (err: Error) => toast.error(err.message || '取消失败'),
+    });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        toast.success('面试已删除');
+        setDeleteTarget(null);
+      },
+      onError: (err: Error) => toast.error(err.message || '删除失败'),
     });
   };
 
@@ -158,6 +172,12 @@ export function InterviewListPage() {
                             取消
                           </button>
                         )}
+                        <button
+                          onClick={() => setDeleteTarget({ id: item.id })}
+                          className="text-xs text-text-muted hover:text-danger transition-colors"
+                        >
+                          删除
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -202,6 +222,35 @@ export function InterviewListPage() {
                 onClick={confirmCancel}
               >
                 {cancelMutation.isPending ? '取消中...' : '确认取消'}
+              </SilverButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* 删除确认弹窗 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <GlassCard className="w-full max-w-sm p-6">
+            <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
+            <p className="mb-4 text-sm text-text-secondary">
+              确定要删除面试 #{deleteTarget.id} 吗？将级联删除所有轮次数据，此操作不可恢复。
+            </p>
+            <div className="flex justify-end gap-2">
+              <SilverButton
+                variant="ghost"
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+              >
+                返回
+              </SilverButton>
+              <SilverButton
+                variant="danger"
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={confirmDelete}
+              >
+                {deleteMutation.isPending ? '删除中...' : '确认删除'}
               </SilverButton>
             </div>
           </GlassCard>

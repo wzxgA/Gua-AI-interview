@@ -3,7 +3,9 @@ package com.aims.infra.persistence.service.impl;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.session.SessionStatus;
+import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
+import com.aims.infra.persistence.mapper.InterviewRoundMapper;
 import com.aims.infra.persistence.mapper.InterviewSessionMapper;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -19,9 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     private final InterviewSessionMapper sessionMapper;
+    private final InterviewRoundMapper roundMapper;
 
-    public InterviewSessionServiceImpl(InterviewSessionMapper sessionMapper) {
+    public InterviewSessionServiceImpl(
+            InterviewSessionMapper sessionMapper, InterviewRoundMapper roundMapper) {
         this.sessionMapper = sessionMapper;
+        this.roundMapper = roundMapper;
     }
 
     @Override
@@ -120,5 +125,17 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
         entity = action.apply(entity);
         sessionMapper.updateById(entity);
         return entity;
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        // 校验存在
+        getById(id);
+        // 级联删除轮次数据
+        LambdaQueryWrapper<InterviewRoundEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InterviewRoundEntity::getSessionId, id);
+        roundMapper.delete(wrapper);
+        sessionMapper.deleteById(id);
     }
 }

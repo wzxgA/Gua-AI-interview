@@ -35,4 +35,7 @@ public interface InterviewSessionService {
             Long id,
             SessionStatus expected,
             Function<InterviewSessionEntity, InterviewSessionEntity> action);
+
+    /** 删除面试会话（级联删除轮次数据）。 */
+    void delete(Long id);
 }

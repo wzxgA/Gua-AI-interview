@@ -175,6 +175,13 @@ public class InterviewController {
         return Result.ok(InterviewResponse.from(entity));
     }
 
+    @Operation(summary = "删除面试会话", description = "级联删除轮次数据，不可恢复")
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        sessionService.delete(id);
+        return Result.ok(null);
+    }
+
     // ---- 私有辅助方法 ----
 
     /** 构建简历摘要：优先使用 parsedJson，否则使用 rawText 截断。 */

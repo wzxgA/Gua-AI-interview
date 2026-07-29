@@ -94,3 +94,12 @@ export function useResumeInterview() {
     },
   });
 }
+
+/** 删除面试 */
+export function useDeleteInterview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => http.del<void>(`/api/v1/interviews/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
