@@ -3,6 +3,18 @@ import { http } from './client';
 import type { QuestionSearchResult } from '@/types/question';
 import type { ResumeSearchResult } from '@/types/resume';
 
+export interface SearchMetrics {
+  embeddingMs: number;
+  sqlMs: number;
+  totalMs: number;
+  resultCount: number;
+}
+
+export interface RagSearchResponse<T> {
+  results: T[];
+  metrics: SearchMetrics;
+}
+
 export function useRagQuestions(
   query: string,
   topK: number = 5,
@@ -31,7 +43,10 @@ export function useRagResumes(
   }
   return useQuery({
     queryKey: ['rag', 'resumes', query, topK, minScore],
-    queryFn: () => http.get<ResumeSearchResult[]>(`/api/v1/rag/resumes?${params}`),
+    queryFn: () =>
+      http.get<RagSearchResponse<ResumeSearchResult>>(
+        `/api/v1/rag/resumes?${params}`,
+      ),
     enabled: query.length > 0,
   });
 }

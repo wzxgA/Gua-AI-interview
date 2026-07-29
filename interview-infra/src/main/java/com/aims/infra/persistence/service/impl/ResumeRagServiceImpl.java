@@ -4,6 +4,7 @@ import com.aims.ai.router.ModelRouter;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.BizException;
 import com.aims.infra.persistence.PgVectorSupport;
+import com.aims.infra.persistence.dto.RagSearchResponse;
 import com.aims.infra.persistence.entity.ResumeSearchResult;
 import com.aims.infra.persistence.service.ResumeRagService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -116,17 +117,19 @@ public class ResumeRagServiceImpl implements ResumeRagService {
     }
 
     @Override
-    public List<ResumeSearchResult> search(String query, int topK, Double minScore) {
+    public RagSearchResponse<ResumeSearchResult> search(String query, int topK, Double minScore) {
         return search(query, null, topK, minScore);
     }
 
     @Override
-    public List<ResumeSearchResult> search(String query, Long resumeId, int topK, Double minScore) {
+    public RagSearchResponse<ResumeSearchResult> search(
+            String query, Long resumeId, int topK, Double minScore) {
         long totalStart = System.nanoTime();
         long embedStart = System.nanoTime();
         String vectorStr = PgVectorSupport.toVectorString(modelRouter.embed(query));
         long embedMs = (System.nanoTime() - embedStart) / 1_000_000;
 
+        long sqlStart = System.nanoTime();
         List<ResumeSearchResult> results;
         try {
             results = hybridSearch(query, vectorStr, resumeId, topK);
@@ -149,6 +152,7 @@ public class ResumeRagServiceImpl implements ResumeRagService {
                 throw new BizException(ErrorCode.RAG_SEARCH_FAILED, "简历 RAG 检索失败", ex);
             }
         }
+        long sqlMs = (System.nanoTime() - sqlStart) / 1_000_000;
 
         // Java 侧按混合得分排序（SQL ORDER BY 可能无法正确排序混合得分）
         results.sort(Comparator.comparingDouble(ResumeSearchResult::score).reversed());
@@ -163,19 +167,21 @@ public class ResumeRagServiceImpl implements ResumeRagService {
             results = results.subList(0, topK);
         }
 
-        long sqlMs = (System.nanoTime() - embedStart - embedMs * 1_000_000) / 1_000_000;
         long totalMs = (System.nanoTime() - totalStart) / 1_000_000;
         log.info(
-                "简历 RAG 混合检索 query={} resumeId={} topK={} minScore={} embeddingMs={}"
+                "简历 RAG 混合检索 query={} resumeId={} topK={} minScore={} embeddingMs={} sqlMs={}"
                         + " totalMs={} resultCount={}",
                 truncate(query),
                 resumeId,
                 topK,
                 minScore,
                 embedMs,
+                sqlMs,
                 totalMs,
                 results.size());
-        return results;
+        return new RagSearchResponse<>(
+                results,
+                new RagSearchResponse.SearchMetrics(embedMs, sqlMs, totalMs, results.size()));
     }
 
     /** 混合检索：SQL 同时计算向量得分和关键词得分。 */
