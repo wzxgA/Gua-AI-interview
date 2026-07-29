@@ -20,10 +20,17 @@ export function useRagQuestions(
   });
 }
 
-export function useRagResumes(query: string, topK: number = 5) {
+export function useRagResumes(
+  query: string,
+  topK: number = 5,
+  minScore?: number,
+) {
   const params = new URLSearchParams({ query, topK: String(topK) });
+  if (minScore !== undefined && minScore > 0) {
+    params.set('minScore', String(minScore));
+  }
   return useQuery({
-    queryKey: ['rag', 'resumes', query, topK],
+    queryKey: ['rag', 'resumes', query, topK, minScore],
     queryFn: () => http.get<ResumeSearchResult[]>(`/api/v1/rag/resumes?${params}`),
     enabled: query.length > 0,
   });

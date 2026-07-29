@@ -6,6 +6,8 @@ import com.aims.core.common.exception.BizException;
 import com.aims.infra.persistence.PgVectorSupport;
 import com.aims.infra.persistence.entity.ResumeSearchResult;
 import com.aims.infra.persistence.service.ResumeRagService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -26,38 +28,93 @@ public class ResumeRagServiceImpl implements ResumeRagService {
 
     private static final String BASE_SQL =
             "SELECT id, candidate_name, phone, email, "
+                    + "parsed_json->>'currentTitle' AS current_title, "
+                    + "(parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
+                    + "parsed_json->'skills' AS skills_json, "
+                    + "embedding_model, "
                     + "1 - (embedding <=> ?::vector) AS score "
                     + "FROM resume WHERE embedding IS NOT NULL";
 
-    private static final RowMapper<ResumeSearchResult> ROW_MAPPER =
-            (rs, rowNum) ->
-                    new ResumeSearchResult(
-                            rs.getLong("id"),
-                            rs.getString("candidate_name"),
-                            rs.getString("phone"),
-                            rs.getString("email"),
-                            rs.getDouble("score"));
+    private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {};
+
+    private final RowMapper<ResumeSearchResult> rowMapper;
 
     private final ModelRouter modelRouter;
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectMapper objectMapper;
 
-    public ResumeRagServiceImpl(ModelRouter modelRouter, JdbcTemplate jdbcTemplate) {
+    public ResumeRagServiceImpl(
+            ModelRouter modelRouter, JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.modelRouter = modelRouter;
         this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
+        this.rowMapper = createRowMapper();
+    }
+
+    private RowMapper<ResumeSearchResult> createRowMapper() {
+        return (rs, rowNum) -> {
+            String skillsJson = rs.getString("skills_json");
+            List<String> skills = parseSkills(skillsJson);
+
+            return new ResumeSearchResult(
+                    rs.getLong("id"),
+                    rs.getString("candidate_name"),
+                    rs.getString("phone"),
+                    rs.getString("email"),
+                    rs.getString("current_title"),
+                    rs.getObject("years_of_experience", Integer.class),
+                    skills,
+                    rs.getDouble("score"),
+                    buildMatchedSnippet(rs.getString("current_title"), skills),
+                    rs.getString("embedding_model"));
+        };
+    }
+
+    private List<String> parseSkills(String skillsJson) {
+        if (skillsJson == null || skillsJson.isBlank() || "null".equals(skillsJson)) {
+            return List.of();
+        }
+        try {
+            List<String> skills = objectMapper.readValue(skillsJson, STRING_LIST);
+            return skills != null ? skills : List.of();
+        } catch (Exception e) {
+            log.warn("解析 skills JSON 失败: {}", skillsJson, e);
+            return List.of();
+        }
+    }
+
+    private String buildMatchedSnippet(String currentTitle, List<String> skills) {
+        StringBuilder sb = new StringBuilder();
+        if (currentTitle != null && !currentTitle.isBlank()) {
+            sb.append("职位：").append(currentTitle);
+        }
+        if (skills != null && !skills.isEmpty()) {
+            if (!sb.isEmpty()) {
+                sb.append(" | ");
+            }
+            sb.append("技能：").append(String.join("、", skills));
+        }
+        return sb.isEmpty() ? null : sb.toString();
     }
 
     @Override
-    public List<ResumeSearchResult> search(String query, int topK) {
-        return search(query, null, topK);
+    public List<ResumeSearchResult> search(String query, int topK, Double minScore) {
+        return search(query, null, topK, minScore);
     }
 
     @Override
-    public List<ResumeSearchResult> search(String query, Long resumeId, int topK) {
+    public List<ResumeSearchResult> search(String query, Long resumeId, int topK, Double minScore) {
         String vectorStr = PgVectorSupport.toVectorString(modelRouter.embed(query));
         StringBuilder sql = new StringBuilder(BASE_SQL);
         List<Object> params = new ArrayList<>();
         // SELECT 中的 ?::vector（计算相似度得分）
         params.add(vectorStr);
+
+        if (minScore != null) {
+            sql.append(" AND 1 - (embedding <=> ?::vector) >= ?");
+            params.add(vectorStr);
+            params.add(minScore);
+        }
 
         if (resumeId != null) {
             sql.append(" AND id = ?");
@@ -70,9 +127,15 @@ public class ResumeRagServiceImpl implements ResumeRagService {
         params.add(topK);
 
         try {
-            return jdbcTemplate.query(sql.toString(), ROW_MAPPER, params.toArray());
+            return jdbcTemplate.query(sql.toString(), rowMapper, params.toArray());
         } catch (Exception e) {
-            log.error("简历 RAG 检索失败 query={} resumeId={} topK={}", query, resumeId, topK, e);
+            log.error(
+                    "简历 RAG 检索失败 query={} resumeId={} topK={} minScore={}",
+                    query,
+                    resumeId,
+                    topK,
+                    minScore,
+                    e);
             throw new BizException(ErrorCode.RAG_SEARCH_FAILED, "简历 RAG 检索失败", e);
         }
     }

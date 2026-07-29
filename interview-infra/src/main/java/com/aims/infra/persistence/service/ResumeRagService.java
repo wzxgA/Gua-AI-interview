@@ -7,8 +7,8 @@ import java.util.List;
 public interface ResumeRagService {
 
     /** 检索与查询最相关的简历（用于面试官交叉验证候选人陈述）。 */
-    List<ResumeSearchResult> search(String query, int topK);
+    List<ResumeSearchResult> search(String query, int topK, Double minScore);
 
     /** 检索指定候选人的简历匹配度。 */
-    List<ResumeSearchResult> search(String query, Long resumeId, int topK);
+    List<ResumeSearchResult> search(String query, Long resumeId, int topK, Double minScore);
 }
