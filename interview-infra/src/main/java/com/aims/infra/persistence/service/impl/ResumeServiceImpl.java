@@ -6,6 +6,7 @@ import com.aims.ai.router.ModelTier;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.PageQuery;
 import com.aims.core.common.exception.BizException;
+import com.aims.core.resume.EmbeddingStatus;
 import com.aims.core.resume.ParsedResume;
 import com.aims.core.resume.ResumeStatus;
 import com.aims.core.resume.WorkExperience;
@@ -31,9 +32,9 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * 简历服务实现。
  *
- * <p>upload 流程：先入库拿 ID -> MinIO 上传 -> 文本抽取 -> 更新原文 -> 虚拟线程异步解析。 parse 流程：取 rawText -> 调
- * AiChatFacade.callForEntity(ECONOMY) -> 序列化为 JSON 存入 parsed_json -> PARSED / FAILED。 embed 流程：
- * 拼接结构化文本 -> modelRouter.embed -> mapper.updateEmbedding（pgvector 字符串）。
+ * <p>upload 流程：先入库拿 ID -> MinIO 上传 -> 文本抽取 -> 更新原文 -> 虚拟线程异步解析。 parse 流程：条件抢占 -> 调
+ * AiChatFacade.callForEntity(ECONOMY) -> 序列化为 JSON 存入 parsed_json -> PARSED / FAILED，成功后自动清空旧向量。
+ * embed 流程：条件抢占 -> 拼接结构化文本 -> modelRouter.embed -> mapper.markEmbedded（pgvector 字符串）。
  */
 @Service
 public class ResumeServiceImpl implements ResumeService {
@@ -80,6 +81,7 @@ public class ResumeServiceImpl implements ResumeService {
         entity.setPhone(phone);
         entity.setEmail(email);
         entity.setParseStatus(ResumeStatus.PENDING.name());
+        entity.setEmbeddingStatus(EmbeddingStatus.PENDING.name());
         resumeMapper.insert(entity);
         Long id = entity.getId();
 
@@ -132,15 +134,19 @@ public class ResumeServiceImpl implements ResumeService {
 
     @Override
     public ResumeEntity parse(Long id) {
-        ResumeEntity entity = resumeMapper.selectById(id);
-        if (entity == null) {
-            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+        // 3. 抢占解析任务，避免自动触发和手动触发重复调用 AI
+        if (resumeMapper.claimParse(id) == 0) {
+            ResumeEntity existing = resumeMapper.selectById(id);
+            if (existing == null) {
+                throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+            }
+            return existing;
         }
 
+        ResumeEntity entity = resumeMapper.selectById(id);
         String rawText = entity.getRawText();
         if (rawText == null || rawText.isBlank()) {
-            entity.setParseStatus(ResumeStatus.FAILED.name());
-            resumeMapper.updateById(entity);
+            resumeMapper.markParseFailed(id, "简历原文为空，无法解析");
             throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历原文为空，无法解析: " + id);
         }
 
@@ -149,20 +155,13 @@ public class ResumeServiceImpl implements ResumeService {
             ParsedResume parsed =
                     aiChatFacade.callForEntity(
                             ModelTier.ECONOMY, PARSE_SYSTEM_PROMPT, rawText, ParsedResume.class);
-            // 序列化为 JSON 存入 parsed_json
             String parsedJson = objectMapper.writeValueAsString(parsed);
-            entity.setParsedJson(parsedJson);
-            entity.setParseStatus(ResumeStatus.PARSED.name());
-            resumeMapper.updateById(entity);
-            return entity;
+            resumeMapper.markParsed(id, parsedJson);
+            resumeMapper.invalidateEmbedding(id);
+            return resumeMapper.selectById(id);
         } catch (Exception e) {
             log.error("简历解析失败 id={}", id, e);
-            entity.setParseStatus(ResumeStatus.FAILED.name());
-            try {
-                resumeMapper.updateById(entity);
-            } catch (Exception updateEx) {
-                log.error("更新解析状态为 FAILED 失败 id={}", id, updateEx);
-            }
+            resumeMapper.markParseFailed(id, errorSummary(e));
             throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历解析失败: " + id, e);
         }
     }
@@ -216,16 +215,41 @@ public class ResumeServiceImpl implements ResumeService {
         if (entity == null) {
             throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
         }
+        if (resumeMapper.claimEmbedding(id) == 0) {
+            return;
+        }
 
-        // 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences
-        String text = buildEmbeddingText(entity);
+        try {
+            String text = buildEmbeddingText(entity);
+            float[] vector = modelRouter.embed(text);
+            String vectorString = PgVectorSupport.toVectorString(vector);
+            resumeMapper.markEmbedded(id, vectorString);
+        } catch (Exception e) {
+            log.error("简历向量化失败 id={}", id, e);
+            resumeMapper.markEmbeddingFailed(id, errorSummary(e));
+            throw new BizException(ErrorCode.EMBEDDING_FAILED, "简历向量化失败: " + id, e);
+        }
+    }
 
-        // 调 EMBEDDING 档位向量化
-        float[] vector = modelRouter.embed(text);
+    @Override
+    public void reembed(Long id) {
+        ResumeEntity entity = resumeMapper.selectById(id);
+        if (entity == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+        }
+        if (!ResumeStatus.PARSED.name().equals(entity.getParseStatus())) {
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "简历尚未解析成功，无法向量化: " + id);
+        }
+        resumeMapper.invalidateEmbedding(id);
+        embed(id);
+    }
 
-        // 转为 pgvector 字符串写入 embedding 列
-        String vectorString = PgVectorSupport.toVectorString(vector);
-        resumeMapper.updateEmbedding(id, vectorString);
+    private String errorSummary(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        return message.length() > 500 ? message.substring(0, 500) : message;
     }
 
     @Override

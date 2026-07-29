@@ -44,6 +44,27 @@ public class ResumeEntity {
     @TableField("parse_status")
     private String parseStatus;
 
+    @TableField("embedding_status")
+    private String embeddingStatus;
+
+    @TableField("parse_error")
+    private String parseError;
+
+    @TableField("embedding_error")
+    private String embeddingError;
+
+    @TableField("parse_attempts")
+    private Integer parseAttempts;
+
+    @TableField("embedding_attempts")
+    private Integer embeddingAttempts;
+
+    @TableField("parsed_at")
+    private Instant parsedAt;
+
+    @TableField("embedded_at")
+    private Instant embeddedAt;
+
     /** pgvector 向量字段，MyBatis-Plus 不自动映射，通过自定义 SQL 读写。 */
     @TableField(exist = false)
     private String embedding;
@@ -116,6 +137,62 @@ public class ResumeEntity {
 
     public void setParseStatus(String parseStatus) {
         this.parseStatus = parseStatus;
+    }
+
+    public String getEmbeddingStatus() {
+        return embeddingStatus;
+    }
+
+    public void setEmbeddingStatus(String embeddingStatus) {
+        this.embeddingStatus = embeddingStatus;
+    }
+
+    public String getParseError() {
+        return parseError;
+    }
+
+    public void setParseError(String parseError) {
+        this.parseError = parseError;
+    }
+
+    public String getEmbeddingError() {
+        return embeddingError;
+    }
+
+    public void setEmbeddingError(String embeddingError) {
+        this.embeddingError = embeddingError;
+    }
+
+    public Integer getParseAttempts() {
+        return parseAttempts;
+    }
+
+    public void setParseAttempts(Integer parseAttempts) {
+        this.parseAttempts = parseAttempts;
+    }
+
+    public Integer getEmbeddingAttempts() {
+        return embeddingAttempts;
+    }
+
+    public void setEmbeddingAttempts(Integer embeddingAttempts) {
+        this.embeddingAttempts = embeddingAttempts;
+    }
+
+    public Instant getParsedAt() {
+        return parsedAt;
+    }
+
+    public void setParsedAt(Instant parsedAt) {
+        this.parsedAt = parsedAt;
+    }
+
+    public Instant getEmbeddedAt() {
+        return embeddedAt;
+    }
+
+    public void setEmbeddedAt(Instant embeddedAt) {
+        this.embeddedAt = embeddedAt;
     }
 
     public String getEmbedding() {

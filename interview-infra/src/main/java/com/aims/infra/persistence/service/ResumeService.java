@@ -58,9 +58,18 @@ public interface ResumeService {
     /**
      * 触发向量化：拼接结构化文本 -> 调 EMBEDDING 档位 -> 写入 embedding 列。
      *
+     * <p>仅 PARSED 且向量状态为 PENDING/FAILED 的简历允许执行。
+     *
      * @param id 简历 ID
      */
     void embed(Long id);
+
+    /**
+     * 使当前向量失效并重新触发向量化。
+     *
+     * @param id 简历 ID
+     */
+    void reembed(Long id);
 
     /**
      * 检查简历是否已生成向量。

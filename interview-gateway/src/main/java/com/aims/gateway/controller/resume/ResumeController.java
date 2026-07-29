@@ -90,6 +90,13 @@ public class ResumeController {
         return Result.ok(null);
     }
 
+    @PostMapping("/{id}/reembed")
+    @Operation(summary = "重新向量化", description = "使旧向量失效并重新生成")
+    public Result<Void> reembed(@PathVariable Long id) {
+        resumeService.reembed(id);
+        return Result.ok(null);
+    }
+
     /**
      * ResumeEntity -> ResumeResponse 转换。
      *
@@ -112,6 +119,11 @@ public class ResumeController {
 
         boolean hasEmbedding = resumeService.hasEmbedding(entity.getId());
 
+        String embeddingStatus = entity.getEmbeddingStatus();
+        if (embeddingStatus == null) {
+            embeddingStatus = hasEmbedding ? "COMPLETED" : "PENDING";
+        }
+
         return new ResumeResponse(
                 entity.getId(),
                 entity.getCandidateName(),
@@ -119,6 +131,11 @@ public class ResumeController {
                 entity.getEmail(),
                 rawText,
                 entity.getParseStatus(),
+                entity.getParseError(),
+                entity.getParsedAt(),
+                embeddingStatus,
+                entity.getEmbeddingError(),
+                entity.getEmbeddedAt(),
                 parsedResume,
                 entity.getFileUrl(),
                 hasEmbedding,
