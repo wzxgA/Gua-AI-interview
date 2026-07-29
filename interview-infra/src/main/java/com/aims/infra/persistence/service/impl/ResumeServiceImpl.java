@@ -1,5 +1,6 @@
 package com.aims.infra.persistence.service.impl;
 
+import com.aims.agent.ResumePromptBuilder;
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelRouter;
 import com.aims.ai.router.ModelTier;
@@ -47,14 +48,8 @@ public class ResumeServiceImpl implements ResumeService {
     /** 期望的 Embedding 向量维度（text-embedding-v4, 2048 维）。 */
     private static final int EXPECTED_EMBEDDING_DIMENSION = 2048;
 
-    /** 简历解析系统提示词。 */
-    private static final String PARSE_SYSTEM_PROMPT =
-            "你是简历解析专家。请将输入的简历文本解析为结构化 JSON。字段说明：candidateName(姓名), phone(电话), email(邮箱),"
-                + " yearsOfExperience(工作年限), education(学历), currentTitle(当前职位), skills(技能列表),"
-                + " workExperiences(工作或实习经历列表，含 type/company/title/period/description，type 只能为 WORK"
-                + " 或 INTERNSHIP), projectExperiences(项目经历列表，含"
-                + " name/role/period/description/highlights，highlights"
-                + " 为当前项目对应的项目亮点列表)。没有对应数据时返回空数组。只输出 JSON，不要额外说明。";
+    /** 最大上传文件大小：10 MB。 */
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     private final ResumeMapper resumeMapper;
     private final MinioClient minioClient;
@@ -78,6 +73,8 @@ public class ResumeServiceImpl implements ResumeService {
     @Override
     public ResumeEntity upload(
             MultipartFile file, String candidateName, String phone, String email) {
+        validateUploadFile(file);
+
         // 1. 先入库拿 ID
         ResumeEntity entity = new ResumeEntity();
         entity.setCandidateName(candidateName);
@@ -157,7 +154,11 @@ public class ResumeServiceImpl implements ResumeService {
             // 调 ECONOMY 档位进行结构化解析
             ParsedResume parsed =
                     aiChatFacade.callForEntity(
-                            ModelTier.ECONOMY, PARSE_SYSTEM_PROMPT, rawText, ParsedResume.class);
+                            ModelTier.ECONOMY,
+                            ResumePromptBuilder.parseSystem(),
+                            rawText,
+                            ParsedResume.class);
+            validateParsedResume(parsed);
             String parsedJson = objectMapper.writeValueAsString(parsed);
             resumeMapper.markParsed(id, parsedJson);
             resumeMapper.invalidateEmbedding(id);
@@ -271,6 +272,50 @@ public class ResumeServiceImpl implements ResumeService {
             return e.getClass().getSimpleName();
         }
         return message.length() > 500 ? message.substring(0, 500) : message;
+    }
+
+    /** 校验上传文件：非空、大小、文件名、扩展名。 */
+    private void validateUploadFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "上传文件不能为空");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BizException(
+                    ErrorCode.FILE_UPLOAD_FAILED,
+                    "文件过大: " + file.getSize() + " bytes，最大 " + MAX_FILE_SIZE + " bytes");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "文件名不能为空");
+        }
+        String lower = filename.toLowerCase();
+        if (!lower.endsWith(".pdf") && !lower.endsWith(".txt")) {
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED, "仅支持 PDF 和 TXT 文件: " + filename);
+        }
+    }
+
+    /**
+     * 校验解析结果，修正空列表并校验关键约束。
+     *
+     * <p>AI 返回的列表字段可能为 null，统一转为空列表；校验 workExperience.type 和 yearsOfExperience 的合法性。
+     */
+    private void validateParsedResume(ParsedResume parsed) {
+        if (parsed == null) {
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "解析结果为空");
+        }
+        if (parsed.yearsOfExperience() != null && parsed.yearsOfExperience() < 0) {
+            throw new BizException(
+                    ErrorCode.RESUME_PARSE_FAILED, "工作年限不能为负数: " + parsed.yearsOfExperience());
+        }
+        if (parsed.workExperiences() != null) {
+            for (WorkExperience we : parsed.workExperiences()) {
+                if (we.type() != null
+                        && !"WORK".equals(we.type())
+                        && !"INTERNSHIP".equals(we.type())) {
+                    throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "工作经历类型非法: " + we.type());
+                }
+            }
+        }
     }
 
     @Override
