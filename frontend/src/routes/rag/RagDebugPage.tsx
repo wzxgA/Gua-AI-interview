@@ -253,6 +253,14 @@ export function RagDebugPage() {
                       </div>
                       <ScoreBar score={item.score} />
                     </div>
+                    <div className="mt-1 flex gap-3 text-xs text-text-muted">
+                      <span title="向量相似度得分">向量: {(item.vectorScore * 100).toFixed(0)}%</span>
+                      {item.keywordScore > 0 && (
+                        <span title="关键词匹配得分" className="text-silver-200">
+                          关键词: {(item.keywordScore * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                     {item.skills.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {item.skills.slice(0, 8).map((skill, i) => (
@@ -306,6 +314,8 @@ interface ResumeResult {
   yearsOfExperience: number | null;
   skills: string[];
   score: number;
+  vectorScore: number;
+  keywordScore: number;
   matchedSnippet: string | null;
   embeddingModel: string | null;
 }

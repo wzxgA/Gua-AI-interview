@@ -54,6 +54,8 @@ export interface ResumeSearchResult {
   yearsOfExperience: number | null;
   skills: string[];
   score: number;
+  vectorScore: number;
+  keywordScore: number;
   matchedSnippet: string | null;
   embeddingModel: string | null;
 }
