@@ -65,9 +65,14 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
     /** 写入向量并标记向量化成功。 */
     @Update(
             "UPDATE resume SET embedding = #{embedding}::vector, embedding_status = 'COMPLETED',"
-                    + " embedding_error = NULL, embedded_at = now(), updated_at = now()"
+                    + " embedding_error = NULL, embedding_model = #{model},"
+                    + " embedding_dimension = #{dimension}, embedded_at = now(), updated_at = now()"
                     + " WHERE id = #{id}")
-    int markEmbedded(@Param("id") Long id, @Param("embedding") String embedding);
+    int markEmbedded(
+            @Param("id") Long id,
+            @Param("embedding") String embedding,
+            @Param("model") String model,
+            @Param("dimension") int dimension);
 
     /** 记录向量化失败。 */
     @Update(
@@ -78,6 +83,7 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
     /** 使旧向量失效并允许重新生成。 */
     @Update(
             "UPDATE resume SET embedding = NULL, embedding_status = 'PENDING',"
+                    + " embedding_model = NULL, embedding_dimension = NULL,"
                     + " embedded_at = NULL, embedding_error = NULL, updated_at = now()"
                     + " WHERE id = #{id}")
     int invalidateEmbedding(@Param("id") Long id);

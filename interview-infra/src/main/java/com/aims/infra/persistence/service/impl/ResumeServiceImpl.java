@@ -44,6 +44,9 @@ public class ResumeServiceImpl implements ResumeService {
     /** MinIO 简历 bucket（docker-compose minio-init 已预建）。 */
     private static final String BUCKET = "aims-resume";
 
+    /** 期望的 Embedding 向量维度（text-embedding-v4, 2048 维）。 */
+    private static final int EXPECTED_EMBEDDING_DIMENSION = 2048;
+
     /** 简历解析系统提示词。 */
     private static final String PARSE_SYSTEM_PROMPT =
             "你是简历解析专家。请将输入的简历文本解析为结构化 JSON。字段说明：candidateName(姓名), phone(电话), email(邮箱),"
@@ -158,6 +161,15 @@ public class ResumeServiceImpl implements ResumeService {
             String parsedJson = objectMapper.writeValueAsString(parsed);
             resumeMapper.markParsed(id, parsedJson);
             resumeMapper.invalidateEmbedding(id);
+            // 解析成功后自动异步触发向量化
+            Thread.startVirtualThread(
+                    () -> {
+                        try {
+                            embed(id);
+                        } catch (Exception e) {
+                            log.error("解析后自动向量化失败 id={}", id, e);
+                        }
+                    });
             return resumeMapper.selectById(id);
         } catch (Exception e) {
             log.error("简历解析失败 id={}", id, e);
@@ -222,8 +234,17 @@ public class ResumeServiceImpl implements ResumeService {
         try {
             String text = buildEmbeddingText(entity);
             float[] vector = modelRouter.embed(text);
+            if (vector.length != EXPECTED_EMBEDDING_DIMENSION) {
+                throw new BizException(
+                        ErrorCode.EMBEDDING_FAILED,
+                        "向量维度不匹配: expected="
+                                + EXPECTED_EMBEDDING_DIMENSION
+                                + " actual="
+                                + vector.length);
+            }
             String vectorString = PgVectorSupport.toVectorString(vector);
-            resumeMapper.markEmbedded(id, vectorString);
+            String modelName = modelRouter.resolve(ModelTier.EMBEDDING).config().model();
+            resumeMapper.markEmbedded(id, vectorString, modelName, vector.length);
         } catch (Exception e) {
             log.error("简历向量化失败 id={}", id, e);
             resumeMapper.markEmbeddingFailed(id, errorSummary(e));
@@ -259,16 +280,11 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     /**
-     * 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences 拼接。
+     * 构造向量化输入文本：结构化拼接候选人信息。
      *
-     * <p>优先使用 parsedJson 中的结构化字段；若未解析则退化为 candidateName + rawText 摘要。
+     * <p>优先使用 parsedJson 中的结构化字段，格式化为可读的稳定文本； 若未解析则退化为 candidateName + rawText 摘要。
      */
     private String buildEmbeddingText(ResumeEntity entity) {
-        StringBuilder sb = new StringBuilder();
-        if (entity.getCandidateName() != null) {
-            sb.append(entity.getCandidateName());
-        }
-
         ParsedResume parsed = null;
         if (entity.getParsedJson() != null) {
             try {
@@ -278,37 +294,81 @@ public class ResumeServiceImpl implements ResumeService {
             }
         }
 
-        if (parsed != null) {
-            if (parsed.skills() != null) {
-                sb.append(" ").append(String.join(" ", parsed.skills()));
+        if (parsed == null) {
+            // 未解析时退化为 candidateName + rawText 摘要
+            StringBuilder fallback = new StringBuilder();
+            if (entity.getCandidateName() != null) {
+                fallback.append("候选人：").append(entity.getCandidateName());
             }
-            if (parsed.workExperiences() != null) {
-                for (WorkExperience we : parsed.workExperiences()) {
-                    sb.append(" ").append(we.company()).append(" ").append(we.title());
-                }
-            }
-            if (parsed.projectExperiences() != null) {
-                for (var project : parsed.projectExperiences()) {
-                    sb.append(" ").append(project.name());
-                    if (project.role() != null) {
-                        sb.append(" ").append(project.role());
-                    }
-                    if (project.description() != null) {
-                        sb.append(" ").append(project.description());
-                    }
-                    if (project.highlights() != null) {
-                        sb.append(" ").append(String.join(" ", project.highlights()));
-                    }
-                }
-            }
-        } else {
-            // 未解析时退化为 rawText 摘要
             String rawText = entity.getRawText();
-            if (rawText != null) {
-                sb.append(" ").append(rawText.length() > 500 ? rawText.substring(0, 500) : rawText);
+            if (rawText != null && !rawText.isBlank()) {
+                fallback.append("\n")
+                        .append(rawText.length() > 500 ? rawText.substring(0, 500) : rawText);
+            }
+            return fallback.toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        appendField(sb, "候选人", parsed.candidateName());
+        appendField(sb, "当前职位", parsed.currentTitle());
+        if (parsed.yearsOfExperience() != null) {
+            appendField(sb, "工作年限", parsed.yearsOfExperience() + "年");
+        }
+        appendField(sb, "学历", parsed.education());
+
+        if (parsed.skills() != null && !parsed.skills().isEmpty()) {
+            sb.append("技能：").append(String.join("、", parsed.skills())).append("\n");
+        }
+
+        if (parsed.workExperiences() != null && !parsed.workExperiences().isEmpty()) {
+            sb.append("工作经历：\n");
+            for (WorkExperience we : parsed.workExperiences()) {
+                sb.append("- ");
+                if (we.company() != null) {
+                    sb.append(we.company());
+                }
+                if (we.title() != null) {
+                    sb.append(" / ").append(we.title());
+                }
+                if (we.period() != null) {
+                    sb.append("（").append(we.period()).append("）");
+                }
+                if (we.description() != null) {
+                    sb.append("：").append(we.description());
+                }
+                sb.append("\n");
             }
         }
 
-        return sb.toString();
+        if (parsed.projectExperiences() != null && !parsed.projectExperiences().isEmpty()) {
+            sb.append("项目经历：\n");
+            for (var project : parsed.projectExperiences()) {
+                sb.append("- ");
+                if (project.name() != null) {
+                    sb.append(project.name());
+                }
+                if (project.role() != null) {
+                    sb.append(" / ").append(project.role());
+                }
+                if (project.period() != null) {
+                    sb.append("（").append(project.period()).append("）");
+                }
+                if (project.description() != null) {
+                    sb.append("：").append(project.description());
+                }
+                if (project.highlights() != null && !project.highlights().isEmpty()) {
+                    sb.append(" 亮点：").append(String.join("；", project.highlights()));
+                }
+                sb.append("\n");
+            }
+        }
+
+        return sb.toString().trim();
+    }
+
+    private void appendField(StringBuilder sb, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            sb.append(label).append("：").append(value).append("\n");
+        }
     }
 }

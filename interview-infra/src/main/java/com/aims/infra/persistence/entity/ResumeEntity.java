@@ -65,6 +65,12 @@ public class ResumeEntity {
     @TableField("embedded_at")
     private Instant embeddedAt;
 
+    @TableField("embedding_model")
+    private String embeddingModel;
+
+    @TableField("embedding_dimension")
+    private Integer embeddingDimension;
+
     /** pgvector 向量字段，MyBatis-Plus 不自动映射，通过自定义 SQL 读写。 */
     @TableField(exist = false)
     private String embedding;
@@ -193,6 +199,22 @@ public class ResumeEntity {
 
     public void setEmbeddedAt(Instant embeddedAt) {
         this.embeddedAt = embeddedAt;
+    }
+
+    public String getEmbeddingModel() {
+        return embeddingModel;
+    }
+
+    public void setEmbeddingModel(String embeddingModel) {
+        this.embeddingModel = embeddingModel;
+    }
+
+    public Integer getEmbeddingDimension() {
+        return embeddingDimension;
+    }
+
+    public void setEmbeddingDimension(Integer embeddingDimension) {
+        this.embeddingDimension = embeddingDimension;
     }
 
     public String getEmbedding() {

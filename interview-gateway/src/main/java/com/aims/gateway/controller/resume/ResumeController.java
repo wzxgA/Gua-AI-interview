@@ -136,6 +136,8 @@ public class ResumeController {
                 embeddingStatus,
                 entity.getEmbeddingError(),
                 entity.getEmbeddedAt(),
+                entity.getEmbeddingModel(),
+                entity.getEmbeddingDimension(),
                 parsedResume,
                 entity.getFileUrl(),
                 hasEmbedding,

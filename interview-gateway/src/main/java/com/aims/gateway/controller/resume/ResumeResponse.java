@@ -17,6 +17,8 @@ import java.time.Instant;
  * @param embeddingStatus 向量化状态
  * @param embeddingError 向量化失败原因
  * @param embeddedAt 向量化完成时间
+ * @param embeddingModel 向量化使用的模型
+ * @param embeddingDimension 向量维度
  * @param parsedResume 解析后的结构化简历（未解析时为 null）
  * @param fileUrl 简历文件 URL
  * @param hasEmbedding 是否已生成向量
@@ -35,6 +37,8 @@ public record ResumeResponse(
         String embeddingStatus,
         String embeddingError,
         Instant embeddedAt,
+        String embeddingModel,
+        Integer embeddingDimension,
         ParsedResume parsedResume,
         String fileUrl,
         boolean hasEmbedding,
