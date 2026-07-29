@@ -17,7 +17,7 @@
 | 文档抽取 | Apache PDFBox 3.0（简历 PDF 文本抽取） |
 | API 文档 | springdoc-openapi（Swagger UI） |
 | 代码格式化 | Spotless + Google Java Format |
-| 前端（规划中） | React 19 + TypeScript + Vite + Tailwind CSS 4 + shadcn/ui + Zustand + TanStack Query |
+| 前端 | React 19 + TypeScript + Vite 6 + Tailwind CSS 3.4 + TanStack Query |
 
 ## 模块结构
 
@@ -29,8 +29,8 @@ ai-ms/
 ├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、Redis 会话快照、MinIO、Flyway、健康检查
 ├── interview-gateway     # 网关层：Spring Boot 启动入口、业务 Controller、面试 WebSocket Handler、全局异常处理、OpenAPI
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
-├── plans/                # 技术方案、分期状态文档、前端实现计划书
-├── frontend/             # 前端工程（尚未创建，见 plans/frontend/前端实现计划书.md）
+├── plans/                # 技术方案、分期状态文档、前端实现计划书、RAG 优化计划
+├── frontend/             # 前端工程（React 19 + TypeScript + Vite 6 + Tailwind CSS）
 ├── dev.ps1               # 一键管理本地基础设施
 ├── pom.xml               # 父 POM（版本锁定 + 依赖管理）
 └── .env.example          # 应用环境变量模板
@@ -96,14 +96,20 @@ DEEPSEEK_API_KEY=sk-your-deepseek-key
 # 编译全部模块
 mvn clean install -DskipTests
 
-# 启动应用
+# 启动后端应用
 mvn -pl interview-gateway spring-boot:run
+
+# 启动前端开发服务器（另一个终端）
+cd frontend
+pnpm install
+pnpm dev
 ```
 
 应用启动后访问：
-- 应用首页：http://localhost:8080
+- 后端 API：http://localhost:8080
 - Swagger UI：http://localhost:8080/swagger-ui.html
 - 健康检查：http://localhost:8080/actuator/health
+- 前端页面：http://localhost:5173
 
 ## API 接口
 
@@ -122,8 +128,8 @@ mvn -pl interview-gateway spring-boot:run
 |------|----------|------|------|
 | 岗位管理 | `/api/v1/positions` | CRUD + `/{id}/embed` | 岗位增删改查 + JD 向量化 |
 | 题库管理 | `/api/v1/questions` | CRUD + `/import` + `/reembed` | 题库增删改查 + 批量导入 + 向量化 ETL |
-| 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + CRUD + `/{id}/embed` | 简历上传 + 结构化解析 + 向量化 |
-| RAG 检索 | `/api/v1/rag` | `/questions` + `/resumes` | 题库/简历相似度检索（仅 local/dev） |
+| 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + `/{id}/embed` + `/{id}/reembed` + `/reembed-batch` | 简历上传 + 结构化解析 + 向量化 + 重新向量化 + 批量重建 |
+| RAG 检索 | `/api/v1/rag` | `/questions` + `/resumes` | 题库/简历相似度检索，支持 `topK`、`minScore`、`resumeId` 参数 |
 
 **模型档位说明**：
 
