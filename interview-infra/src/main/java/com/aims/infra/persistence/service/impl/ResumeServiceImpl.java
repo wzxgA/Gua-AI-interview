@@ -45,12 +45,12 @@ public class ResumeServiceImpl implements ResumeService {
 
     /** 简历解析系统提示词。 */
     private static final String PARSE_SYSTEM_PROMPT =
-            "你是简历解析专家。请将输入的简历文本解析为结构化 JSON。字段说明："
-                    + "candidateName(姓名), phone(电话), email(邮箱), "
-                    + "yearsOfExperience(工作年限), education(学历), "
-                    + "currentTitle(当前职位), skills(技能列表), "
-                    + "workExperiences(工作经历列表，含 company/title/period/description), "
-                    + "projectHighlights(项目亮点列表)。只输出 JSON，不要额外说明。";
+            "你是简历解析专家。请将输入的简历文本解析为结构化 JSON。字段说明：candidateName(姓名), phone(电话), email(邮箱),"
+                + " yearsOfExperience(工作年限), education(学历), currentTitle(当前职位), skills(技能列表),"
+                + " workExperiences(工作或实习经历列表，含 type/company/title/period/description，type 只能为 WORK"
+                + " 或 INTERNSHIP), projectExperiences(项目经历列表，含"
+                + " name/role/period/description/highlights，highlights"
+                + " 为当前项目对应的项目亮点列表)。没有对应数据时返回空数组。只输出 JSON，不要额外说明。";
 
     private final ResumeMapper resumeMapper;
     private final MinioClient minioClient;
@@ -217,7 +217,7 @@ public class ResumeServiceImpl implements ResumeService {
             throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
         }
 
-        // 构造向量化输入文本：candidateName + skills + workExperiences + projectHighlights
+        // 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences
         String text = buildEmbeddingText(entity);
 
         // 调 EMBEDDING 档位向量化
@@ -235,7 +235,7 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     /**
-     * 构造向量化输入文本：candidateName + skills + workExperiences + projectHighlights 拼接。
+     * 构造向量化输入文本：candidateName + skills + workExperiences + projectExperiences 拼接。
      *
      * <p>优先使用 parsedJson 中的结构化字段；若未解析则退化为 candidateName + rawText 摘要。
      */
@@ -263,8 +263,19 @@ public class ResumeServiceImpl implements ResumeService {
                     sb.append(" ").append(we.company()).append(" ").append(we.title());
                 }
             }
-            if (parsed.projectHighlights() != null) {
-                sb.append(" ").append(String.join(" ", parsed.projectHighlights()));
+            if (parsed.projectExperiences() != null) {
+                for (var project : parsed.projectExperiences()) {
+                    sb.append(" ").append(project.name());
+                    if (project.role() != null) {
+                        sb.append(" ").append(project.role());
+                    }
+                    if (project.description() != null) {
+                        sb.append(" ").append(project.description());
+                    }
+                    if (project.highlights() != null) {
+                        sb.append(" ").append(String.join(" ", project.highlights()));
+                    }
+                }
             }
         } else {
             // 未解析时退化为 rawText 摘要

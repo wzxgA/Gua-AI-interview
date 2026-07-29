@@ -12,8 +12,8 @@ import java.util.List;
  * @param education 学历
  * @param currentTitle 当前职位
  * @param skills 技能列表
- * @param workExperiences 工作经历
- * @param projectHighlights 项目亮点
+ * @param workExperiences 工作或实习经历
+ * @param projectExperiences 项目经历
  */
 public record ParsedResume(
         String candidateName,
@@ -24,4 +24,4 @@ public record ParsedResume(
         String currentTitle,
         List<String> skills,
         List<WorkExperience> workExperiences,
-        List<String> projectHighlights) {}
+        List<ProjectExperience> projectExperiences) {}

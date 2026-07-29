@@ -23,15 +23,25 @@ export interface ParsedResume {
   currentTitle: string | null;
   skills: string[];
   workExperiences: WorkExperience[];
-  projectHighlights: string[];
+  projectExperiences: ProjectExperience[];
 }
 
 /** 对齐 WorkExperience */
 export interface WorkExperience {
+  type: 'WORK' | 'INTERNSHIP' | string;
   company: string;
   title: string;
   period: string;
   description: string;
+}
+
+/** 对齐 ProjectExperience */
+export interface ProjectExperience {
+  name: string;
+  role: string | null;
+  period: string | null;
+  description: string | null;
+  highlights: string[];
 }
 
 /** 对齐 ResumeSearchResult */

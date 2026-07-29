@@ -171,52 +171,82 @@ export function ResumeDetailPage() {
             )}
           </GlassCard>
 
-          {/* 工作经历时间线 */}
+          {/* 工作/实习经历时间线 */}
           <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">工作经历</h3>
-            {parsed.workExperiences.length > 0 ? (
+            <h3 className="mb-4 text-sm font-medium text-text-muted">工作或实习经历</h3>
+            {parsed.workExperiences?.length > 0 ? (
               <div className="space-y-0">
-                {parsed.workExperiences.map((exp, index) => (
-                  <div key={index} className="relative pl-6 pb-6 last:pb-0">
-                    {/* 时间线轴 */}
-                    <div className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-silver-300" />
-                    {index < parsed.workExperiences.length - 1 && (
-                      <div className="absolute left-[3px] top-4 h-full w-px bg-white/10" />
-                    )}
+                {parsed.workExperiences.map((exp, index) => {
+                  const isInternship = exp.type === 'INTERNSHIP';
+                  return (
+                    <div key={index} className="relative pl-6 pb-6 last:pb-0">
+                      <div className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-silver-300" />
+                      {index < parsed.workExperiences.length - 1 && (
+                        <div className="absolute left-[3px] top-4 h-full w-px bg-white/10" />
+                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="category">
+                          {isInternship ? '实习经历' : '工作经历'}
+                        </Badge>
+                        <span className="text-sm font-medium text-text-primary">
+                          {exp.title}
+                        </span>
+                        <span className="text-xs text-text-muted">@ {exp.company}</span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-text-muted">{exp.period}</p>
+                      {exp.description && (
+                        <p className="mt-2 text-sm text-text-secondary">{exp.description}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">暂无工作或实习经历数据</p>
+            )}
+          </GlassCard>
+
+          {/* 项目经历及对应亮点 */}
+          <GlassCard className="p-6">
+            <h3 className="mb-4 text-sm font-medium text-text-muted">项目经历</h3>
+            {parsed.projectExperiences?.length > 0 ? (
+              <div className="space-y-6">
+                {parsed.projectExperiences.map((project, index) => (
+                  <div key={index} className="border-b border-white/10 pb-6 last:border-b-0 last:pb-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">
-                        {exp.title}
+                        {project.name || '未命名项目'}
                       </span>
-                      <span className="text-xs text-text-muted">@ {exp.company}</span>
+                      {project.role && (
+                        <span className="text-xs text-text-muted">· {project.role}</span>
+                      )}
                     </div>
-                    <p className="mt-0.5 text-xs text-text-muted">
-                      {exp.period}
-                    </p>
-                    {exp.description && (
-                      <p className="mt-2 text-sm text-text-secondary">{exp.description}</p>
+                    {project.period && (
+                      <p className="mt-1 text-xs text-text-muted">{project.period}</p>
                     )}
+                    {project.description && (
+                      <p className="mt-2 text-sm text-text-secondary">{project.description}</p>
+                    )}
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs text-text-muted">项目亮点</p>
+                      {project.highlights?.length > 0 ? (
+                        <ul className="space-y-2">
+                          {project.highlights.map((item, highlightIndex) => (
+                            <li key={highlightIndex} className="flex gap-2 text-sm text-text-secondary">
+                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-silver-300" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-text-muted">暂无项目亮点数据</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">暂无工作经历数据</p>
-            )}
-          </GlassCard>
-
-          {/* 项目亮点 */}
-          <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">项目亮点</h3>
-            {parsed.projectHighlights.length > 0 ? (
-              <ul className="space-y-2">
-                {parsed.projectHighlights.map((item, index) => (
-                  <li key={index} className="flex gap-2 text-sm text-text-secondary">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-silver-300" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-text-muted">暂无项目亮点数据</p>
+              <p className="text-sm text-text-muted">暂无项目经历数据</p>
             )}
           </GlassCard>
         </>
