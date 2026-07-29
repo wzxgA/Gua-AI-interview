@@ -353,7 +353,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         if (!renewed) {
             send(session, WsOutbound.error(ErrorCode.SESSION_LOCKED.getCode(), "连接锁已失效，请重新连接"));
         } else {
-            send(session, WsOutbound.status(sessionId, "HEARTBEAT_ACK"));
+            send(session, WsOutbound.heartbeatAck(sessionId));
         }
     }
 

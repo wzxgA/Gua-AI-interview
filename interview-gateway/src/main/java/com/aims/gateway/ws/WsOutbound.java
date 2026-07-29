@@ -37,6 +37,10 @@ public record WsOutbound(
         return new WsOutbound("STATUS", sessionId, null, status, null, null, null);
     }
 
+    public static WsOutbound heartbeatAck(Long sessionId) {
+        return new WsOutbound("HEARTBEAT_ACK", sessionId, null, null, null, null, null);
+    }
+
     public static WsOutbound completed(Long sessionId) {
         return new WsOutbound("SESSION_COMPLETED", sessionId, null, "COMPLETED", null, null, null);
     }

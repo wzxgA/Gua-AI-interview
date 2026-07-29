@@ -40,6 +40,10 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
           // 答案已确认，无需额外操作
           break;
 
+        case 'HEARTBEAT_ACK':
+          // 心跳确认，不改变任何状态
+          break;
+
         case 'STATUS':
           if (msg.status) store.setStatus(msg.status);
           break;

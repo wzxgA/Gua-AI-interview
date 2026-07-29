@@ -32,29 +32,30 @@ export function InterviewRoomPage() {
   // 历史消息是否已恢复（避免重复恢复）
   const historyRestoredRef = useRef(false);
 
-  // 恢复历史消息 + 连接 WebSocket
+  // WebSocket 连接（只依赖 interviewId，不受 rounds 加载影响）
   useEffect(() => {
     if (!interviewId) return;
 
     resetStore();
     historyRestoredRef.current = false;
-
-    // 先恢复历史消息
-    if (rounds && rounds.length > 0 && !historyRestoredRef.current) {
-      rounds.forEach((r) => {
-        addQuestion(r.id, r.question);
-        if (r.answer) {
-          addAnswer(r.answer);
-        }
-      });
-      historyRestoredRef.current = true;
-    }
-
-    // 再建立 WebSocket 连接
     connect();
 
     return () => disconnect();
-  }, [interviewId, rounds, connect, disconnect, resetStore, addQuestion, addAnswer]);
+  }, [interviewId, connect, disconnect, resetStore]);
+
+  // 历史消息恢复（依赖 rounds，不触发 WebSocket 重连）
+  useEffect(() => {
+    if (!rounds || rounds.length === 0) return;
+    if (historyRestoredRef.current) return;
+
+    rounds.forEach((r) => {
+      addQuestion(r.id, r.question);
+      if (r.answer) {
+        addAnswer(r.answer);
+      }
+    });
+    historyRestoredRef.current = true;
+  }, [rounds, addQuestion, addAnswer]);
 
   // 同步 REST 状态到 store
   useEffect(() => {

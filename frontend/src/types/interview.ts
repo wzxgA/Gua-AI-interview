@@ -74,6 +74,7 @@ export interface WsServerMessage {
     | 'ANSWER_ACK'
     | 'STATUS'
     | 'SESSION_COMPLETED'
+    | 'HEARTBEAT_ACK'
     | 'ERROR';
   sessionId?: number;
   roundId?: number;
