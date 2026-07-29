@@ -3,6 +3,7 @@ package com.aims.gateway.controller.resume;
 import com.aims.core.common.PageQuery;
 import com.aims.core.common.Result;
 import com.aims.core.resume.ParsedResume;
+import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.service.ResumeService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -95,6 +96,24 @@ public class ResumeController {
     public Result<Void> reembed(@PathVariable Long id) {
         resumeService.reembed(id);
         return Result.ok(null);
+    }
+
+    @PostMapping("/reembed-batch")
+    @Operation(summary = "批量重新向量化", description = "异步处理所有已解析但无向量的简历，返回任务 ID")
+    public Result<BatchReembedTask> reembedBatch(@RequestParam(defaultValue = "20") int batchSize) {
+        String taskId = resumeService.reembedBatch(batchSize);
+        BatchReembedTask task = new BatchReembedTask(taskId, "RUNNING", 0, 0, 0, null, null, null);
+        return Result.ok(task);
+    }
+
+    @GetMapping("/reembed-batch/{taskId}")
+    @Operation(summary = "查询批量向量化任务状态", description = "轮询异步批量重新向量化任务的进度")
+    public Result<BatchReembedTask> getBatchReembedStatus(@PathVariable String taskId) {
+        BatchReembedTask task = resumeService.getBatchReembedStatus(taskId);
+        if (task == null) {
+            return Result.ok(new BatchReembedTask(taskId, "NOT_FOUND", 0, 0, 0, null, null, null));
+        }
+        return Result.ok(task);
     }
 
     /**

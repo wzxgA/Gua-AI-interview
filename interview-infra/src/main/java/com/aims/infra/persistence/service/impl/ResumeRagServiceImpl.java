@@ -104,7 +104,11 @@ public class ResumeRagServiceImpl implements ResumeRagService {
 
     @Override
     public List<ResumeSearchResult> search(String query, Long resumeId, int topK, Double minScore) {
+        long totalStart = System.nanoTime();
+        long embedStart = System.nanoTime();
         String vectorStr = PgVectorSupport.toVectorString(modelRouter.embed(query));
+        long embedMs = (System.nanoTime() - embedStart) / 1_000_000;
+
         StringBuilder sql = new StringBuilder(BASE_SQL);
         List<Object> params = new ArrayList<>();
         // SELECT 中的 ?::vector（计算相似度得分）
@@ -126,17 +130,44 @@ public class ResumeRagServiceImpl implements ResumeRagService {
         params.add(vectorStr);
         params.add(topK);
 
+        long sqlStart = System.nanoTime();
         try {
-            return jdbcTemplate.query(sql.toString(), rowMapper, params.toArray());
+            List<ResumeSearchResult> results =
+                    jdbcTemplate.query(sql.toString(), rowMapper, params.toArray());
+            long sqlMs = (System.nanoTime() - sqlStart) / 1_000_000;
+            long totalMs = (System.nanoTime() - totalStart) / 1_000_000;
+            log.info(
+                    "简历 RAG 检索 query={} resumeId={} topK={} minScore={} embeddingMs={} sqlMs={}"
+                            + " totalMs={} resultCount={}",
+                    truncate(query),
+                    resumeId,
+                    topK,
+                    minScore,
+                    embedMs,
+                    sqlMs,
+                    totalMs,
+                    results.size());
+            return results;
         } catch (Exception e) {
+            long sqlMs = (System.nanoTime() - sqlStart) / 1_000_000;
+            long totalMs = (System.nanoTime() - totalStart) / 1_000_000;
             log.error(
-                    "简历 RAG 检索失败 query={} resumeId={} topK={} minScore={}",
+                    "简历 RAG 检索失败 query={} resumeId={} topK={} minScore={} embeddingMs={}"
+                            + " sqlMs={} totalMs={}",
                     query,
                     resumeId,
                     topK,
                     minScore,
+                    embedMs,
+                    sqlMs,
+                    totalMs,
                     e);
             throw new BizException(ErrorCode.RAG_SEARCH_FAILED, "简历 RAG 检索失败", e);
         }
+    }
+
+    private static String truncate(String text) {
+        if (text == null) return "";
+        return text.length() > 50 ? text.substring(0, 50) + "..." : text;
     }
 }

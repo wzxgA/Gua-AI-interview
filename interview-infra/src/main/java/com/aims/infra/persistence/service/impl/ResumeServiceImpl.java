@@ -12,6 +12,7 @@ import com.aims.core.resume.ParsedResume;
 import com.aims.core.resume.ResumeStatus;
 import com.aims.core.resume.WorkExperience;
 import com.aims.infra.persistence.PgVectorSupport;
+import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.ResumeMapper;
 import com.aims.infra.persistence.service.ResumeService;
@@ -25,6 +26,10 @@ import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -50,6 +55,10 @@ public class ResumeServiceImpl implements ResumeService {
 
     /** 最大上传文件大小：10 MB。 */
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+    /** 批量重新向量化任务状态（内存级，应用重启后丢失）。 */
+    private final ConcurrentHashMap<String, BatchReembedTask> batchTasks =
+            new ConcurrentHashMap<>();
 
     private final ResumeMapper resumeMapper;
     private final MinioClient minioClient;
@@ -264,6 +273,75 @@ public class ResumeServiceImpl implements ResumeService {
         }
         resumeMapper.invalidateEmbedding(id);
         embed(id);
+    }
+
+    @Override
+    public String reembedBatch(int batchSize) {
+        int total = resumeMapper.countNeedingReembed();
+        String taskId = UUID.randomUUID().toString();
+        Instant startedAt = Instant.now();
+
+        BatchReembedTask initial =
+                new BatchReembedTask(taskId, "RUNNING", total, 0, 0, startedAt, null, null);
+        batchTasks.put(taskId, initial);
+
+        Thread.startVirtualThread(
+                () -> {
+                    int success = 0;
+                    int failed = 0;
+                    int offset = 0;
+                    try {
+                        while (true) {
+                            List<Long> ids =
+                                    resumeMapper.selectIdsNeedingReembed(batchSize, offset);
+                            if (ids.isEmpty()) {
+                                break;
+                            }
+                            for (Long id : ids) {
+                                try {
+                                    embed(id);
+                                    success++;
+                                } catch (Exception e) {
+                                    log.warn("批量重新向量化失败 id={}", id, e);
+                                    failed++;
+                                }
+                            }
+                            offset += batchSize;
+                        }
+                        BatchReembedTask completed =
+                                new BatchReembedTask(
+                                        taskId,
+                                        "COMPLETED",
+                                        total,
+                                        success,
+                                        failed,
+                                        startedAt,
+                                        Instant.now(),
+                                        null);
+                        batchTasks.put(taskId, completed);
+                    } catch (Exception e) {
+                        log.error("批量重新向量化任务异常 taskId={}", taskId, e);
+                        BatchReembedTask errorTask =
+                                new BatchReembedTask(
+                                        taskId,
+                                        "FAILED",
+                                        total,
+                                        success,
+                                        failed,
+                                        startedAt,
+                                        Instant.now(),
+                                        e.getMessage());
+                        batchTasks.put(taskId, errorTask);
+                    }
+                });
+
+        log.info("批量重新向量化任务已启动 taskId={} total={}", taskId, total);
+        return taskId;
+    }
+
+    @Override
+    public BatchReembedTask getBatchReembedStatus(String taskId) {
+        return batchTasks.get(taskId);
     }
 
     private String errorSummary(Exception e) {

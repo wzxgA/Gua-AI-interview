@@ -2,6 +2,7 @@ package com.aims.infra.persistence.mapper;
 
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -87,4 +88,14 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
                     + " embedded_at = NULL, embedding_error = NULL, updated_at = now()"
                     + " WHERE id = #{id}")
     int invalidateEmbedding(@Param("id") Long id);
+
+    /** 查询需要重新向量化的简历 ID（已解析但无向量）。 */
+    @Select(
+            "SELECT id FROM resume WHERE embedding IS NULL AND parse_status = 'PARSED'"
+                    + " ORDER BY id LIMIT #{limit} OFFSET #{offset}")
+    List<Long> selectIdsNeedingReembed(@Param("limit") int limit, @Param("offset") int offset);
+
+    /** 统计需要重新向量化的简历数量。 */
+    @Select("SELECT COUNT(*) FROM resume WHERE embedding IS NULL AND parse_status = 'PARSED'")
+    int countNeedingReembed();
 }

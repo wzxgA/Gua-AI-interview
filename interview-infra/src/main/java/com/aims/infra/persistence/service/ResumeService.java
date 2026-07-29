@@ -1,6 +1,7 @@
 package com.aims.infra.persistence.service;
 
 import com.aims.core.common.PageQuery;
+import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.springframework.web.multipart.MultipartFile;
@@ -70,6 +71,22 @@ public interface ResumeService {
      * @param id 简历 ID
      */
     void reembed(Long id);
+
+    /**
+     * 异步批量重新向量化：查询所有已解析但无向量的简历，逐个触发 embed。
+     *
+     * @param batchSize 每批处理数量
+     * @return 任务 ID，可用于查询状态
+     */
+    String reembedBatch(int batchSize);
+
+    /**
+     * 查询批量重新向量化任务状态。
+     *
+     * @param taskId 任务 ID
+     * @return 任务状态，不存在返回 null
+     */
+    BatchReembedTask getBatchReembedStatus(String taskId);
 
     /**
      * 检查简历是否已生成向量。
