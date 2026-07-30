@@ -106,3 +106,4 @@ logging:
   level:
     org.springframework.web.client: DEBUG
     org.springframework.ai.openai.api: DEBUG
+    org.apache.kafka: WARN
