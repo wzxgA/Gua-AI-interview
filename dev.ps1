@@ -12,7 +12,7 @@ $ComposeFile = Join-Path $ComposeDir 'docker-compose.yml'
 $EnvFile     = Join-Path $ComposeDir '.env'
 
 if (-not (Test-Path $EnvFile)) {
-    Copy-Item (Join-Path $ComposeDir '.env.example') $EnvFile
+    Copy-Item (Join-Path $PSScriptRoot '.env.example') $EnvFile
     Write-Host "[dev] 已从 .env.example 生成 docker/.env，如需修改密码请编辑后重跑。" -ForegroundColor Yellow
 }
 

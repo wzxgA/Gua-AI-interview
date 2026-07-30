@@ -55,7 +55,7 @@ ai-ms/
 ./dev.ps1 up
 ```
 
-该命令会自动从 `.env.example` 生成 `.env`，并启动以下服务：
+该命令会自动从 `.env.example` 生成 `docker/.env`，并启动以下服务：
 
 | 服务 | 容器端口 | 宿主机端口 | 说明 |
 |------|----------|------------|------|
@@ -199,14 +199,33 @@ mvn spotless:apply
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
 | `SPRING_PROFILES_ACTIVE` | local | Spring Profile |
+| `AIMS_DEFAULT_TIER` | STANDARD | 默认模型档位 |
+| `AIMS_FLAGSHIP_PROVIDER` | dashscope | 旗舰档提供商 |
+| `AIMS_FLAGSHIP_MODEL` | qwen-max | 旗舰档模型 |
+| `AIMS_FLAGSHIP_TEMPERATURE` | 0.7 | 旗舰档温度 |
+| `AIMS_FLAGSHIP_MAX_TOKENS` | 2048 | 旗舰档最大 tokens |
+| `AIMS_STANDARD_PROVIDER` | deepseek | 标准档提供商 |
+| `AIMS_STANDARD_MODEL` | deepseek-chat | 标准档模型 |
+| `AIMS_STANDARD_TEMPERATURE` | 0.2 | 标准档温度 |
+| `AIMS_STANDARD_MAX_TOKENS` | 2048 | 标准档最大 tokens |
+| `AIMS_ECONOMY_PROVIDER` | dashscope | 经济档提供商 |
+| `AIMS_ECONOMY_MODEL` | qwen-turbo | 经济档模型 |
+| `AIMS_ECONOMY_TEMPERATURE` | 0.3 | 经济档温度 |
+| `AIMS_ECONOMY_MAX_TOKENS` | 1024 | 经济档最大 tokens |
+| `AIMS_EMBEDDING_PROVIDER` | dashscope | 向量化提供商 |
+| `AIMS_EMBEDDING_MODEL` | text-embedding-v4 | 向量化模型 |
+| `AIMS_EMBEDDING_DIMENSIONS` | 2048 | 向量维度 |
 | `DASHSCOPE_API_KEY` | - | 通义千问 API Key（必填） |
+| `DASHSCOPE_BASE_URL` | https://dashscope.aliyuncs.com/compatible-mode | 通义千问 base URL |
 | `DEEPSEEK_API_KEY` | - | DeepSeek API Key（必填） |
+| `DEEPSEEK_BASE_URL` | https://api.deepseek.com/v1 | DeepSeek base URL |
 | `POSTGRES_PORT` | 15432 | PostgreSQL 端口 |
 | `POSTGRES_USER` | aims | PostgreSQL 用户名 |
 | `POSTGRES_PASSWORD` | aims123 | PostgreSQL 密码 |
 | `REDIS_PORT` | 16379 | Redis 端口 |
 | `REDIS_PASSWORD` | aims123 | Redis 密码 |
 | `KAFKA_PORT` | 9092 | Kafka 端口 |
+| `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka 引导服务器（local profile 下由 KAFKA_PORT 覆盖） |
 | `MINIO_API_PORT` | 9000 | MinIO API 端口 |
 | `MINIO_CONSOLE_PORT` | 9001 | MinIO 控制台端口 |
 | `AIMS_LIVE_TEST` | false | Live 集成测试开关 |
