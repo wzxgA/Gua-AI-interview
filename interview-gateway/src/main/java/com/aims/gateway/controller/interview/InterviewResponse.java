@@ -15,6 +15,9 @@ public record InterviewResponse(
         Instant startedAt,
         Instant endedAt,
         BigDecimal totalScore,
+        String evaluationStatus,
+        Integer evaluatedRounds,
+        Integer totalRoundsToEvaluate,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -31,6 +34,9 @@ public record InterviewResponse(
                 entity.getStartedAt(),
                 entity.getEndedAt(),
                 entity.getTotalScore(),
+                entity.getEvaluationStatus(),
+                entity.getEvaluatedRounds(),
+                entity.getTotalRoundsToEvaluate(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

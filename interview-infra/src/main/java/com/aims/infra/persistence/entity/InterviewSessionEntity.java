@@ -44,6 +44,18 @@ public class InterviewSessionEntity {
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private Instant updatedAt;
 
+    @TableField("evaluation_status")
+    private String evaluationStatus;
+
+    @TableField("evaluation_error")
+    private String evaluationError;
+
+    @TableField("evaluated_rounds")
+    private Integer evaluatedRounds;
+
+    @TableField("total_rounds_to_evaluate")
+    private Integer totalRoundsToEvaluate;
+
     public Long getId() {
         return id;
     }
@@ -130,5 +142,37 @@ public class InterviewSessionEntity {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getEvaluationStatus() {
+        return evaluationStatus;
+    }
+
+    public void setEvaluationStatus(String evaluationStatus) {
+        this.evaluationStatus = evaluationStatus;
+    }
+
+    public String getEvaluationError() {
+        return evaluationError;
+    }
+
+    public void setEvaluationError(String evaluationError) {
+        this.evaluationError = evaluationError;
+    }
+
+    public Integer getEvaluatedRounds() {
+        return evaluatedRounds;
+    }
+
+    public void setEvaluatedRounds(Integer evaluatedRounds) {
+        this.evaluatedRounds = evaluatedRounds;
+    }
+
+    public Integer getTotalRoundsToEvaluate() {
+        return totalRoundsToEvaluate;
+    }
+
+    public void setTotalRoundsToEvaluate(Integer totalRoundsToEvaluate) {
+        this.totalRoundsToEvaluate = totalRoundsToEvaluate;
     }
 }

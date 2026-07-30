@@ -11,8 +11,10 @@ import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
+import com.aims.infra.persistence.service.InterviewSessionStore;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
@@ -57,6 +59,8 @@ public class InterviewController {
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
     private final InterviewPlanGenerator planGenerator;
+    private final InterviewSessionStore sessionStore;
+    private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
 
     public InterviewController(
@@ -66,6 +70,8 @@ public class InterviewController {
             ResumeService resumeService,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
+            InterviewSessionStore sessionStore,
+            EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
         this.roundService = roundService;
@@ -73,6 +79,8 @@ public class InterviewController {
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
+        this.sessionStore = sessionStore;
+        this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
     }
 
@@ -149,13 +157,23 @@ public class InterviewController {
         }
     }
 
-    @Operation(summary = "结束面试", description = "将会话状态置为 COMPLETED 并标记结束时间")
+    @Operation(summary = "结束面试", description = "将会话状态置为 EVALUATING，触发 Kafka 异步评估流程")
     @PostMapping("/{id}/finish")
     public Result<InterviewResponse> finish(@PathVariable Long id) {
-        sessionService.updateStatus(id, SessionStatus.COMPLETED);
-        sessionService.markEnded(id);
-        InterviewSessionEntity entity = sessionService.getById(id);
-        return Result.ok(InterviewResponse.from(entity));
+        InterviewSessionEntity session = sessionService.getById(id);
+        SessionStatus current = SessionStatus.valueOf(session.getStatus());
+        if (current != SessionStatus.IN_PROGRESS && current != SessionStatus.PAUSED) {
+            throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
+        }
+        // 释放连接锁
+        sessionStore.forceUnlock(id);
+        // 状态转为 EVALUATING
+        sessionService.updateStatus(id, SessionStatus.EVALUATING);
+        sessionService.updateEvaluationStatus(id, "PENDING");
+        // 发送 Kafka 评估请求
+        evaluationMessageProducer.sendEvaluationRequest(id);
+        InterviewSessionEntity updated = sessionService.getById(id);
+        return Result.ok(InterviewResponse.from(updated));
     }
 
     @Operation(summary = "暂停面试", description = "将会话状态置为 PAUSED")
