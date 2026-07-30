@@ -88,24 +88,28 @@ public class ReportServiceImpl implements ReportService {
         String conversationSummary = buildConversationSummary(sessionId);
 
         // 构建评分汇总
-        List<ReportContext.EvaluationSummary> evalSummaries = evaluations.stream()
-                .map(e -> new ReportContext.EvaluationSummary(
-                        0, // seq 由 listBySession 排序决定，此处不需要
-                        e.getDimension(),
-                        e.getScore(),
-                        e.getComment(),
-                        e.getEvidenceQuote()))
-                .collect(Collectors.toList());
+        List<ReportContext.EvaluationSummary> evalSummaries =
+                evaluations.stream()
+                        .map(
+                                e ->
+                                        new ReportContext.EvaluationSummary(
+                                                0, // seq 由 listBySession 排序决定，此处不需要
+                                                e.getDimension(),
+                                                e.getScore(),
+                                                e.getComment(),
+                                                e.getEvidenceQuote()))
+                        .collect(Collectors.toList());
 
         // 调用 ReportAgent 生成报告
-        ReportContext context = new ReportContext(
-                sessionId,
-                resume.getCandidateName(),
-                position.getTitle(),
-                position.getJdText(),
-                buildResumeSummary(resume),
-                evalSummaries,
-                conversationSummary);
+        ReportContext context =
+                new ReportContext(
+                        sessionId,
+                        resume.getCandidateName(),
+                        position.getTitle(),
+                        position.getJdText(),
+                        buildResumeSummary(resume),
+                        evalSummaries,
+                        conversationSummary);
         ReportResult result = reportAgent.generate(context, aggregate, weightedScore);
 
         // 序列化 dimensionsJson
@@ -162,7 +166,9 @@ public class ReportServiceImpl implements ReportService {
         StringBuilder sb = new StringBuilder();
         for (InterviewRoundEntity round : rounds) {
             if (round.getAnswer() != null && !round.getAnswer().isBlank()) {
-                sb.append("Q").append(round.getSeq()).append(": ")
+                sb.append("Q")
+                        .append(round.getSeq())
+                        .append(": ")
                         .append(truncate(round.getQuestion(), 200))
                         .append("\nA: ")
                         .append(truncate(round.getAnswer(), 500))

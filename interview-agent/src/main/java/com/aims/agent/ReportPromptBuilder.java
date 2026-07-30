@@ -1,12 +1,9 @@
 package com.aims.agent;
 
 import com.aims.core.evaluation.DimensionAggregate;
-import com.aims.core.evaluation.EvaluationDimension;
 import com.aims.core.report.ReportContext;
 
-/**
- * 报告 Prompt 统一构建器：集中管理报告 Agent 的 Prompt 模板。
- */
+/** 报告 Prompt 统一构建器：集中管理报告 Agent 的 Prompt 模板。 */
 public final class ReportPromptBuilder {
 
     private static final String REPORT_SYSTEM =
@@ -27,24 +24,25 @@ public final class ReportPromptBuilder {
     }
 
     /** 构造报告用户 Prompt。 */
-    public static String reportUser(ReportContext context, DimensionAggregate aggregate, double weightedScore) {
+    public static String reportUser(
+            ReportContext context, DimensionAggregate aggregate, double weightedScore) {
         return """
-               候选人：%s
-               岗位：%s
-               岗位 JD：%s
+候选人：%s
+岗位：%s
+岗位 JD：%s
 
-               各维度评分汇总：
-               %s
-               综合加权得分：%.2f / 5.0
+各维度评分汇总：
+%s
+综合加权得分：%.2f / 5.0
 
-               对话摘要：
-               %s
+对话摘要：
+%s
 
-               请输出报告 JSON，字段说明：
-               - summary: 综合评述（200-500 字）
-               - dimensions: 各维度评分明细，key 为维度名（PROFESSIONAL/LOGIC/COMMUNICATION/JOB_MATCH/POTENTIAL），value 含 avgScore 和 count
-               - recommendation: STRONGLY_RECOMMEND / RECOMMEND / NEUTRAL / NOT_RECOMMEND
-               """
+请输出报告 JSON，字段说明：
+- summary: 综合评述（200-500 字）
+- dimensions: 各维度评分明细，key 为维度名（PROFESSIONAL/LOGIC/COMMUNICATION/JOB_MATCH/POTENTIAL），value 含 avgScore 和 count
+- recommendation: STRONGLY_RECOMMEND / RECOMMEND / NEUTRAL / NOT_RECOMMEND
+"""
                 .formatted(
                         safe(context.candidateName()),
                         safe(context.positionTitle()),

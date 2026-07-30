@@ -1,31 +1,22 @@
 package com.aims.infra.persistence.service.impl;
 
 import com.aims.agent.DefaultEvaluatorAgent;
-import com.aims.agent.DefaultReportAgent;
 import com.aims.core.evaluation.DimensionAggregate;
 import com.aims.core.evaluation.EvaluationContext;
 import com.aims.core.evaluation.EvaluationDimension;
 import com.aims.core.evaluation.RoundEvaluation;
-import com.aims.core.report.ReportContext;
-import com.aims.core.report.ReportResult;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.EvaluationEntity;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
-import com.aims.infra.persistence.entity.ReportEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.EvaluationMapper;
-import com.aims.infra.persistence.mapper.ReportMapper;
 import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
-import com.aims.infra.persistence.service.ReportService;
 import com.aims.infra.persistence.service.ResumeService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -72,9 +63,10 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         // 加载所有已回答轮次
         List<InterviewRoundEntity> rounds = roundService.listBySession(sessionId);
-        List<InterviewRoundEntity> answered = rounds.stream()
-                .filter(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
-                .collect(Collectors.toList());
+        List<InterviewRoundEntity> answered =
+                rounds.stream()
+                        .filter(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
+                        .collect(Collectors.toList());
 
         sessionService.updateTotalRoundsToEvaluate(sessionId, answered.size());
 
@@ -88,15 +80,16 @@ public class EvaluationServiceImpl implements EvaluationService {
         for (int i = 0; i < answered.size(); i++) {
             InterviewRoundEntity round = answered.get(i);
             try {
-                EvaluationContext context = new EvaluationContext(
-                        sessionId,
-                        round.getId(),
-                        round.getSeq(),
-                        round.getQuestion(),
-                        round.getAnswer(),
-                        position.getTitle(),
-                        position.getJdText(),
-                        resumeSummary);
+                EvaluationContext context =
+                        new EvaluationContext(
+                                sessionId,
+                                round.getId(),
+                                round.getSeq(),
+                                round.getQuestion(),
+                                round.getAnswer(),
+                                position.getTitle(),
+                                position.getJdText(),
+                                resumeSummary);
 
                 List<RoundEvaluation> evaluations = evaluatorAgent.evaluate(context);
 

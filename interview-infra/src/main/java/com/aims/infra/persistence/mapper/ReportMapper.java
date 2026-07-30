@@ -11,11 +11,12 @@ public interface ReportMapper extends BaseMapper<ReportEntity> {
 
     /** 保存报告（dimensions_json 为 JSONB，需 ::jsonb 转型；ON CONFLICT 支持重新生成）。 */
     @Update(
-            "INSERT INTO interview_report (session_id, summary, dimensions_json, recommendation, report_pdf_url) "
-                    + "VALUES (#{sessionId}, #{summary}, #{dimensionsJson}::jsonb, #{recommendation}, #{reportPdfUrl}) "
-                    + "ON CONFLICT (session_id) DO UPDATE SET "
-                    + "summary = EXCLUDED.summary, dimensions_json = EXCLUDED.dimensions_json, "
-                    + "recommendation = EXCLUDED.recommendation, report_pdf_url = EXCLUDED.report_pdf_url")
+            "INSERT INTO interview_report (session_id, summary, dimensions_json, recommendation,"
+                    + " report_pdf_url) VALUES (#{sessionId}, #{summary}, #{dimensionsJson}::jsonb,"
+                    + " #{recommendation}, #{reportPdfUrl}) ON CONFLICT (session_id) DO UPDATE SET"
+                    + " summary = EXCLUDED.summary, dimensions_json = EXCLUDED.dimensions_json,"
+                    + " recommendation = EXCLUDED.recommendation, report_pdf_url ="
+                    + " EXCLUDED.report_pdf_url")
     int upsert(ReportEntity entity);
 
     /** 查询会话报告。 */

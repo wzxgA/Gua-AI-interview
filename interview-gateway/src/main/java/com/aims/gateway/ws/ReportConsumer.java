@@ -1,11 +1,11 @@
 package com.aims.gateway.ws;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.config.InfraConfig;
 import com.aims.infra.persistence.messaging.ReportRequestMessage;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.ReportService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -33,8 +33,7 @@ public class ReportConsumer {
     @KafkaListener(topics = InfraConfig.TOPIC_REPORT_REQUESTED, groupId = "aims-report")
     public void handleReportRequest(String message) {
         try {
-            ReportRequestMessage req =
-                    objectMapper.readValue(message, ReportRequestMessage.class);
+            ReportRequestMessage req = objectMapper.readValue(message, ReportRequestMessage.class);
             Long sessionId = req.sessionId();
             log.info("收到报告请求消息 sessionId={}", sessionId);
 

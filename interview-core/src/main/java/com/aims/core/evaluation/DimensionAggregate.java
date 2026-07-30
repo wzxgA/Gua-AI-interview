@@ -10,7 +10,8 @@ import java.util.Map;
  */
 public class DimensionAggregate {
 
-    private final Map<EvaluationDimension, DimensionScore> scores = new EnumMap<>(EvaluationDimension.class);
+    private final Map<EvaluationDimension, DimensionScore> scores =
+            new EnumMap<>(EvaluationDimension.class);
 
     /** 累加一次评分。 */
     public void add(EvaluationDimension dim, int score) {
@@ -18,7 +19,8 @@ public class DimensionAggregate {
         if (existing == null) {
             scores.put(dim, new DimensionScore(score, 1));
         } else {
-            scores.put(dim, new DimensionScore(existing.totalScore() + score, existing.count() + 1));
+            scores.put(
+                    dim, new DimensionScore(existing.totalScore() + score, existing.count() + 1));
         }
     }
 

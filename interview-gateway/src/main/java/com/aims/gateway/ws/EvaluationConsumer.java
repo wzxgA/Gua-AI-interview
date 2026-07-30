@@ -1,12 +1,12 @@
 package com.aims.gateway.ws;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.config.InfraConfig;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.messaging.EvaluationRequestMessage;
 import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewSessionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -34,9 +34,7 @@ public class EvaluationConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(
-            topics = InfraConfig.TOPIC_EVALUATION_REQUESTED,
-            groupId = "aims-evaluation")
+    @KafkaListener(topics = InfraConfig.TOPIC_EVALUATION_REQUESTED, groupId = "aims-evaluation")
     public void handleEvaluationRequest(String message) {
         try {
             EvaluationRequestMessage req =

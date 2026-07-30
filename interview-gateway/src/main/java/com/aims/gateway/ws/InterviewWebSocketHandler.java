@@ -347,10 +347,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             sessionService.updateEvaluationStatus(sessionId, "PENDING");
             evaluationMessageProducer.sendEvaluationRequest(sessionId);
             send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
-            log.info(
-                    "达到题数上限，进入评估流程 sessionId={} answeredCount={}",
-                    sessionId,
-                    answeredCount);
+            log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
         } else {
             // 生成下一题
             generateAndSendQuestion(session, sessionId);

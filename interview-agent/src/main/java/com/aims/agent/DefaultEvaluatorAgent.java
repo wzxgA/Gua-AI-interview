@@ -31,9 +31,7 @@ public class DefaultEvaluatorAgent implements EvaluatorAgent {
                         EvaluationPromptBuilder.evaluatorSystem(),
                         EvaluationPromptBuilder.evaluatorUser(context),
                         RoundEvaluations.class);
-        if (result == null
-                || result.evaluations() == null
-                || result.evaluations().size() != 5) {
+        if (result == null || result.evaluations() == null || result.evaluations().size() != 5) {
             throw new AiOutputParseException("评估结果维度数不正确，期望 5 个", null);
         }
         return result.evaluations();

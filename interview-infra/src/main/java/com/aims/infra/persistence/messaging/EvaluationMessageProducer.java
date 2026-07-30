@@ -26,7 +26,8 @@ public class EvaluationMessageProducer {
     /** 发送评估请求消息。 */
     public void sendEvaluationRequest(Long sessionId) {
         try {
-            String payload = objectMapper.writeValueAsString(new EvaluationRequestMessage(sessionId));
+            String payload =
+                    objectMapper.writeValueAsString(new EvaluationRequestMessage(sessionId));
             kafkaTemplate.send(
                     InfraConfig.TOPIC_EVALUATION_REQUESTED, sessionId.toString(), payload);
             log.info("发送评估请求消息 sessionId={}", sessionId);

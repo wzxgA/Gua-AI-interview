@@ -3,11 +3,8 @@ package com.aims.agent;
 import com.aims.core.evaluation.DimensionAggregate;
 import com.aims.core.evaluation.EvaluationContext;
 import com.aims.core.evaluation.EvaluationDimension;
-import com.aims.core.evaluation.RoundEvaluation;
 
-/**
- * 评估 Prompt 统一构建器：集中管理评估 Agent 的 Prompt 模板。
- */
+/** 评估 Prompt 统一构建器：集中管理评估 Agent 的 Prompt 模板。 */
 public final class EvaluationPromptBuilder {
 
     private static final String EVALUATOR_SYSTEM =
