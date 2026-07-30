@@ -55,3 +55,59 @@ export interface PlannedQuestion {
   followUpHints: string[];
   evaluationFocus: string;
 }
+
+/** WebSocket 客户端 -> 服务端消息 */
+export type WsClientMessage =
+  | { type: 'ANSWER'; text: string }
+  | { type: 'HEARTBEAT' }
+  | { type: 'PAUSE' }
+  | { type: 'FINISH' }
+  | { type: 'CANCEL' };
+
+/** WebSocket 服务端 -> 客户端消息 */
+export interface WsServerMessage {
+  type:
+    | 'SESSION_READY'
+    | 'QUESTION_START'
+    | 'QUESTION_CHUNK'
+    | 'QUESTION_END'
+    | 'ANSWER_ACK'
+    | 'STATUS'
+    | 'SESSION_COMPLETED'
+    | 'HEARTBEAT_ACK'
+    | 'ERROR';
+  sessionId?: number;
+  roundId?: number;
+  seq?: number;
+  status?: SessionStatus;
+  code?: number;
+  message?: string;
+  text?: string;
+}
+
+/** 聊天消息 */
+export interface ChatMessage {
+  id: string;
+  role: 'question' | 'answer';
+  text: string;
+  roundId?: number;
+  seq?: number;
+  timestamp: string;
+  streaming?: boolean;
+}
+
+/** 面试列表查询参数 */
+export interface InterviewQuery {
+  page?: number;
+  size?: number;
+  status?: SessionStatus;
+}
+
+/** 面试轮次响应 */
+export interface RoundResponse {
+  id: number;
+  seq: number;
+  question: string;
+  answer: string | null;
+  createdAt: string;
+}

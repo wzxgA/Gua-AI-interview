@@ -2,7 +2,7 @@
 # 端口与 docker/.env 对齐（非标准端口避免与本机已安装的服务冲突）
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:15432}/aims
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:15432}/aims?stringtype=unspecified
     username: ${POSTGRES_USER:aims}
     password: ${POSTGRES_PASSWORD:aims123}
     driver-class-name: org.postgresql.Driver

@@ -24,3 +24,27 @@ export const PARSE_STATUS_LABELS: Record<string, string> = {
   PARSED: '已解析',
   FAILED: '解析失败',
 };
+
+export const SESSION_STATUSES = [
+  'CREATED',
+  'PLANNING',
+  'IN_PROGRESS',
+  'EVALUATING',
+  'REPORTING',
+  'COMPLETED',
+  'PAUSED',
+  'CANCELLED',
+  'FAILED',
+] as const;
+
+export const SESSION_STATUS_LABELS: Record<string, string> = {
+  CREATED: '待开始',
+  PLANNING: '规划中',
+  IN_PROGRESS: '进行中',
+  EVALUATING: '评估中',
+  REPORTING: '报告中',
+  COMPLETED: '已完成',
+  PAUSED: '已暂停',
+  CANCELLED: '已取消',
+  FAILED: '失败',
+};

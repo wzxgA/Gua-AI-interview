@@ -6,14 +6,18 @@ import com.aims.core.common.Result;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.session.SessionStatus;
+import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 面试会话 REST API。 */
@@ -47,6 +52,7 @@ public class InterviewController {
     private static final int ESTIMATED_MINUTES = 30;
 
     private final InterviewSessionService sessionService;
+    private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
@@ -55,17 +61,30 @@ public class InterviewController {
 
     public InterviewController(
             InterviewSessionService sessionService,
+            InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
+        this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
         this.objectMapper = objectMapper;
+    }
+
+    @Operation(summary = "分页查询面试会话列表")
+    @GetMapping("")
+    public Result<IPage<InterviewResponse>> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status) {
+        IPage<InterviewSessionEntity> result = sessionService.page(new Page<>(page, size), status);
+        IPage<InterviewResponse> mapped = result.convert(InterviewResponse::from);
+        return Result.ok(mapped);
     }
 
     @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED")
@@ -139,6 +158,14 @@ public class InterviewController {
         return Result.ok(InterviewResponse.from(entity));
     }
 
+    @Operation(summary = "暂停面试", description = "将会话状态置为 PAUSED")
+    @PostMapping("/{id}/pause")
+    public Result<InterviewResponse> pause(@PathVariable Long id) {
+        sessionService.updateStatus(id, SessionStatus.PAUSED);
+        InterviewSessionEntity entity = sessionService.getById(id);
+        return Result.ok(InterviewResponse.from(entity));
+    }
+
     @Operation(summary = "取消面试", description = "将会话状态置为 CANCELLED 并标记结束时间")
     @PostMapping("/{id}/cancel")
     public Result<InterviewResponse> cancel(@PathVariable Long id) {
@@ -159,6 +186,24 @@ public class InterviewController {
         sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
         InterviewSessionEntity entity = sessionService.getById(id);
         return Result.ok(InterviewResponse.from(entity));
+    }
+
+    @Operation(summary = "查询面试轮次列表", description = "按 seq 排序返回所有轮次，用于面试间重连恢复历史消息")
+    @GetMapping("/{id}/rounds")
+    public Result<List<RoundResponse>> listRounds(@PathVariable Long id) {
+        // 校验会话存在
+        sessionService.getById(id);
+        List<InterviewRoundEntity> rounds = roundService.listBySession(id);
+        List<RoundResponse> response =
+                rounds.stream().map(RoundResponse::from).collect(Collectors.toList());
+        return Result.ok(response);
+    }
+
+    @Operation(summary = "删除面试会话", description = "级联删除轮次数据，不可恢复")
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        sessionService.delete(id);
+        return Result.ok(null);
     }
 
     // ---- 私有辅助方法 ----

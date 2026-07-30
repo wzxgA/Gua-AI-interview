@@ -36,5 +36,5 @@ plans/
 # ---- Frontend (Node.js / Vite) ----
 frontend/node_modules/
 frontend/dist/
-frontend/.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
 frontend/node_modules/.tmp/
