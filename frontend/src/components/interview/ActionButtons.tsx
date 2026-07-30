@@ -9,7 +9,7 @@ interface ActionButtonsProps {
   onPause?: () => void;
   onFinish?: () => void;
   onResume?: () => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 /** 按状态显示操作按钮 */
@@ -21,7 +21,6 @@ export function ActionButtons({
   onPause,
   onFinish,
   onResume,
-  onBack,
 }: ActionButtonsProps) {
   switch (status) {
     case 'CREATED':
@@ -68,6 +67,11 @@ export function ActionButtons({
     case 'PAUSED':
       return (
         <div className="flex flex-wrap gap-2">
+          {onEnterRoom && (
+            <SilverButton variant="ghost" onClick={onEnterRoom}>
+              进入面试间
+            </SilverButton>
+          )}
           {onResume && (
             <SilverButton onClick={onResume}>恢复</SilverButton>
           )}
@@ -87,9 +91,9 @@ export function ActionButtons({
     case 'CANCELLED':
       return (
         <div className="flex flex-wrap gap-2">
-          <SilverButton variant="ghost" onClick={onBack}>
-            返回列表
-          </SilverButton>
+          {onEnterRoom && (
+            <SilverButton onClick={onEnterRoom}>面试回顾</SilverButton>
+          )}
         </div>
       );
 
