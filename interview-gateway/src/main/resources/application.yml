@@ -25,6 +25,16 @@ spring:
         logic-delete-field: deleted
         logic-delete-value: '1'
         logic-not-delete-value: '0'
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: aims-evaluation
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 server:
   port: 8080
@@ -60,19 +70,19 @@ aims:
       FLAGSHIP:
         provider: ${AIMS_FLAGSHIP_PROVIDER:dashscope}
         model: ${AIMS_FLAGSHIP_MODEL:qwen-max}
-        temperature: 0.7
-        max-tokens: 2048
+        temperature: ${AIMS_FLAGSHIP_TEMPERATURE:0.7}
+        max-tokens: ${AIMS_FLAGSHIP_MAX_TOKENS:2048}
         fallback: deepseek:deepseek-chat
       STANDARD:
         provider: ${AIMS_STANDARD_PROVIDER:deepseek}
         model: ${AIMS_STANDARD_MODEL:deepseek-chat}
-        temperature: 0.2
-        max-tokens: 2048
+        temperature: ${AIMS_STANDARD_TEMPERATURE:0.2}
+        max-tokens: ${AIMS_STANDARD_MAX_TOKENS:2048}
       ECONOMY:
         provider: ${AIMS_ECONOMY_PROVIDER:dashscope}
         model: ${AIMS_ECONOMY_MODEL:qwen-turbo}
-        temperature: 0.3
-        max-tokens: 1024
+        temperature: ${AIMS_ECONOMY_TEMPERATURE:0.3}
+        max-tokens: ${AIMS_ECONOMY_MAX_TOKENS:1024}
       EMBEDDING:
         provider: ${AIMS_EMBEDDING_PROVIDER:dashscope}
         model: ${AIMS_EMBEDDING_MODEL:text-embedding-v4}
@@ -96,3 +106,4 @@ logging:
   level:
     org.springframework.web.client: DEBUG
     org.springframework.ai.openai.api: DEBUG
+    org.apache.kafka: WARN

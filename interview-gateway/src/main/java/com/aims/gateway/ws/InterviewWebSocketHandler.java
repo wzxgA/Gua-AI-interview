@@ -11,6 +11,7 @@ import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.InterviewSessionStore;
@@ -72,6 +73,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
     private final ConversationMemory conversationMemory;
+    private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
 
     public InterviewWebSocketHandler(
@@ -83,6 +85,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             ResumeService resumeService,
             QuestionRagService questionRagService,
             ConversationMemory conversationMemory,
+            EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
         this.roundService = roundService;
@@ -92,6 +95,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
         this.conversationMemory = conversationMemory;
+        this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
     }
 
@@ -173,13 +177,16 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             int answeredCount = roundService.countAnswered(sessionId);
             int totalRounds = getTotalRounds(entity);
             if (totalRounds > 0 && answeredCount >= totalRounds) {
-                // 已达上限，直接完成
+                // 已达上限，进入评估流程
                 log.info(
-                        "重连时发现已达题数上限，直接完成 sessionId={} answeredCount={}", sessionId, answeredCount);
-                sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
-                sessionService.markEnded(sessionId);
+                        "重连时发现已达题数上限，进入评估流程 sessionId={} answeredCount={}",
+                        sessionId,
+                        answeredCount);
                 sessionStore.forceUnlock(sessionId);
-                send(session, WsOutbound.completed(sessionId));
+                sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
+                sessionService.updateEvaluationStatus(sessionId, "PENDING");
+                evaluationMessageProducer.sendEvaluationRequest(sessionId);
+                send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
             } else {
                 // 补发下一题
                 log.info("重连后补发下一题 sessionId={} answeredCount={}", sessionId, answeredCount);
@@ -334,12 +341,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         int answeredCount = roundService.countAnswered(sessionId);
         int totalRounds = getTotalRounds(entity);
         if (totalRounds > 0 && answeredCount >= totalRounds) {
-            // 面试完成
-            sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
-            sessionService.markEnded(sessionId);
+            // 释放连接锁，进入评估流程
             sessionStore.forceUnlock(sessionId);
-            send(session, WsOutbound.completed(sessionId));
-            log.info("面试完成 sessionId={} answeredCount={}", sessionId, answeredCount);
+            sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
+            sessionService.updateEvaluationStatus(sessionId, "PENDING");
+            evaluationMessageProducer.sendEvaluationRequest(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
         } else {
             // 生成下一题
             generateAndSendQuestion(session, sessionId);
@@ -364,13 +372,27 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         log.info("会话暂停 sessionId={}", sessionId);
     }
 
-    /** FINISH：结束会话。 */
+    /** FINISH：结束会话，触发评估流程。 */
     private void handleFinish(WebSocketSession session, Long sessionId) {
-        sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
-        sessionService.markEnded(sessionId);
+        InterviewSessionEntity entity = sessionService.getById(sessionId);
+        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
+        if (current != SessionStatus.IN_PROGRESS) {
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.SESSION_STATUS_CONFLICT.getCode(),
+                            "会话状态不允许 FINISH，当前: " + current));
+            return;
+        }
+        // 释放连接锁
         sessionStore.forceUnlock(sessionId);
-        send(session, WsOutbound.completed(sessionId));
-        log.info("会话结束 sessionId={}", sessionId);
+        // 状态转为 EVALUATING，触发评估
+        sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
+        sessionService.updateEvaluationStatus(sessionId, "PENDING");
+        evaluationMessageProducer.sendEvaluationRequest(sessionId);
+        // 通知前端进入评估状态
+        send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+        log.info("面试结束，进入评估流程 sessionId={}", sessionId);
     }
 
     /** CANCEL：取消会话。 */

@@ -36,7 +36,14 @@ public enum ErrorCode {
     SESSION_PLAN_FAILED(4103, "面试计划生成失败"),
     SESSION_ROUND_CONFLICT(4104, "面试轮次冲突或已存在"),
     SESSION_LOCKED(4105, "会话已被其他连接占用"),
-    SESSION_MESSAGE_INVALID(4106, "WebSocket 消息格式或内容非法");
+    SESSION_MESSAGE_INVALID(4106, "WebSocket 消息格式或内容非法"),
+
+    // ---- 评估报告 4200+（P4） ----
+    EVALUATION_FAILED(4201, "评估失败"),
+    EVALUATION_DIMENSION_INVALID(4202, "评估维度不合法"),
+    EVALUATION_SCORE_INVALID(4203, "评分超出范围"),
+    REPORT_GENERATION_FAILED(4204, "报告生成失败"),
+    REPORT_NOT_FOUND(4205, "面试报告不存在");
 
     private final int code;
     private final String message;

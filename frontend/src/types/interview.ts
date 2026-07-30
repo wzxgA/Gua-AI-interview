@@ -22,6 +22,9 @@ export interface InterviewResponse {
   startedAt: string | null;
   endedAt: string | null;
   totalScore: number | null;
+  evaluationStatus: string | null;
+  evaluatedRounds: number | null;
+  totalRoundsToEvaluate: number | null;
   createdAt: string;
   updatedAt: string;
 }

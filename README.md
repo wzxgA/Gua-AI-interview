@@ -25,7 +25,7 @@
 ai-ms/
 ├── interview-core        # 核心层：领域模型(7模块)、统一响应体、错误码、异常体系、分页参数
 ├── interview-ai          # AI 层：多模型路由(ModelRouter)、ChatClient 封装(AiChatFacade)、三个基础 Advisor、embed/embedBatch
-├── interview-agent       # Agent 编排层：InterviewerAgent（问题生成）、InterviewPlanGenerator（计划生成）
+├── interview-agent       # Agent 编排层：InterviewerAgent（问题生成）、InterviewPlanGenerator（计划生成）、EvaluatorAgent（评估）、ReportAgent（报告）
 ├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、Redis 会话快照、MinIO、Flyway、健康检查
 ├── interview-gateway     # 网关层：Spring Boot 启动入口、业务 Controller、面试 WebSocket Handler、全局异常处理、OpenAPI
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
@@ -55,7 +55,7 @@ ai-ms/
 ./dev.ps1 up
 ```
 
-该命令会自动从 `docker/.env.example` 生成 `docker/.env`，并启动以下服务：
+该命令会自动从 `.env.example` 生成 `docker/.env`，并启动以下服务：
 
 | 服务 | 容器端口 | 宿主机端口 | 说明 |
 |------|----------|------------|------|
@@ -131,7 +131,10 @@ pnpm dev
 | 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + `/{id}/embed` + `/{id}/reembed` + `/reembed-batch` | 简历上传 + 结构化解析 + 向量化 + 重新向量化 + 批量重建 |
 | RAG 检索 | `/api/v1/rag` | `/questions` + `/resumes` | 题库/简历相似度检索，支持 `topK`、`minScore`、`resumeId` 参数 |
 | 面试会话 | `/api/v1/interviews` | CRUD + `/{id}/start` + `/{id}/pause` + `/{id}/finish` + `/{id}/cancel` + `/{id}/resume` + `/{id}/rounds` | 面试创建、计划生成、暂停/结束/取消/恢复、轮次查询 |
+| 评估报告 | `/api/v1/interviews` | `/{id}/report` + `/{id}/evaluations` + `/{id}/evaluations/{roundId}` | 获取面试报告、轮次评分明细（P4 已实现） |
 | 面试 WebSocket | `/ws/interview/{sessionId}` | `ANSWER` / `HEARTBEAT` / `PAUSE` / `FINISH` / `CANCEL` | 实时面试问答，连接后自动触发首题，支持断线重连 |
+
+> **finish 端点说明**：调用 `POST /api/v1/interviews/{id}/finish`（或 WebSocket 发送 `FINISH`）后，面试不再直接进入终态，而是触发评估流程：`IN_PROGRESS` -> `EVALUATING`（Kafka 异步逐题评分）-> `REPORTING`（生成综合报告）-> `COMPLETED`。
 
 **模型档位说明**：
 
@@ -196,14 +199,33 @@ mvn spotless:apply
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
 | `SPRING_PROFILES_ACTIVE` | local | Spring Profile |
+| `AIMS_DEFAULT_TIER` | STANDARD | 默认模型档位 |
+| `AIMS_FLAGSHIP_PROVIDER` | dashscope | 旗舰档提供商 |
+| `AIMS_FLAGSHIP_MODEL` | qwen-max | 旗舰档模型 |
+| `AIMS_FLAGSHIP_TEMPERATURE` | 0.7 | 旗舰档温度 |
+| `AIMS_FLAGSHIP_MAX_TOKENS` | 2048 | 旗舰档最大 tokens |
+| `AIMS_STANDARD_PROVIDER` | deepseek | 标准档提供商 |
+| `AIMS_STANDARD_MODEL` | deepseek-chat | 标准档模型 |
+| `AIMS_STANDARD_TEMPERATURE` | 0.2 | 标准档温度 |
+| `AIMS_STANDARD_MAX_TOKENS` | 2048 | 标准档最大 tokens |
+| `AIMS_ECONOMY_PROVIDER` | dashscope | 经济档提供商 |
+| `AIMS_ECONOMY_MODEL` | qwen-turbo | 经济档模型 |
+| `AIMS_ECONOMY_TEMPERATURE` | 0.3 | 经济档温度 |
+| `AIMS_ECONOMY_MAX_TOKENS` | 1024 | 经济档最大 tokens |
+| `AIMS_EMBEDDING_PROVIDER` | dashscope | 向量化提供商 |
+| `AIMS_EMBEDDING_MODEL` | text-embedding-v4 | 向量化模型 |
+| `AIMS_EMBEDDING_DIMENSIONS` | 2048 | 向量维度 |
 | `DASHSCOPE_API_KEY` | - | 通义千问 API Key（必填） |
+| `DASHSCOPE_BASE_URL` | https://dashscope.aliyuncs.com/compatible-mode | 通义千问 base URL |
 | `DEEPSEEK_API_KEY` | - | DeepSeek API Key（必填） |
+| `DEEPSEEK_BASE_URL` | https://api.deepseek.com/v1 | DeepSeek base URL |
 | `POSTGRES_PORT` | 15432 | PostgreSQL 端口 |
 | `POSTGRES_USER` | aims | PostgreSQL 用户名 |
 | `POSTGRES_PASSWORD` | aims123 | PostgreSQL 密码 |
 | `REDIS_PORT` | 16379 | Redis 端口 |
 | `REDIS_PASSWORD` | aims123 | Redis 密码 |
 | `KAFKA_PORT` | 9092 | Kafka 端口 |
+| `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka 引导服务器（local profile 下由 KAFKA_PORT 覆盖） |
 | `MINIO_API_PORT` | 9000 | MinIO API 端口 |
 | `MINIO_CONSOLE_PORT` | 9001 | MinIO 控制台端口 |
 | `AIMS_LIVE_TEST` | false | Live 集成测试开关 |

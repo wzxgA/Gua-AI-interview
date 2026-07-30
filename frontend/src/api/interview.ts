@@ -23,14 +23,19 @@ export function useInterviewList(query: InterviewQuery = {}) {
   });
 }
 
-/** 面试详情，PLANNING 状态时 2s 轮询 */
+/** 面试详情，PLANNING / EVALUATING / REPORTING 状态时 2s 轮询 */
 export function useInterview(id: number | undefined) {
   return useQuery({
     queryKey: [KEY, id],
     queryFn: () => http.get<InterviewResponse>(`/api/v1/interviews/${id}`),
     enabled: !!id,
-    refetchInterval: (query) =>
-      query.state.data?.status === 'PLANNING' ? 2000 : false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'PLANNING' || status === 'EVALUATING' || status === 'REPORTING') {
+        return 2000;
+      }
+      return false;
+    },
   });
 }
 

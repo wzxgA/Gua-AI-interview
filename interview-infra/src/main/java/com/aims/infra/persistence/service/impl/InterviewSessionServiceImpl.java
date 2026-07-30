@@ -11,6 +11,7 @@ import com.aims.infra.persistence.service.InterviewSessionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
@@ -137,5 +138,29 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
         wrapper.eq(InterviewRoundEntity::getSessionId, id);
         roundMapper.delete(wrapper);
         sessionMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void updateEvaluationStatus(Long sessionId, String evaluationStatus) {
+        sessionMapper.updateEvaluationStatus(sessionId, evaluationStatus);
+    }
+
+    @Override
+    @Transactional
+    public void updateEvaluatedRounds(Long sessionId, int evaluatedRounds) {
+        sessionMapper.updateEvaluatedRounds(sessionId, evaluatedRounds);
+    }
+
+    @Override
+    @Transactional
+    public void updateTotalRoundsToEvaluate(Long sessionId, int total) {
+        sessionMapper.updateTotalRoundsToEvaluate(sessionId, total);
+    }
+
+    @Override
+    @Transactional
+    public void updateTotalScore(Long sessionId, BigDecimal totalScore) {
+        sessionMapper.updateTotalScore(sessionId, totalScore);
     }
 }
