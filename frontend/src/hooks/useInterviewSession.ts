@@ -25,7 +25,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
 
         case 'QUESTION_START':
           store.setConnected(true);
-          if (msg.roundId != null) store.startQuestion(msg.roundId);
+          if (msg.roundId != null && msg.seq != null) store.startQuestion(msg.roundId, msg.seq);
           break;
 
         case 'QUESTION_CHUNK':

@@ -16,11 +16,11 @@ interface SessionStore {
   // Actions
   setSession: (sessionId: number, status: SessionStatus) => void;
   setStatus: (status: SessionStatus) => void;
-  startQuestion: (roundId: number) => void;
+  startQuestion: (roundId: number, seq: number) => void;
   appendChunk: (text: string) => void;
   finalizeQuestion: () => void;
   addAnswer: (text: string) => void;
-  addQuestion: (roundId: number, text: string) => void;
+  addQuestion: (roundId: number, seq: number, text: string) => void;
   setConnected: (connected: boolean) => void;
   incrementRetry: () => void;
   resetRetry: () => void;
@@ -51,7 +51,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
   setStatus: (status) => set({ status }),
 
-  startQuestion: (roundId) =>
+  startQuestion: (roundId, seq) =>
     set((state) => ({
       currentRoundId: roundId,
       currentQuestion: '',
@@ -63,6 +63,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
           role: 'question',
           text: '',
           roundId,
+          seq,
           timestamp: new Date().toISOString(),
           streaming: true,
         },
@@ -109,7 +110,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
       ],
     })),
 
-  addQuestion: (roundId, text) =>
+  addQuestion: (roundId, seq, text) =>
     set((state) => ({
       messages: [
         ...state.messages,
@@ -118,6 +119,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
           role: 'question',
           text,
           roundId,
+          seq,
           timestamp: new Date().toISOString(),
           streaming: false,
         },

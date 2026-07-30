@@ -49,7 +49,7 @@ export function InterviewRoomPage() {
     if (historyRestoredRef.current) return;
 
     rounds.forEach((r) => {
-      addQuestion(r.id, r.question);
+      addQuestion(r.id, r.seq, r.question);
       if (r.answer) {
         addAnswer(r.answer);
       }

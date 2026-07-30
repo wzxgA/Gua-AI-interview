@@ -19,12 +19,12 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
         {/* 左侧银色竖条 */}
         <div className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-silver-300 to-silver-100" />
 
-        {/* 顶部：AI 面试官 + Q{roundId} */}
+        {/* 顶部：AI 面试官 + Q{seq} */}
         <div className="mb-2 flex items-center gap-2">
           <span className="text-sm font-medium text-silver-200">AI 面试官</span>
-          {message.roundId != null && (
+          {message.seq != null && (
             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-text-muted">
-              Q{message.roundId}
+              Q{message.seq}
             </span>
           )}
         </div>

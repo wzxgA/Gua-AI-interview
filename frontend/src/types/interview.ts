@@ -78,6 +78,7 @@ export interface WsServerMessage {
     | 'ERROR';
   sessionId?: number;
   roundId?: number;
+  seq?: number;
   status?: SessionStatus;
   code?: number;
   message?: string;
@@ -90,6 +91,7 @@ export interface ChatMessage {
   role: 'question' | 'answer';
   text: string;
   roundId?: number;
+  seq?: number;
   timestamp: string;
   streaming?: boolean;
 }

@@ -420,7 +420,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         InterviewRoundEntity round = roundService.createRound(sessionId, seq, fullQuestion);
 
         // 发送 QUESTION_START
-        send(session, WsOutbound.questionStart(sessionId, round.getId()));
+        send(session, WsOutbound.questionStart(sessionId, round.getId(), seq));
 
         // 逐 chunk 发送 QUESTION_CHUNK
         for (String chunk : chunks) {
@@ -428,7 +428,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 发送 QUESTION_END
-        send(session, WsOutbound.questionEnd(sessionId, round.getId(), fullQuestion));
+        send(session, WsOutbound.questionEnd(sessionId, round.getId(), seq, fullQuestion));
 
         // 写入会话记忆
         conversationMemory.addAssistant(
