@@ -158,6 +158,14 @@ public class InterviewController {
         return Result.ok(InterviewResponse.from(entity));
     }
 
+    @Operation(summary = "暂停面试", description = "将会话状态置为 PAUSED")
+    @PostMapping("/{id}/pause")
+    public Result<InterviewResponse> pause(@PathVariable Long id) {
+        sessionService.updateStatus(id, SessionStatus.PAUSED);
+        InterviewSessionEntity entity = sessionService.getById(id);
+        return Result.ok(InterviewResponse.from(entity));
+    }
+
     @Operation(summary = "取消面试", description = "将会话状态置为 CANCELLED 并标记结束时间")
     @PostMapping("/{id}/cancel")
     public Result<InterviewResponse> cancel(@PathVariable Long id) {

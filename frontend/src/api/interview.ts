@@ -79,6 +79,19 @@ export function useFinishInterview() {
   });
 }
 
+/** 暂停面试 */
+export function usePauseInterview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      http.post<InterviewResponse>(`/api/v1/interviews/${id}/pause`),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: [KEY, data.id] });
+    },
+  });
+}
+
 /** 取消面试 */
 export function useCancelInterview() {
   const qc = useQueryClient();

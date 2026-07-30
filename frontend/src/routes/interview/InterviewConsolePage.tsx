@@ -13,6 +13,7 @@ import {
   useStartInterview,
   useCancelInterview,
   useFinishInterview,
+  usePauseInterview,
   useResumeInterview,
 } from '@/api/interview';
 
@@ -25,6 +26,7 @@ export function InterviewConsolePage() {
   const startMutation = useStartInterview();
   const cancelMutation = useCancelInterview();
   const finishMutation = useFinishInterview();
+  const pauseMutation = usePauseInterview();
   const resumeMutation = useResumeInterview();
 
   const handleStart = () => {
@@ -40,6 +42,14 @@ export function InterviewConsolePage() {
     cancelMutation.mutate(interviewId, {
       onSuccess: () => toast.success('面试已取消'),
       onError: (err: Error) => toast.error(err.message || '取消失败'),
+    });
+  };
+
+  const handlePause = () => {
+    if (!interviewId) return;
+    pauseMutation.mutate(interviewId, {
+      onSuccess: () => toast.success('面试已暂停'),
+      onError: (err: Error) => toast.error(err.message || '暂停失败'),
     });
   };
 
@@ -124,7 +134,7 @@ export function InterviewConsolePage() {
               onStart={handleStart}
               onCancel={handleCancel}
               onEnterRoom={() => navigate(`/interviews/${interview.id}/room`)}
-              onPause={() => navigate(`/interviews/${interview.id}/room`)}
+              onPause={handlePause}
               onFinish={handleFinish}
               onResume={handleResume}
               onBack={() => navigate('/interviews')}
