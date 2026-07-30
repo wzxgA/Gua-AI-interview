@@ -8,6 +8,7 @@ import { StatusCard } from '@/components/interview/StatusCard';
 import { PlanViewer } from '@/components/interview/PlanViewer';
 import { RoundTimeline } from '@/components/interview/RoundTimeline';
 import { ActionButtons } from '@/components/interview/ActionButtons';
+import { EvaluationProgress } from '@/components/report/EvaluationProgress';
 import {
   useInterview,
   useStartInterview,
@@ -137,9 +138,18 @@ export function InterviewConsolePage() {
               onPause={handlePause}
               onFinish={handleFinish}
               onResume={handleResume}
+              onViewReport={() => navigate(`/interviews/${interview.id}/report`)}
               onBack={() => navigate('/interviews')}
             />
           </GlassCard>
+          {(interview.status === 'EVALUATING' ||
+            interview.status === 'REPORTING') && (
+            <EvaluationProgress
+              status={interview.status}
+              evaluatedRounds={interview.evaluatedRounds}
+              totalRoundsToEvaluate={interview.totalRoundsToEvaluate}
+            />
+          )}
         </div>
 
         {/* 右侧：计划查看 + 轮次时间线 */}

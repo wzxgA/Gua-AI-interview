@@ -9,6 +9,7 @@ interface ActionButtonsProps {
   onPause?: () => void;
   onFinish?: () => void;
   onResume?: () => void;
+  onViewReport?: () => void;
   onBack?: () => void;
 }
 
@@ -21,6 +22,7 @@ export function ActionButtons({
   onPause,
   onFinish,
   onResume,
+  onViewReport,
 }: ActionButtonsProps) {
   switch (status) {
     case 'CREATED':
@@ -86,7 +88,34 @@ export function ActionButtons({
         </div>
       );
 
+    case 'EVALUATING':
+      return (
+        <div className="flex flex-wrap gap-2">
+          <SilverButton disabled>评估中，请稍候...</SilverButton>
+        </div>
+      );
+
+    case 'REPORTING':
+      return (
+        <div className="flex flex-wrap gap-2">
+          <SilverButton disabled>报告生成中...</SilverButton>
+        </div>
+      );
+
     case 'COMPLETED':
+      return (
+        <div className="flex flex-wrap gap-2">
+          {onViewReport && (
+            <SilverButton onClick={onViewReport}>查看报告</SilverButton>
+          )}
+          {onEnterRoom && (
+            <SilverButton variant="ghost" onClick={onEnterRoom}>
+              面试回顾
+            </SilverButton>
+          )}
+        </div>
+      );
+
     case 'FAILED':
     case 'CANCELLED':
       return (

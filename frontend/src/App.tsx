@@ -13,6 +13,7 @@ import { InterviewListPage } from '@/routes/interview/InterviewListPage';
 import { InterviewCreatePage } from '@/routes/interview/InterviewCreatePage';
 import { InterviewConsolePage } from '@/routes/interview/InterviewConsolePage';
 import { InterviewRoomPage } from '@/routes/interview/InterviewRoomPage';
+import { InterviewReportPage } from '@/routes/interview/InterviewReportPage';
 import { RagDebugPage } from '@/routes/rag/RagDebugPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="interviews/new" element={<InterviewCreatePage />} />
           <Route path="interviews/:id" element={<InterviewConsolePage />} />
           <Route path="interviews/:id/room" element={<InterviewRoomPage />} />
+          <Route path="interviews/:id/report" element={<InterviewReportPage />} />
           <Route path="rag" element={<RagDebugPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
