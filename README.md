@@ -130,7 +130,7 @@ pnpm dev
 | 题库管理 | `/api/v1/questions` | CRUD + `/import` + `/reembed` | 题库增删改查 + 批量导入 + 向量化 ETL |
 | 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + `/{id}/embed` + `/{id}/reembed` + `/reembed-batch` | 简历上传 + 结构化解析 + 向量化 + 重新向量化 + 批量重建 |
 | RAG 检索 | `/api/v1/rag` | `/questions` + `/resumes` | 题库/简历相似度检索，支持 `topK`、`minScore`、`resumeId` 参数 |
-| 面试会话 | `/api/v1/interviews` | CRUD + `/{id}/start` + `/{id}/finish` + `/{id}/cancel` + `/{id}/resume` + `/{id}/rounds` | 面试创建、计划生成、实时问答、结束/取消/恢复、轮次查询 |
+| 面试会话 | `/api/v1/interviews` | CRUD + `/{id}/start` + `/{id}/pause` + `/{id}/finish` + `/{id}/cancel` + `/{id}/resume` + `/{id}/rounds` | 面试创建、计划生成、暂停/结束/取消/恢复、轮次查询 |
 | 面试 WebSocket | `/ws/interview/{sessionId}` | `ANSWER` / `HEARTBEAT` / `PAUSE` / `FINISH` / `CANCEL` | 实时面试问答，连接后自动触发首题，支持断线重连 |
 
 **模型档位说明**：
