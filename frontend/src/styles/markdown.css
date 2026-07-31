@@ -1,0 +1,109 @@
+/* Markdown 渲染深色主题适配 */
+
+/* 代码块：深色半透明背景 */
+.markdown-body .md-code-block {
+  background: rgba(5, 7, 20, 0.6);
+  border: 1px solid rgba(168, 180, 200, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+/* 行内代码 */
+.markdown-body code:not(.md-code-block code) {
+  background: rgba(168, 180, 200, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+  color: var(--silver-glow);
+}
+
+/* 列表缩进 */
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+  margin: 8px 0;
+}
+
+.markdown-body li {
+  margin: 4px 0;
+}
+
+/* 段落间距 */
+.markdown-body p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+/* 标题 */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  font-weight: 600;
+  margin: 12px 0 8px;
+  color: var(--text-primary);
+}
+
+.markdown-body h1 {
+  font-size: 1.25em;
+}
+
+.markdown-body h2 {
+  font-size: 1.15em;
+}
+
+.markdown-body h3 {
+  font-size: 1.05em;
+}
+
+/* 引用块 */
+.markdown-body blockquote {
+  border-left: 3px solid var(--silver-300);
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+/* 表格 */
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid rgba(168, 180, 200, 0.15);
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: rgba(168, 180, 200, 0.05);
+  font-weight: 600;
+}
+
+/* 链接 */
+.markdown-body a {
+  color: var(--silver-glow);
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.markdown-body a:hover {
+  color: var(--silver-100);
+}
+
+/* 分隔线 */
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(168, 180, 200, 0.15);
+  margin: 12px 0;
+}
+
+/* highlight.js 背景透明，由 .md-code-block 控制 */
+.markdown-body .hljs {
+  background: transparent;
+  padding: 0;
+}

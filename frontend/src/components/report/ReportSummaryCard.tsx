@@ -1,5 +1,6 @@
 import type { ReportResponse } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
+import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { RecommendationBadge } from './RecommendationBadge';
 
 interface ReportSummaryCardProps {
@@ -33,9 +34,10 @@ export function ReportSummaryCard({ report }: ReportSummaryCardProps) {
               style={{ width: `${scorePercent}%` }}
             />
           </div>
-          <p className="text-sm leading-relaxed text-text-secondary">
-            {report.summary}
-          </p>
+          <MarkdownRenderer
+            content={report.summary}
+            className="text-sm leading-relaxed text-text-secondary"
+          />
         </div>
       </div>
     </GlassCard>

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
 import { TypewriterCursor } from './TypewriterCursor';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import type { ChatMessage } from '@/types/interview';
 
 interface QuestionBubbleProps {
@@ -29,13 +30,18 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
           )}
         </div>
 
-        {/* 流式文本 + 打字机光标 */}
-        <div className="whitespace-pre-wrap break-words text-sm text-text-primary">
-          {message.text}
-          {message.streaming && (
+        {/* 流式文本 + 打字机光标 / 非流式 Markdown 渲染 */}
+        {message.streaming ? (
+          <div className="whitespace-pre-wrap break-words text-sm text-text-primary">
+            {message.text}
             <TypewriterCursor />
-          )}
-        </div>
+          </div>
+        ) : (
+          <MarkdownRenderer
+            content={message.text}
+            className="text-sm text-text-primary"
+          />
+        )}
       </GlassCard>
     </motion.div>
   );

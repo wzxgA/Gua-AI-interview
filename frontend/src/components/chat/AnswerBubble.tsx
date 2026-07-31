@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import type { ChatMessage } from '@/types/interview';
 
 interface AnswerBubbleProps {
@@ -26,10 +27,11 @@ export function AnswerBubble({ message }: AnswerBubbleProps) {
           <span className="text-sm font-medium text-silver-200">候选人</span>
         </div>
 
-        {/* 回答文本 */}
-        <div className="whitespace-pre-wrap break-words text-right text-sm text-text-primary">
-          {message.text}
-        </div>
+        {/* 回答文本（Markdown 渲染，块级内容统一左对齐） */}
+        <MarkdownRenderer
+          content={message.text}
+          className="text-sm text-text-primary"
+        />
       </GlassCard>
     </motion.div>
   );

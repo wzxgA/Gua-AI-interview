@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import App from './App';
+import 'highlight.js/styles/github-dark.css';
 import './styles/globals.css';
+import './styles/markdown.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
