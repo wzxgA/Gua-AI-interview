@@ -14,8 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,6 +57,14 @@ public class ResumeController {
     @Operation(summary = "触发解析", description = "手动触发简历结构化解析（AI 抽取为结构化 JSON）")
     public Result<ResumeResponse> parse(@PathVariable Long id) {
         ResumeEntity entity = resumeService.parse(id);
+        return Result.ok(toResponse(entity));
+    }
+
+    @PatchMapping("/{id}/parsed-resume")
+    @Operation(summary = "人工修改解析结果", description = "修改解析后的结构化简历，自动失效旧向量并异步重新向量化")
+    public Result<ResumeResponse> updateParsed(
+            @PathVariable Long id, @RequestBody ParsedResume parsed) {
+        ResumeEntity entity = resumeService.updateParsedResume(id, parsed);
         return Result.ok(toResponse(entity));
     }
 

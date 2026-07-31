@@ -49,6 +49,12 @@ public interface ResumeMapper extends BaseMapper<ResumeEntity> {
                     + " parse_error = NULL, parsed_at = now(), updated_at = now() WHERE id = #{id}")
     int markParsed(@Param("id") Long id, @Param("parsedJson") String parsedJson);
 
+    /** 人工修改 parsedJson，不改动 parse_status / parsed_at。 */
+    @Update(
+            "UPDATE resume SET parsed_json = #{parsedJson}::jsonb, updated_at = now() WHERE id ="
+                    + " #{id}")
+    int updateParsedJson(@Param("id") Long id, @Param("parsedJson") String parsedJson);
+
     /** 记录解析失败。 */
     @Update(
             "UPDATE resume SET parse_status = 'FAILED', parse_error = #{error},"

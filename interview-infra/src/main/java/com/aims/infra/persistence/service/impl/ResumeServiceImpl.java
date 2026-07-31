@@ -189,6 +189,37 @@ public class ResumeServiceImpl implements ResumeService {
     }
 
     @Override
+    public ResumeEntity updateParsedResume(Long id, ParsedResume parsed) {
+        ResumeEntity entity = resumeMapper.selectById(id);
+        if (entity == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "简历不存在: " + id);
+        }
+        if (!ResumeStatus.PARSED.name().equals(entity.getParseStatus())) {
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "仅解析成功的简历可编辑: " + id);
+        }
+        validateParsedResume(parsed);
+        try {
+            String parsedJson = objectMapper.writeValueAsString(parsed);
+            resumeMapper.updateParsedJson(id, parsedJson);
+            resumeMapper.invalidateEmbedding(id);
+            Thread.startVirtualThread(
+                    () -> {
+                        try {
+                            embed(id);
+                        } catch (Exception e) {
+                            log.error("人工修改后自动向量化失败 id={}", id, e);
+                        }
+                    });
+            return resumeMapper.selectById(id);
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("人工修改简历失败 id={}", id, e);
+            throw new BizException(ErrorCode.RESUME_PARSE_FAILED, "人工修改简历失败: " + id, e);
+        }
+    }
+
+    @Override
     public ResumeEntity getById(Long id) {
         ResumeEntity entity = resumeMapper.selectById(id);
         if (entity == null) {

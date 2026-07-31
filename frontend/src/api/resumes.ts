@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { http } from './client';
 import type { Page } from '@/types/common';
-import type { ResumeResponse, ResumeQuery } from '@/types/resume';
+import type { ResumeResponse, ResumeQuery, ParsedResume } from '@/types/resume';
 
 const KEY = 'resumes';
 
@@ -49,6 +49,18 @@ export function useParseResume() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => http.post<ResumeResponse>(`/api/v1/resumes/${id}/parse`),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: [KEY, data.id] });
+      qc.invalidateQueries({ queryKey: [KEY] });
+    },
+  });
+}
+
+export function useUpdateParsedResume() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: number; parsed: ParsedResume }) =>
+      http.patch<ResumeResponse>(`/api/v1/resumes/${data.id}/parsed-resume`, data.parsed),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: [KEY, data.id] });
       qc.invalidateQueries({ queryKey: [KEY] });

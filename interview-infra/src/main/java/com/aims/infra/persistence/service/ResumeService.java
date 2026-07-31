@@ -1,6 +1,7 @@
 package com.aims.infra.persistence.service;
 
 import com.aims.core.common.PageQuery;
+import com.aims.core.resume.ParsedResume;
 import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -31,6 +32,17 @@ public interface ResumeService {
      * @return 更新后的简历实体
      */
     ResumeEntity parse(Long id);
+
+    /**
+     * 人工修改解析后的简历。
+     *
+     * <p>校验后写入 parsedJson，失效旧向量并异步重新向量化。仅 PARSED 状态的简历允许编辑。
+     *
+     * @param id 简历 ID
+     * @param parsed 修正后的结构化简历
+     * @return 更新后的简历实体
+     */
+    ResumeEntity updateParsedResume(Long id, ParsedResume parsed);
 
     /**
      * 查询单条简历。
