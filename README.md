@@ -17,6 +17,7 @@
 | 文档抽取 | Apache PDFBox 3.0（简历 PDF 文本抽取） |
 | API 文档 | springdoc-openapi（Swagger UI） |
 | 代码格式化 | Spotless + Google Java Format |
+| 安全 | Spring Security 6 + JWT（jjwt 0.12.6）+ BCrypt |
 | 前端 | React 19 + TypeScript + Vite 6 + Tailwind CSS 3.4 + TanStack Query |
 
 ## 模块结构
@@ -110,6 +111,7 @@ pnpm dev
 - Swagger UI：http://localhost:8080/swagger-ui.html
 - 健康检查：http://localhost:8080/actuator/health
 - 前端页面：http://localhost:5173
+- 默认账号：admin / admin123（首次启动由 AdminUserInitializer 自动创建）
 
 ## API 接口
 
@@ -126,6 +128,7 @@ pnpm dev
 
 | 模块 | 路径前缀 | 端点 | 说明 |
 |------|----------|------|------|
+| 认证 | `/api/v1/auth` | `/login` + `/refresh` + `/logout` + `/me` | 用户名密码登录、刷新令牌、登出、获取当前用户（P6 已实现） |
 | 岗位管理 | `/api/v1/positions` | CRUD + `/{id}/embed` | 岗位增删改查 + JD 向量化 |
 | 题库管理 | `/api/v1/questions` | CRUD + `/import` + `/reembed` | 题库增删改查 + 批量导入 + 向量化 ETL |
 | 简历管理 | `/api/v1/resumes` | `/upload` + `/{id}/parse` + `/{id}/embed` + `/{id}/reembed` + `/reembed-batch` | 简历上传 + 结构化解析 + 向量化 + 重新向量化 + 批量重建 |
@@ -228,6 +231,9 @@ mvn spotless:apply
 | `KAFKA_BOOTSTRAP_SERVERS` | localhost:9092 | Kafka 引导服务器（local profile 下由 KAFKA_PORT 覆盖） |
 | `MINIO_API_PORT` | 9000 | MinIO API 端口 |
 | `MINIO_CONSOLE_PORT` | 9001 | MinIO 控制台端口 |
+| `AIMS_JWT_SECRET` | - | JWT 签名密钥（至少 32 字节，生产必须修改） |
+| `AIMS_JWT_ACCESS_TTL` | 7200 | AccessToken 有效期（秒） |
+| `AIMS_JWT_REFRESH_TTL` | 604800 | RefreshToken 有效期（秒） |
 | `AIMS_LIVE_TEST` | false | Live 集成测试开关 |
 
 ### 版本锁定说明
