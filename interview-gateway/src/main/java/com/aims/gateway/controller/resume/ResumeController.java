@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -110,6 +111,7 @@ public class ResumeController {
 
     @PostMapping("/reembed-batch")
     @Operation(summary = "批量重新向量化", description = "异步处理所有已解析但无向量的简历，返回任务 ID")
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<BatchReembedTask> reembedBatch(@RequestParam(defaultValue = "20") int batchSize) {
         String taskId = resumeService.reembedBatch(batchSize);
         BatchReembedTask task = new BatchReembedTask(taskId, "RUNNING", 0, 0, 0, null, null, null);

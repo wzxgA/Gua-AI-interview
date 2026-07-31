@@ -46,7 +46,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     if (!sessionId) return;
     shouldConnectRef.current = true;
 
-    const url = `${WS_BASE}/ws/interview/${sessionId}`;
+    const url = `${WS_BASE}/ws/interview/${sessionId}?token=${localStorage.getItem('accessToken') ?? ''}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 

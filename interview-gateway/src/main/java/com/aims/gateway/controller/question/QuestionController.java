@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -85,6 +86,7 @@ public class QuestionController {
 
     @Operation(summary = "存量补齐 embedding", description = "查询 embedding 为空的题目，分批向量化")
     @PostMapping("/reembed")
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<Integer> reembed() {
         int count = questionService.embedAll();
         return Result.ok(count);

@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -94,6 +96,22 @@ public class GlobalExceptionHandler {
         log.warn("资源不存在: {}", e.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Result.fail(ErrorCode.RESOURCE_NOT_FOUND, "资源不存在: " + e.getResourcePath()));
+    }
+
+    /** 认证异常（Spring Security）→ 401。 */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Result<Void>> handleAuth(AuthenticationException e) {
+        log.warn("认证失败: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Result.fail(ErrorCode.UNAUTHORIZED, e.getMessage()));
+    }
+
+    /** 授权异常（Spring Security）→ 403。 */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Result<Void>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("访问被拒: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Result.fail(ErrorCode.ACCESS_DENIED));
     }
 
     /** 兜底。 */
