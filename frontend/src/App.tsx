@@ -1,6 +1,8 @@
 import { Routes, Route } from 'react-router-dom';
 import { StarfieldBackground } from '@/components/starfield/StarfieldBackground';
 import { AppShell } from '@/components/layout/AppShell';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { LoginPage } from '@/routes/LoginPage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
 import { PositionListPage } from '@/routes/positions/PositionListPage';
 import { PositionDetailPage } from '@/routes/positions/PositionDetailPage';
@@ -22,7 +24,14 @@ export default function App() {
     <>
       <StarfieldBackground />
       <Routes>
-        <Route element={<AppShell />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardPage />} />
           <Route path="positions" element={<PositionListPage />} />
           <Route path="positions/:id" element={<PositionDetailPage />} />

@@ -16,10 +16,46 @@ export class ApiError extends Error {
 interface RequestOptions extends RequestInit {
   // 是否直接返回 data（默认 true）
   unwrap?: boolean;
+  // 内部标记：已自动刷新过，避免无限循环
+  _retried?: boolean;
+}
+
+// ---- Token 刷新锁 ----
+let refreshing: Promise<string | null> | null = null;
+
+async function doRefresh(): Promise<string | null> {
+  if (refreshing) return refreshing;
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+  refreshing = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return null;
+      const result: Result<{ accessToken: string; refreshToken: string }> = await res.json();
+      if (result.code !== 0) return null;
+      localStorage.setItem('accessToken', result.data.accessToken);
+      localStorage.setItem('refreshToken', result.data.refreshToken);
+      return result.data.accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+function clearTokens() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 }
 
 async function request<T>(url: string, options?: RequestOptions): Promise<T> {
-  const { unwrap = true, ...init } = options ?? {};
+  const { unwrap = true, _retried = false, ...init } = options ?? {};
 
   // FormData 上传时不设置 Content-Type，让浏览器自动生成 multipart boundary
   const isFormData = init.body instanceof FormData;
@@ -27,11 +63,30 @@ async function request<T>(url: string, options?: RequestOptions): Promise<T> {
   if (!isFormData) {
     headers.set('Content-Type', 'application/json');
   }
+  // 注入 Authorization 头
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   const res = await fetch(`${API_BASE}${url}`, {
     ...init,
     headers,
   });
+
+  // 401 自动刷新 + 重放（排除 auth 接口自身）
+  if (res.status === 401 && !_retried && !url.includes('/auth/')) {
+    const newToken = await doRefresh();
+    if (newToken) {
+      return request<T>(url, { ...options, _retried: true });
+    }
+    // 刷新失败，清除 token 并跳转登录
+    clearTokens();
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+    throw new ApiError(5001, '未登录或令牌已过期', '');
+  }
 
   if (!res.ok) {
     let result: Result<unknown> | null = null;

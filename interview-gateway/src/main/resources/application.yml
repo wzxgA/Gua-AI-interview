@@ -101,6 +101,11 @@ aims:
     retry:
       max-attempts: 2
       initial-backoff: 500ms
+  security:
+    jwt:
+      secret: ${AIMS_JWT_SECRET}
+      access-ttl: ${AIMS_JWT_ACCESS_TTL:7200}
+      refresh-ttl: ${AIMS_JWT_REFRESH_TTL:604800}
 
 logging:
   level:
