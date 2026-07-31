@@ -37,6 +37,7 @@ public final class ResumePromptBuilder {
               - period: 时间段
               - description: 项目描述
               - highlights: 项目亮点列表（字符串数组）
+            - awards: 竞赛奖项或证书名称列表（字符串数组，如["ACM-ICPC 亚洲区域赛金奖", "PMP 认证"]，无数据时为空数组）
 
             约束：
             1. 只输出 JSON，不输出 Markdown 代码块或额外说明

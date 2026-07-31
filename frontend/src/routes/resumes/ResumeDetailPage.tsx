@@ -249,6 +249,22 @@ export function ResumeDetailPage() {
               <p className="text-sm text-text-muted">暂无项目经历数据</p>
             )}
           </GlassCard>
+
+          {/* 竞赛/证书 */}
+          <GlassCard className="p-6">
+            <h3 className="mb-4 text-sm font-medium text-text-muted">竞赛/证书</h3>
+            {parsed.awards?.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {parsed.awards.map((award, index) => (
+                  <Badge key={index} variant="category">
+                    {award.name}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">暂无竞赛/证书数据</p>
+            )}
+          </GlassCard>
         </>
       )}
     </div>

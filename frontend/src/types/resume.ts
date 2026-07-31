@@ -24,6 +24,12 @@ export interface ParsedResume {
   skills: string[];
   workExperiences: WorkExperience[];
   projectExperiences: ProjectExperience[];
+  awards: Award[] | null;
+}
+
+/** 对齐 Award */
+export interface Award {
+  name: string;
 }
 
 /** 对齐 WorkExperience */
