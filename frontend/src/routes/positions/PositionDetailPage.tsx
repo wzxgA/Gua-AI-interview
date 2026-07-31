@@ -163,7 +163,7 @@ export function PositionDetailPage() {
       {/* JD 文本展示 */}
       <GlassCard className="p-6">
         <h3 className="mb-3 text-sm font-medium text-text-muted">岗位描述（JD）</h3>
-        <pre className="whitespace-pre-wrap break-words rounded-md bg-white/[0.02] p-4 text-sm text-text-secondary">
+        <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
           {position.jdText}
         </pre>
       </GlassCard>

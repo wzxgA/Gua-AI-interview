@@ -186,7 +186,7 @@ export function PositionListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-text-muted">
+                <tr className="border-b border-border-subtle text-text-muted">
                   <th className="px-4 py-3 text-left font-medium">岗位名称</th>
                   <th className="px-4 py-3 text-left font-medium">部门</th>
                   <th className="px-4 py-3 text-left font-medium">状态</th>
@@ -197,7 +197,7 @@ export function PositionListPage() {
               </thead>
               <tbody>
                 {records.map((position) => (
-                  <tr key={position.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                  <tr key={position.id} className="border-b border-border-subtle hover:bg-surface-overlay transition-colors">
                     <td className="px-4 py-3">
                       <Link
                         to={`/positions/${position.id}`}
@@ -270,7 +270,7 @@ export function PositionListPage() {
 
       {/* 创建/编辑弹窗 */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-lg p-6">
             <h3 className="mb-4 text-lg font-semibold text-text-primary">
               {editingPosition ? '编辑岗位' : '创建岗位'}
@@ -323,7 +323,7 @@ export function PositionListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
             <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
             <p className="mb-4 text-sm text-text-secondary">

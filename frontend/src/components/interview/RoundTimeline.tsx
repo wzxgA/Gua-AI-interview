@@ -44,7 +44,7 @@ export function RoundTimeline({ planJson, currentRoundId }: RoundTimelineProps) 
             <div key={q.questionId} className="relative pl-6 pb-4 last:pb-0">
               {/* 连线 */}
               {i < questions.length - 1 && (
-                <div className="absolute left-[3px] top-3 h-full w-px bg-white/10" />
+                <div className="absolute left-[3px] top-3 h-full w-px bg-surface-hover" />
               )}
               {/* 节点：实心点(已回答) / 脉动点(进行中) / 空心点(未开始) */}
               <div
@@ -55,7 +55,7 @@ export function RoundTimeline({ planJson, currentRoundId }: RoundTimelineProps) 
                     'border-silver-200 bg-silver-200 animate-pulse-slow',
                   !isAnswered &&
                     !isInProgress &&
-                    'border-white/20 bg-transparent',
+                    'border-border-strong bg-transparent',
                 )}
               />
               <div className="flex items-center gap-2">

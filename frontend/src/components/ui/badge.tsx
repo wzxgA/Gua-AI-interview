@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 type Variant = 'default' | 'category' | 'difficulty' | 'score';
 
 const variants: Record<Variant, string> = {
-  default: 'border-white/10 bg-white/5 text-text-secondary',
+  default: 'border-border-default bg-surface-hover text-text-secondary',
   category: 'border-silver-300/30 bg-silver-300/10 text-silver-200',
   difficulty: 'border-sky-400/30 bg-sky-400/10 text-sky-300',
   score: 'border-silver-glow/30 bg-silver-glow/10 text-silver-100',

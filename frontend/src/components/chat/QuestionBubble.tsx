@@ -24,7 +24,7 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
         <div className="mb-2 flex items-center gap-2">
           <span className="text-sm font-medium text-silver-200">AI 面试官</span>
           {message.seq != null && (
-            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-text-muted">
+            <span className="rounded-full border border-border-default bg-surface-hover px-2 py-0.5 text-xs text-text-muted">
               Q{message.seq}
             </span>
           )}

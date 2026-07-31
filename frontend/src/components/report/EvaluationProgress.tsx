@@ -43,7 +43,7 @@ export function EvaluationProgress({
           )}
         </div>
         {isEvaluating && total > 0 && (
-          <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/5">
+          <div className="h-1.5 w-48 overflow-hidden rounded-full bg-surface-hover">
             <div
               className="h-full rounded-full bg-sky-400/60 transition-all duration-500"
               style={{ width: `${percent}%` }}

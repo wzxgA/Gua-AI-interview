@@ -324,7 +324,7 @@ export function RagDebugPage() {
 
 function MetricsBar({ metrics }: { metrics: SearchMetrics }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-4 rounded-lg bg-white/5 px-3 py-2 text-xs text-text-muted">
+    <div className="mb-4 flex flex-wrap gap-4 rounded-lg bg-surface-hover px-3 py-2 text-xs text-text-muted">
       <span>Embedding: {metrics.embeddingMs}ms</span>
       <span>SQL: {metrics.sqlMs}ms</span>
       <span>总耗时: {metrics.totalMs}ms</span>
@@ -337,7 +337,7 @@ function EmptyResults({ minScore }: { minScore: number }) {
   return (
     <div className="space-y-2">
       <EmptyState message="未检索到相关结果" />
-      <div className="rounded-lg bg-white/5 px-4 py-3 text-xs text-text-muted">
+      <div className="rounded-lg bg-surface-hover px-4 py-3 text-xs text-text-muted">
         <p className="mb-1 font-medium text-text-secondary">可能原因：</p>
         <ul className="ml-4 list-disc space-y-1">
           <li>简历尚未完成向量化（请到简历管理页检查向量状态）</li>
@@ -353,7 +353,7 @@ function ScoreBar({ score }: { score: number }) {
   const pct = Math.min(Math.max(score * 100, 0), 100);
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/5">
+      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-hover">
         <div
           className="h-full bg-gradient-to-r from-silver-300 via-silver-100 to-silver-300"
           style={{ width: `${pct}%` }}

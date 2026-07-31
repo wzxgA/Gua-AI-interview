@@ -41,7 +41,7 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs',
-        'border border-white/10 bg-white/5',
+        'border border-border-default bg-surface-hover',
       )}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', cfg.color, cfg.pulse && 'animate-pulse-slow')} />

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Star {
   x: number;
@@ -11,8 +12,12 @@ interface Star {
 
 export function StarfieldBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
+    if (!isDark) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -66,7 +71,14 @@ export function StarfieldBackground() {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', resize);
     };
-  }, []);
+  }, [isDark]);
+
+  // 浅色主题：静态渐变背景，无星空动画
+  if (!isDark) {
+    return (
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--space-700)_0%,_var(--space-900)_60%)]" />
+    );
+  }
 
   return (
     <div className="fixed inset-0 -z-10">

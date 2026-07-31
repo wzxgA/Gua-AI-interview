@@ -18,8 +18,8 @@ const variants: Record<Variant, string> = {
     'before:animate-stream',
   ),
   ghost: cn(
-    'border border-white/10 bg-transparent text-text-secondary',
-    'hover:bg-white/5 hover:text-text-primary hover:border-white/20',
+    'border border-border-default bg-transparent text-text-secondary',
+    'hover:bg-surface-hover hover:text-text-primary hover:border-border-strong',
     'transition-all',
   ),
   danger: cn(

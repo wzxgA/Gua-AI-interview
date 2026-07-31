@@ -6,7 +6,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
     <input
       ref={ref}
       className={cn(
-        'w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm',
+        'w-full rounded-md border border-border-default bg-surface-overlay px-3 py-2 text-sm',
         'text-text-primary placeholder:text-text-muted',
         'focus:border-silver-300/50 focus:outline-none focus:ring-1 focus:ring-silver-300/30',
         'transition-colors',
@@ -25,7 +25,7 @@ export const Textarea = forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      'w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm',
+      'w-full rounded-md border border-border-default bg-surface-overlay px-3 py-2 text-sm',
       'text-text-primary placeholder:text-text-muted',
       'focus:border-silver-300/50 focus:outline-none focus:ring-1 focus:ring-silver-300/30',
       'transition-colors resize-none',
@@ -43,7 +43,7 @@ export const Select = forwardRef<
   <select
     ref={ref}
     className={cn(
-      'w-full rounded-md border border-white/10 bg-space-700 px-3 py-2 text-sm',
+      'w-full rounded-md border border-border-default bg-space-700 px-3 py-2 text-sm',
       'text-text-primary',
       'focus:border-silver-300/50 focus:outline-none focus:ring-1 focus:ring-silver-300/30',
       'transition-colors',

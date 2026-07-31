@@ -8,12 +8,22 @@ import {
 } from 'recharts';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface DimensionRadarChartProps {
   scores: Partial<Record<EvaluationDimension, number>>;
 }
 
 export function DimensionRadarChart({ scores }: DimensionRadarChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  const gridColor = isDark ? 'rgba(200,212,232,0.1)' : 'rgba(0,0,0,0.08)';
+  const axisColor = isDark ? 'rgba(200,212,232,0.6)' : 'rgba(0,0,0,0.5)';
+  const radiusColor = isDark ? 'rgba(200,212,232,0.3)' : 'rgba(0,0,0,0.2)';
+  const strokeColor = isDark ? 'rgba(56,189,248,0.8)' : 'rgba(2,132,199,0.9)';
+  const fillColor = isDark ? 'rgba(56,189,248,0.2)' : 'rgba(2,132,199,0.15)';
+
   const data = (Object.keys(DIMENSION_CONFIG) as EvaluationDimension[]).map(
     (dim) => ({
       dimension: DIMENSION_CONFIG[dim].label,
@@ -27,20 +37,20 @@ export function DimensionRadarChart({ scores }: DimensionRadarChartProps) {
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data}>
-            <PolarGrid stroke="rgba(200,212,232,0.1)" />
+            <PolarGrid stroke={gridColor} />
             <PolarAngleAxis
               dataKey="dimension"
-              tick={{ fill: 'rgba(200,212,232,0.6)', fontSize: 12 }}
+              tick={{ fill: axisColor, fontSize: 12 }}
             />
             <PolarRadiusAxis
               domain={[0, 5]}
-              tick={{ fill: 'rgba(200,212,232,0.3)', fontSize: 10 }}
+              tick={{ fill: radiusColor, fontSize: 10 }}
               axisLine={false}
             />
             <Radar
               dataKey="score"
-              stroke="rgba(56,189,248,0.8)"
-              fill="rgba(56,189,248,0.2)"
+              stroke={strokeColor}
+              fill={fillColor}
               strokeWidth={2}
             />
           </RadarChart>

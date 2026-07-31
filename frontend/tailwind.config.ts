@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
@@ -15,6 +16,7 @@ const config: Config = {
           100: 'var(--silver-100)',
           200: 'var(--silver-200)',
           300: 'var(--silver-300)',
+          400: 'var(--silver-400)',
           glow: 'var(--silver-glow)',
           dim: 'var(--silver-dim)',
         },
@@ -25,6 +27,12 @@ const config: Config = {
         warning: 'var(--warning)',
         danger: 'var(--danger)',
         info: 'var(--info)',
+        'surface-overlay': 'var(--surface-overlay)',
+        'surface-hover': 'var(--surface-hover)',
+        'border-default': 'var(--border-default)',
+        'border-subtle': 'var(--border-subtle)',
+        'border-strong': 'var(--border-strong)',
+        'modal-scrim': 'var(--modal-scrim)',
       },
       fontFamily: {
         sans: ['Inter', 'HarmonyOS Sans SC', 'PingFang SC', 'system-ui', 'sans-serif'],

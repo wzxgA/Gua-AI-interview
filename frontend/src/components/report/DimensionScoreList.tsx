@@ -24,7 +24,7 @@ export function DimensionScoreList({ scores }: DimensionScoreListProps) {
                 </span>
               </div>
               <div className="flex-1">
-                <div className="h-2 overflow-hidden rounded-full bg-white/5">
+                <div className="h-2 overflow-hidden rounded-full bg-surface-hover">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-sky-500/60 to-sky-400/80 transition-all duration-500"
                     style={{ width: `${percent}%` }}

@@ -35,7 +35,7 @@ function TagEditor({
         <button
           key={i}
           onClick={() => onChange(tags.filter((_, idx) => idx !== i))}
-          className="rounded-full bg-white/[0.08] px-3 py-1 text-xs text-text-primary transition hover:bg-white/[0.16]"
+          className="rounded-full bg-surface-hover px-3 py-1 text-xs text-text-primary transition hover:bg-border-strong"
         >
           {t} ×
         </button>
@@ -57,7 +57,7 @@ function TagEditor({
 }
 
 const inputClass =
-  'w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary outline-none transition focus:border-silver-400/50';
+  'w-full rounded-md border border-border-default bg-surface-overlay px-3 py-2 text-sm text-text-primary outline-none transition focus:border-silver-400/50';
 
 // ---------- 主页面 ----------
 
@@ -342,7 +342,7 @@ export function ResumeDetailPage() {
       {/* 原文摘要 */}
       <GlassCard className="p-6">
         <h3 className="mb-3 text-sm font-medium text-text-muted">原文摘要</h3>
-        <pre className="whitespace-pre-wrap break-words rounded-md bg-white/[0.02] p-4 text-sm text-text-secondary">
+        <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
           {resume.rawText || '暂无原文内容'}
         </pre>
       </GlassCard>
@@ -436,7 +436,7 @@ export function ResumeDetailPage() {
             {isEditing && draft ? (
               <div className="space-y-4">
                 {draft.workExperiences.map((exp, index) => (
-                  <div key={index} className="space-y-3 rounded-md border border-white/10 p-4">
+                  <div key={index} className="space-y-3 rounded-md border border-border-default p-4">
                     <div className="flex items-center justify-between">
                       <select
                         className={inputClass}
@@ -488,7 +488,7 @@ export function ResumeDetailPage() {
                     <div key={index} className="relative pl-6 pb-6 last:pb-0">
                       <div className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-silver-300" />
                       {index < parsed.workExperiences.length - 1 && (
-                        <div className="absolute left-[3px] top-4 h-full w-px bg-white/10" />
+                        <div className="absolute left-[3px] top-4 h-full w-px bg-surface-hover" />
                       )}
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="category">
@@ -525,7 +525,7 @@ export function ResumeDetailPage() {
             {isEditing && draft ? (
               <div className="space-y-4">
                 {draft.projectExperiences.map((project, index) => (
-                  <div key={index} className="space-y-3 rounded-md border border-white/10 p-4">
+                  <div key={index} className="space-y-3 rounded-md border border-border-default p-4">
                     <div className="flex items-center justify-between">
                       <input
                         className={inputClass}
@@ -590,7 +590,7 @@ export function ResumeDetailPage() {
                 {parsed.projectExperiences.map((project, index) => (
                   <div
                     key={index}
-                    className="border-b border-white/10 pb-6 last:border-b-0 last:pb-0"
+                    className="border-b border-border-default pb-6 last:border-b-0 last:pb-0"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">

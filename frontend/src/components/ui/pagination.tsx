@@ -25,7 +25,7 @@ export function Pagination({ current, total, size, onPageChange }: PaginationPro
           'rounded-md px-3 py-1 text-xs transition-colors',
           current <= 1
             ? 'text-text-muted/40 pointer-events-none'
-            : 'text-text-secondary hover:bg-white/5 hover:text-text-primary',
+            : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
         )}
       >
         上一页
@@ -42,7 +42,7 @@ export function Pagination({ current, total, size, onPageChange }: PaginationPro
                 'rounded-md px-3 py-1 text-xs transition-colors',
                 p === current
                   ? 'bg-silver-300/20 text-silver-100 border border-silver-300/30'
-                  : 'text-text-secondary hover:bg-white/5 hover:text-text-primary',
+                  : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
               )}
             >
               {p}
@@ -57,7 +57,7 @@ export function Pagination({ current, total, size, onPageChange }: PaginationPro
           'rounded-md px-3 py-1 text-xs transition-colors',
           current >= totalPages
             ? 'text-text-muted/40 pointer-events-none'
-            : 'text-text-secondary hover:bg-white/5 hover:text-text-primary',
+            : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
         )}
       >
         下一页

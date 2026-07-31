@@ -1,9 +1,9 @@
-/* Markdown 渲染深色主题适配 */
+/* Markdown 渲染主题适配（深色/浅色） */
 
-/* 代码块：深色半透明背景 */
+/* 代码块 */
 .markdown-body .md-code-block {
-  background: rgba(5, 7, 20, 0.6);
-  border: 1px solid rgba(168, 180, 200, 0.1);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 12px;
   overflow-x: auto;
@@ -12,7 +12,7 @@
 
 /* 行内代码 */
 .markdown-body code:not(.md-code-block code) {
-  background: rgba(168, 180, 200, 0.1);
+  background: var(--surface-hover);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.875em;
@@ -74,13 +74,13 @@
 
 .markdown-body th,
 .markdown-body td {
-  border: 1px solid rgba(168, 180, 200, 0.15);
+  border: 1px solid var(--border-default);
   padding: 6px 12px;
   text-align: left;
 }
 
 .markdown-body th {
-  background: rgba(168, 180, 200, 0.05);
+  background: var(--surface-overlay);
   font-weight: 600;
 }
 
@@ -98,7 +98,7 @@
 /* 分隔线 */
 .markdown-body hr {
   border: none;
-  border-top: 1px solid rgba(168, 180, 200, 0.15);
+  border-top: 1px solid var(--border-default);
   margin: 12px 0;
 }
 

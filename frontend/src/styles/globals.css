@@ -2,34 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 浅色主题（默认） */
 :root {
   /* 背景层 */
+  --space-900: #f5f7fa;
+  --space-800: #eef1f6;
+  --space-700: #ffffff;
+  --space-600: #f0f3f8;
+
+  /* 文字 */
+  --text-primary: #1a1f36;
+  --text-secondary: #4a5170;
+  --text-muted: #8a92ad;
+
+  /* 银色流光强调（浅色下调深） */
+  --silver-100: #2a3556;
+  --silver-200: #3d4a6b;
+  --silver-300: #6b7890;
+  --silver-400: #8a96ae;
+  --silver-glow: #4a5680;
+  --silver-dim: #aab2c8;
+
+  /* 语义色（浅色下调深） */
+  --success: #0d9d5e;
+  --warning: #d97e0d;
+  --danger: #d6377e;
+  --info: var(--silver-200);
+
+  /* 语义层变量 */
+  --surface-overlay: rgba(0, 0, 0, 0.025);
+  --surface-hover: rgba(0, 0, 0, 0.04);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  --modal-scrim: rgba(0, 0, 0, 0.4);
+  --shadow-glow: rgba(60, 80, 120, 0.08);
+}
+
+/* 深色主题 */
+.dark {
   --space-900: #050714;
   --space-800: #0a0f24;
   --space-700: #111936;
   --space-600: #1a2347;
 
-  /* 文字 */
   --text-primary: #e8ecff;
   --text-secondary: #a8b0d0;
   --text-muted: #6b7299;
 
-  /* 银色流光强调 */
   --silver-100: #f0f4ff;
   --silver-200: #d4dce8;
   --silver-300: #a8b4c8;
+  --silver-400: #c8d4e8;
   --silver-glow: #c8d4e8;
   --silver-dim: #6b7890;
 
-  /* 语义色 */
   --success: #5dffac;
   --warning: #ffc24d;
   --danger: #ff5ea8;
   --info: var(--silver-200);
+
+  --surface-overlay: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --modal-scrim: rgba(0, 0, 0, 0.7);
+  --shadow-glow: rgba(200, 212, 232, 0.04);
 }
 
 * {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-subtle);
 }
 
 body {
@@ -51,16 +94,16 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(168, 180, 200, 0.15);
+  background: var(--surface-hover);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 180, 200, 0.3);
+  background: var(--border-strong);
 }
 
 /* 选中文本 */
 ::selection {
-  background: rgba(200, 212, 232, 0.2);
+  background: var(--surface-hover);
   color: var(--silver-100);
 }
 

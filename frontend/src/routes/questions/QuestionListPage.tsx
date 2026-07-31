@@ -241,7 +241,7 @@ export function QuestionListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-text-muted">
+                <tr className="border-b border-border-subtle text-text-muted">
                   <th className="px-4 py-3 text-left font-medium">题目内容</th>
                   <th className="px-4 py-3 text-left font-medium">分类</th>
                   <th className="px-4 py-3 text-left font-medium">难度</th>
@@ -254,7 +254,7 @@ export function QuestionListPage() {
                 {records.map((question) => (
                   <tr
                     key={question.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                    className="border-b border-border-subtle hover:bg-surface-overlay transition-colors"
                   >
                     <td className="px-4 py-3 text-text-primary">
                       {truncate(question.content, 50)}
@@ -314,7 +314,7 @@ export function QuestionListPage() {
 
       {/* 创建/编辑弹窗 */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="mb-4 text-lg font-semibold text-text-primary">
               {editingQuestion ? '编辑题目' : '创建题目'}
@@ -389,7 +389,7 @@ export function QuestionListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
             <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
             <p className="mb-4 text-sm text-text-secondary">

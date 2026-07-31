@@ -58,7 +58,7 @@ export function PlanViewer({ planJson }: PlanViewerProps) {
             {plan.sections.map((section, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 rounded-md bg-white/[0.02] p-3"
+                className="flex items-start gap-3 rounded-md bg-surface-overlay p-3"
               >
                 <span className="mt-0.5 text-xs text-silver-300">Q{i + 1}</span>
                 <div className="flex-1">
@@ -84,7 +84,7 @@ export function PlanViewer({ planJson }: PlanViewerProps) {
             {plan.questions.map((q, i) => (
               <div
                 key={q.questionId}
-                className="flex items-start gap-3 rounded-md bg-white/[0.02] p-3"
+                className="flex items-start gap-3 rounded-md bg-surface-overlay p-3"
               >
                 <span className="mt-0.5 text-xs text-silver-300">{i + 1}</span>
                 <div className="flex-1">

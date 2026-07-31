@@ -169,7 +169,7 @@ export function QuestionDetailPage() {
 
       <GlassCard className="p-6">
         <h3 className="mb-3 text-sm font-medium text-text-muted">题干</h3>
-        <pre className="whitespace-pre-wrap break-words rounded-md bg-white/[0.02] p-4 text-sm text-text-secondary">
+        <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
           {question.content}
         </pre>
       </GlassCard>
@@ -177,7 +177,7 @@ export function QuestionDetailPage() {
       <GlassCard className="p-6">
         <h3 className="mb-3 text-sm font-medium text-text-muted">标准答案</h3>
         {question.standardAnswer ? (
-          <pre className="whitespace-pre-wrap break-words rounded-md bg-white/[0.02] p-4 text-sm text-text-secondary">
+          <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
             {question.standardAnswer}
           </pre>
         ) : (

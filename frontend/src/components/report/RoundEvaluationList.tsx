@@ -36,7 +36,7 @@ export function RoundEvaluationList({ evaluations }: RoundEvaluationListProps) {
               {grouped[roundId].map((evalItem) => (
                 <div
                   key={evalItem.id}
-                  className="rounded-lg border border-white/5 bg-white/[0.02] p-4"
+                  className="rounded-lg border border-border-subtle bg-surface-overlay p-4"
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm text-text-secondary">

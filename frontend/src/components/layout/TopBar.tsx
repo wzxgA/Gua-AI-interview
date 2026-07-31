@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { useHealth } from '@/api/health';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -19,10 +20,11 @@ export function TopBar() {
   const title = pageTitles[path] ?? pageTitles[Object.keys(pageTitles).find((k) => path.startsWith(k) && k !== '/') ?? '/'] ?? 'AIMS';
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-white/5 bg-space-800/50 px-8 backdrop-blur-xl">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-subtle bg-space-800/50 px-8 backdrop-blur-xl">
       <h1 className="text-base font-semibold text-text-primary">{title}</h1>
       <div className="flex items-center gap-4">
-        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-text-muted">
+        <ThemeToggle />
+        <span className="rounded-full border border-border-default bg-surface-hover px-2 py-0.5 text-xs text-text-muted">
           local
         </span>
         <span className="flex items-center gap-2 text-xs text-text-secondary">

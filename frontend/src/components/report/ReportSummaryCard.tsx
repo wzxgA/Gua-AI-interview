@@ -28,7 +28,7 @@ export function ReportSummaryCard({ report }: ReportSummaryCardProps) {
               label={report.recommendationLabel}
             />
           </div>
-          <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/5">
+          <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-hover">
             <div
               className="h-full rounded-full bg-gradient-to-r from-emerald-500/60 via-sky-400/70 to-sky-400/80 transition-all duration-700"
               style={{ width: `${scorePercent}%` }}

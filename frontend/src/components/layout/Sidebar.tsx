@@ -16,7 +16,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-56 flex-col border-r border-white/5 bg-space-800/50 backdrop-blur-xl">
+    <aside className="sticky top-0 flex h-screen w-56 flex-col border-r border-border-subtle bg-space-800/50 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-5 py-6">
         <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-silver-100 to-silver-300 shadow-[0_0_12px_var(--silver-glow)]" />
         <span className="text-lg font-semibold text-text-primary">AIMS</span>
@@ -35,8 +35,8 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all',
                 isActive
-                  ? 'bg-white/[0.06] text-silver-100 shadow-[0_0_12px_rgba(200,212,232,0.06)]'
-                  : 'text-text-muted hover:bg-white/[0.03] hover:text-text-secondary',
+                  ? 'bg-surface-hover text-silver-100 shadow-[0_0_12px_var(--shadow-glow)]'
+                  : 'text-text-muted hover:bg-surface-overlay hover:text-text-secondary',
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -46,7 +46,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-white/5 px-5 py-4">
+      <div className="border-t border-border-subtle px-5 py-4">
         <p className="text-xs text-text-muted">v0.1.0 · F1</p>
       </div>
     </aside>

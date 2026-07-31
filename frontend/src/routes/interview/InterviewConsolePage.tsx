@@ -73,7 +73,7 @@ export function InterviewConsolePage() {
   // 全屏加载态（生成计划时）
   if (startMutation.isPending) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
         <div className="flex flex-col items-center gap-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
           <p className="text-sm text-text-secondary">正在生成面试计划...</p>

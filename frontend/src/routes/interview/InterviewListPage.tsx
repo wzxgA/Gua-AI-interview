@@ -108,7 +108,7 @@ export function InterviewListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-text-muted">
+                <tr className="border-b border-border-subtle text-text-muted">
                   <th className="px-4 py-3 text-left font-medium">ID</th>
                   <th className="px-4 py-3 text-left font-medium">候选人 ID</th>
                   <th className="px-4 py-3 text-left font-medium">岗位 ID</th>
@@ -122,7 +122,7 @@ export function InterviewListPage() {
                 {records.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                    className="border-b border-border-subtle hover:bg-surface-overlay transition-colors"
                   >
                     <td className="px-4 py-3">
                       <Link
@@ -201,7 +201,7 @@ export function InterviewListPage() {
 
       {/* 取消确认弹窗 */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
             <h3 className="mb-2 text-lg font-semibold text-text-primary">确认取消</h3>
             <p className="mb-4 text-sm text-text-secondary">
@@ -230,7 +230,7 @@ export function InterviewListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
             <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
             <p className="mb-4 text-sm text-text-secondary">

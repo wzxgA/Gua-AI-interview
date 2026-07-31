@@ -146,7 +146,7 @@ export function ResumeListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-text-muted">
+                <tr className="border-b border-border-subtle text-text-muted">
                   <th className="px-4 py-3 text-left font-medium">候选人</th>
                   <th className="px-4 py-3 text-left font-medium">手机</th>
                   <th className="px-4 py-3 text-left font-medium">邮箱</th>
@@ -159,7 +159,7 @@ export function ResumeListPage() {
                 {records.map((resume) => (
                   <tr
                     key={resume.id}
-                    className="border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                    className="border-b border-border-subtle hover:bg-surface-overlay transition-colors"
                   >
                     <td className="px-4 py-3">
                       <Link
@@ -223,7 +223,7 @@ export function ResumeListPage() {
 
       {/* 上传弹窗 */}
       {uploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="mb-4 text-lg font-semibold text-text-primary">上传简历</h3>
             <div className="space-y-4">
@@ -239,8 +239,8 @@ export function ResumeListPage() {
                 className={
                   'cursor-pointer rounded-md border border-dashed p-6 text-center transition-colors ' +
                   (dragOver
-                    ? 'border-silver-300/50 bg-white/[0.05]'
-                    : 'border-white/10 bg-white/[0.02] hover:border-white/20')
+                    ? 'border-silver-300/50 bg-surface-hover'
+                    : 'border-border-default bg-surface-overlay hover:border-border-strong')
                 }
               >
                 <p className="text-sm text-text-secondary">
@@ -284,7 +284,7 @@ export function ResumeListPage() {
               {/* 上传进度 */}
               {uploadMutation.isPending && (
                 <div className="space-y-1">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
                     <div className="h-full w-1/3 animate-stream bg-gradient-to-r from-silver-300 via-silver-100 to-silver-300" />
                   </div>
                   <p className="text-xs text-text-muted">上传中...</p>
@@ -315,7 +315,7 @@ export function ResumeListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
             <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
             <p className="mb-4 text-sm text-text-secondary">

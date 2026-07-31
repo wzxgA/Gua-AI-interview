@@ -18,7 +18,7 @@ export function SettingsPage() {
             {modelTiers.map((m) => (
               <div
                 key={m.tier}
-                className="flex items-center justify-between border-b border-white/5 pb-3 last:border-0"
+                className="flex items-center justify-between border-b border-border-subtle pb-3 last:border-0"
               >
                 <div>
                   <span className="text-sm font-medium text-silver-200">{m.tier}</span>
