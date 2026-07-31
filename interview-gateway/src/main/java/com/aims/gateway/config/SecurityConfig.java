@@ -44,6 +44,8 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health")
                                         .permitAll()
+                                        .requestMatchers("/actuator/**")
+                                        .hasRole("ADMIN")
                                         .requestMatchers(
                                                 "/api/smoke/**",
                                                 "/swagger-ui/**",
