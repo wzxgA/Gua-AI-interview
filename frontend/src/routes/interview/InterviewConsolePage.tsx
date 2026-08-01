@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -8,15 +9,18 @@ import { StatusCard } from '@/components/interview/StatusCard';
 import { PlanViewer } from '@/components/interview/PlanViewer';
 import { RoundTimeline } from '@/components/interview/RoundTimeline';
 import { ActionButtons } from '@/components/interview/ActionButtons';
+import { PlanConfigDialog } from '@/components/interview/PlanConfigDialog';
 import { EvaluationProgress } from '@/components/report/EvaluationProgress';
 import {
   useInterview,
+  usePlanInterview,
   useStartInterview,
   useCancelInterview,
   useFinishInterview,
   usePauseInterview,
   useResumeInterview,
 } from '@/api/interview';
+import type { StartPlanBody } from '@/api/interview';
 
 export function InterviewConsolePage() {
   const { id } = useParams();
@@ -24,17 +28,36 @@ export function InterviewConsolePage() {
   const interviewId = id ? Number(id) : undefined;
 
   const { data: interview, isLoading, isError, error } = useInterview(interviewId);
+  const planMutation = usePlanInterview();
   const startMutation = useStartInterview();
   const cancelMutation = useCancelInterview();
   const finishMutation = useFinishInterview();
   const pauseMutation = usePauseInterview();
   const resumeMutation = useResumeInterview();
 
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+
   const handleStart = () => {
+    setPlanDialogOpen(true);
+  };
+
+  const handlePlanConfirm = (params: StartPlanBody) => {
+    if (!interviewId) return;
+    setPlanDialogOpen(false);
+    planMutation.mutate(
+      { id: interviewId, body: params },
+      {
+        onSuccess: () => toast.success('面试计划已生成'),
+        onError: (err: Error) => toast.error(err.message || '生成计划失败'),
+      },
+    );
+  };
+
+  const handleBeginInterview = () => {
     if (!interviewId) return;
     startMutation.mutate(interviewId, {
-      onSuccess: () => toast.success('面试已开始，正在生成计划'),
-      onError: (err: Error) => toast.error(err.message || '启动失败'),
+      onSuccess: () => toast.success('面试已开始'),
+      onError: (err: Error) => toast.error(err.message || '开始失败'),
     });
   };
 
@@ -71,7 +94,7 @@ export function InterviewConsolePage() {
   };
 
   // 全屏加载态（生成计划时）
-  if (startMutation.isPending) {
+  if (planMutation.isPending) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
         <div className="flex flex-col items-center gap-4">
@@ -133,6 +156,7 @@ export function InterviewConsolePage() {
             <ActionButtons
               status={interview.status}
               onStart={handleStart}
+              onBeginInterview={handleBeginInterview}
               onCancel={handleCancel}
               onEnterRoom={() => navigate(`/interviews/${interview.id}/room`)}
               onPause={handlePause}
@@ -161,6 +185,12 @@ export function InterviewConsolePage() {
           />
         </div>
       </div>
+
+      <PlanConfigDialog
+        open={planDialogOpen}
+        onClose={() => setPlanDialogOpen(false)}
+        onConfirm={handlePlanConfirm}
+      />
     </div>
   );
 }

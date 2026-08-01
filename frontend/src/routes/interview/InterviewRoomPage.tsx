@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -29,32 +29,26 @@ export function InterviewRoomPage() {
   const addAnswer = useSessionStore((s) => s.addAnswer);
   const { connect, disconnect } = session;
 
-  // 历史消息是否已恢复（避免重复恢复）
-  const historyRestoredRef = useRef(false);
-
   // WebSocket 连接（只依赖 interviewId，不受 rounds 加载影响）
   useEffect(() => {
     if (!interviewId) return;
 
     resetStore();
-    historyRestoredRef.current = false;
     connect();
 
     return () => disconnect();
   }, [interviewId, connect, disconnect, resetStore]);
 
-  // 历史消息恢复（依赖 rounds，不触发 WebSocket 重连）
+  // 历史消息恢复（依赖 rounds，addQuestion 内部有 roundId 去重）
   useEffect(() => {
     if (!rounds || rounds.length === 0) return;
-    if (historyRestoredRef.current) return;
 
     rounds.forEach((r) => {
       addQuestion(r.id, r.seq, r.question);
       if (r.answer) {
-        addAnswer(r.answer);
+        addAnswer(r.answer, r.id);
       }
     });
-    historyRestoredRef.current = true;
   }, [rounds, addQuestion, addAnswer]);
 
   // 同步 REST 状态到 store

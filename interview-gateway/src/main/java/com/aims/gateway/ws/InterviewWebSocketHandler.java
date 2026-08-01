@@ -139,9 +139,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket 连接建立 sessionId={} connectionId={}", sessionId, connectionId);
         send(session, WsOutbound.sessionReady(sessionId, entity.getStatus()));
 
-        // 若状态为 IN_PROGRESS，根据轮次记录决定是否自动生成首题或补发下一题
+        // 若状态为 IN_PROGRESS 或 PAUSED，根据轮次记录决定是否自动生成首题或补发当前问题
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
-        if (current == SessionStatus.IN_PROGRESS) {
+        if (current == SessionStatus.IN_PROGRESS || current == SessionStatus.PAUSED) {
             handleReconnectOrStart(session, sessionId, entity);
         }
     }
@@ -153,7 +153,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
      *   <li>无轮次记录：首次进入面试间，自动生成首题
      *   <li>最后一条轮次已回答且未达上限：补发下一题
      *   <li>最后一条轮次已回答且已达上限：直接完成
-     *   <li>最后一条轮次未回答：等待用户提交答案，不做处理
+     *   <li>最后一条轮次未回答：补发该问题（支持断线重连恢复当前轮次）
      * </ul>
      */
     private void handleReconnectOrStart(
@@ -192,8 +192,20 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 log.info("重连后补发下一题 sessionId={} answeredCount={}", sessionId, answeredCount);
                 generateAndSendQuestion(session, sessionId);
             }
+        } else {
+            // 补发未回答的当前问题
+            log.info("重连后补发当前未回答问题 sessionId={} roundId={}", sessionId, lastRound.getId());
+            send(
+                    session,
+                    WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+            send(
+                    session,
+                    WsOutbound.questionChunk(
+                            sessionId, lastRound.getId(), lastRound.getQuestion()));
+            send(
+                    session,
+                    WsOutbound.questionEnd(sessionId, lastRound.getId(), lastRound.getSeq(), null));
         }
-        // 若存在未回答的问题，等待用户提交答案，不做处理
     }
 
     @Override

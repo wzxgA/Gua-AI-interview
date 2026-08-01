@@ -463,7 +463,7 @@ public class ResumeServiceImpl implements ResumeService {
         }
 
         StringBuilder sb = new StringBuilder();
-        appendField(sb, "候选人", parsed.candidateName());
+        appendField(sb, "候选人", entity.getCandidateName());
         appendField(sb, "当前职位", parsed.currentTitle());
         if (parsed.yearsOfExperience() != null) {
             appendField(sb, "工作年限", parsed.yearsOfExperience() + "年");

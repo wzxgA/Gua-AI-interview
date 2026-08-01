@@ -24,15 +24,16 @@ public final class InterviewPromptBuilder {
             5. 语气专业、友好，引导候选人充分展示
             """;
 
-    private static final String PLAN_SYSTEM =
+    private static final String PLAN_SYSTEM_TEMPLATE =
             """
             你是面试计划设计专家。请根据岗位 JD、候选人简历和题库事实，生成结构化面试计划。
             要求：
             1. 只能基于提供的岗位、简历和题库事实生成计划，不编造候选人经历或公司信息
-            2. 题目数必须在 8~10 题之间
-            3. 每道题必须标记 topic、difficulty、evaluationFocus
-            4. 计划模块题目数之和必须等于计划题目数
-            5. 只输出符合 InterviewPlan schema 的 JSON，不要额外说明
+            2. 题目数必须为 %d 题
+            3. 难度偏好（控制 EASY/MEDIUM/HARD 的分布比例）：%s
+            4. 每道题必须标记 topic、difficulty（EASY/MEDIUM/HARD）、evaluationFocus
+            5. 计划模块题目数之和必须等于计划题目数
+            6. 只输出符合 InterviewPlan schema 的 JSON，不要额外说明
             """;
 
     private InterviewPromptBuilder() {}
@@ -104,9 +105,23 @@ public final class InterviewPromptBuilder {
 
     // ---- 面试计划生成 ----
 
-    /** 面试计划生成系统 Prompt。 */
-    public static String planSystem() {
-        return PLAN_SYSTEM;
+    /** 难度偏好描述映射 */
+    private static final java.util.Map<String, String> DIFFICULTY_DESC =
+            java.util.Map.of(
+                    "BASIC", "以 EASY 为主（约60% EASY、30% MEDIUM、10% HARD）",
+                    "BALANCED", "均衡搭配（约20% EASY、50% MEDIUM、30% HARD）",
+                    "ADVANCED", "以 HARD 为主（约10% EASY、20% MEDIUM、70% HARD）");
+
+    /**
+     * 面试计划生成系统 Prompt。
+     *
+     * @param questionCount 题目数量
+     * @param difficulty 难度偏好（BASIC/BALANCED/ADVANCED）
+     * @return 渲染后的系统 Prompt
+     */
+    public static String planSystem(int questionCount, String difficulty) {
+        String desc = DIFFICULTY_DESC.getOrDefault(difficulty, DIFFICULTY_DESC.get("BALANCED"));
+        return PLAN_SYSTEM_TEMPLATE.formatted(questionCount, desc);
     }
 
     /**
@@ -117,6 +132,7 @@ public final class InterviewPromptBuilder {
      * @param jdText 岗位 JD 原文
      * @param resumeSummary 简历摘要
      * @param ragQuestions RAG 检索到的参考题目文本
+     * @param estimatedMinutes 预计面试时长（分钟）
      * @return 渲染后的用户 Prompt
      */
     public static String planUser(
@@ -124,29 +140,32 @@ public final class InterviewPromptBuilder {
             String positionTitle,
             String jdText,
             String resumeSummary,
-            String ragQuestions) {
+            String ragQuestions,
+            int estimatedMinutes) {
         return """
-               岗位名称：%s
-               岗位 JD：%s
-               候选人姓名：%s
-               简历摘要：%s
-               题库参考题目：
-               %s
+岗位名称：%s
+岗位 JD：%s
+候选人姓名：%s
+简历摘要：%s
+题库参考题目：
+%s
+预计面试时长：%d 分钟
 
-               请生成面试计划 JSON，字段说明：
-               - candidateName: 候选人姓名
-               - position: 岗位名称
-               - sections: 面试模块列表，每个含 name/questionCount/objective
-               - questions: 题目列表，每个含 questionId/topic/difficulty/followUpHints/evaluationFocus
-               - estimatedMinutes: 预计面试时长（分钟）
-               - version: 计划版本号，如 "1.0"
-               """
+请生成面试计划 JSON，字段说明：
+- candidateName: 候选人姓名
+- position: 岗位名称
+- sections: 面试模块列表，每个含 name/questionCount/objective
+- questions: 题目列表，每个含 questionId/topic/difficulty(EASY/MEDIUM/HARD)/followUpHints/evaluationFocus
+- estimatedMinutes: 预计面试时长（分钟）
+- version: 计划版本号，如 "1.0"
+"""
                 .formatted(
                         safe(positionTitle),
                         safe(jdText),
                         safe(candidateName),
                         safe(resumeSummary),
-                        safe(ragQuestions));
+                        safe(ragQuestions),
+                        estimatedMinutes);
     }
 
     private static String safe(String value) {
