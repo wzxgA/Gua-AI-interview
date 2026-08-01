@@ -6,10 +6,22 @@ import type { ChatMessage } from '@/types/interview';
 
 interface QuestionBubbleProps {
   message: ChatMessage;
+  followUpIndex?: number;
 }
 
-/** AI 面试官问题气泡：左侧银色竖条，流式文本 + 打字机光标 */
-export function QuestionBubble({ message }: QuestionBubbleProps) {
+/** AI 面试官问题气泡：左侧竖条（主问题银色 / 追问 amber），流式文本 + 打字机光标 */
+export function QuestionBubble({ message, followUpIndex }: QuestionBubbleProps) {
+  const isFollowUp = message.parentSeq != null && message.followUpType;
+  const stripeClass = isFollowUp
+    ? 'bg-gradient-to-b from-amber-400 to-amber-200'
+    : 'bg-gradient-to-b from-silver-300 to-silver-100';
+
+  const seqLabel = isFollowUp
+    ? `Q${message.parentSeq}.${followUpIndex ?? 1}`
+    : message.seq != null
+      ? `Q${message.seq}`
+      : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -17,15 +29,21 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
     >
       <GlassCard className="relative overflow-hidden p-4 pl-5">
-        {/* 左侧银色竖条 */}
-        <div className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-silver-300 to-silver-100" />
+        {/* 左侧竖条 */}
+        <div className={`absolute left-0 top-0 h-full w-[3px] ${stripeClass}`} />
 
-        {/* 顶部：AI 面试官 + Q{seq} */}
+        {/* 顶部：AI 面试官 + 序号 */}
         <div className="mb-2 flex items-center gap-2">
           <span className="text-sm font-medium text-silver-200">AI 面试官</span>
-          {message.seq != null && (
-            <span className="rounded-full border border-border-default bg-surface-hover px-2 py-0.5 text-xs text-text-muted">
-              Q{message.seq}
+          {seqLabel && (
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs ${
+                isFollowUp
+                  ? 'border-amber-400/30 bg-amber-500/10 text-amber-400'
+                  : 'border-border-default bg-surface-hover text-text-muted'
+              }`}
+            >
+              {seqLabel}
             </span>
           )}
         </div>
