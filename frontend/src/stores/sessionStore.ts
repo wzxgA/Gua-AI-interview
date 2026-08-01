@@ -19,8 +19,9 @@ interface SessionStore {
   startQuestion: (roundId: number, seq: number) => void;
   appendChunk: (text: string) => void;
   finalizeQuestion: () => void;
-  addAnswer: (text: string) => void;
+  addAnswer: (text: string, roundId?: number) => void;
   addQuestion: (roundId: number, seq: number, text: string) => void;
+  hasRound: (roundId: number) => boolean;
   setConnected: (connected: boolean) => void;
   incrementRetry: () => void;
   resetRetry: () => void;
@@ -43,7 +44,7 @@ const initialState = {
 let messageSeq = 0;
 const nextId = () => `msg-${++messageSeq}`;
 
-export const useSessionStore = create<SessionStore>((set) => ({
+export const useSessionStore = create<SessionStore>((set, get) => ({
   ...initialState,
 
   setSession: (sessionId, status) =>
@@ -52,23 +53,28 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setStatus: (status) => set({ status }),
 
   startQuestion: (roundId, seq) =>
-    set((state) => ({
-      currentRoundId: roundId,
-      currentQuestion: '',
-      isStreaming: true,
-      messages: [
-        ...state.messages,
-        {
-          id: nextId(),
-          role: 'question',
-          text: '',
-          roundId,
-          seq,
-          timestamp: new Date().toISOString(),
-          streaming: true,
-        },
-      ],
-    })),
+    set((state) => {
+      if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
+        return state;
+      }
+      return {
+        currentRoundId: roundId,
+        currentQuestion: '',
+        isStreaming: true,
+        messages: [
+          ...state.messages,
+          {
+            id: nextId(),
+            role: 'question',
+            text: '',
+            roundId,
+            seq,
+            timestamp: new Date().toISOString(),
+            streaming: true,
+          },
+        ],
+      };
+    }),
 
   appendChunk: (text) =>
     set((state) => {
@@ -97,34 +103,48 @@ export const useSessionStore = create<SessionStore>((set) => ({
       return { messages, isStreaming: false };
     }),
 
-  addAnswer: (text) =>
-    set((state) => ({
-      messages: [
-        ...state.messages,
-        {
-          id: nextId(),
-          role: 'answer',
-          text,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    })),
+  addAnswer: (text, roundId) =>
+    set((state) => {
+      if (roundId != null && state.messages.some((m) => m.role === 'answer' && m.roundId === roundId)) {
+        return state;
+      }
+      return {
+        messages: [
+          ...state.messages,
+          {
+            id: nextId(),
+            role: 'answer' as const,
+            text,
+            roundId,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    }),
 
   addQuestion: (roundId, seq, text) =>
-    set((state) => ({
-      messages: [
-        ...state.messages,
-        {
-          id: nextId(),
-          role: 'question',
-          text,
-          roundId,
-          seq,
-          timestamp: new Date().toISOString(),
-          streaming: false,
-        },
-      ],
-    })),
+    set((state) => {
+      if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
+        return state;
+      }
+      return {
+        messages: [
+          ...state.messages,
+          {
+            id: nextId(),
+            role: 'question',
+            text,
+            roundId,
+            seq,
+            timestamp: new Date().toISOString(),
+            streaming: false,
+          },
+        ],
+      };
+    }),
+
+  hasRound: (roundId) =>
+    get().messages.some((m) => m.role === 'question' && m.roundId === roundId),
 
   setConnected: (connected) =>
     set(connected ? { isConnected: true, retryCount: 0 } : { isConnected: false }),

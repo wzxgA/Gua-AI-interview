@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 import { useSessionStore } from '@/stores/sessionStore';
 import type { WsServerMessage, WsClientMessage } from '@/types/interview';
@@ -12,6 +13,13 @@ interface UseInterviewSessionOptions {
  */
 export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
   const store = useSessionStore();
+  const qc = useQueryClient();
+
+  const invalidateRounds = useCallback(() => {
+    if (sessionId) {
+      qc.invalidateQueries({ queryKey: ['interviews', sessionId, 'rounds'] });
+    }
+  }, [qc, sessionId]);
 
   const handleMessage = useCallback(
     (msg: WsServerMessage) => {
@@ -34,14 +42,14 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
 
         case 'QUESTION_END':
           store.finalizeQuestion();
+          invalidateRounds();
           break;
 
         case 'ANSWER_ACK':
-          // 答案已确认，无需额外操作
+          invalidateRounds();
           break;
 
         case 'HEARTBEAT_ACK':
-          // 心跳确认，不改变任何状态
           break;
 
         case 'STATUS':
@@ -58,7 +66,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
           break;
       }
     },
-    [store],
+    [store, invalidateRounds],
   );
 
   const { connect, send, disconnect, reconnect: wsReconnect } = useWebSocket({
@@ -81,7 +89,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
   const submitAnswer = useCallback(
     (text: string) => {
       if (!text.trim()) return;
-      store.addAnswer(text.trim());
+      store.addAnswer(text.trim(), store.currentRoundId ?? undefined);
       send({ type: 'ANSWER', text: text.trim() } satisfies WsClientMessage);
     },
     [send, store],
