@@ -1,10 +1,14 @@
 package com.aims.gateway.ws;
 
+import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewContext;
 import com.aims.agent.InterviewerAgent;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.core.common.ErrorCode;
+import com.aims.core.interview.FollowUpContext;
+import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.InterviewPlan;
+import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
@@ -64,11 +68,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private static final int MAX_ANSWER_LENGTH = 10000;
     private static final int RECENT_HISTORY_LIMIT = 5;
     private static final Duration STREAM_TIMEOUT = Duration.ofMinutes(2);
+    private static final int MAX_FOLLOW_UPS = 3;
 
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
     private final InterviewSessionStore sessionStore;
     private final InterviewerAgent interviewerAgent;
+    private final FollowUpAgent followUpAgent;
     private final PositionService positionService;
     private final ResumeService resumeService;
     private final QuestionRagService questionRagService;
@@ -81,6 +87,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             InterviewRoundService roundService,
             InterviewSessionStore sessionStore,
             InterviewerAgent interviewerAgent,
+            FollowUpAgent followUpAgent,
             PositionService positionService,
             ResumeService resumeService,
             QuestionRagService questionRagService,
@@ -91,6 +98,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.roundService = roundService;
         this.sessionStore = sessionStore;
         this.interviewerAgent = interviewerAgent;
+        this.followUpAgent = followUpAgent;
         this.positionService = positionService;
         this.resumeService = resumeService;
         this.questionRagService = questionRagService;
@@ -361,7 +369,31 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
             log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
         } else {
-            // 生成下一题
+            // 确定主问题 seq（如果当前是追问，取其 parentSeq；否则取当前 seq）
+            int parentSeq =
+                    currentRound.getParentSeq() != null
+                            ? currentRound.getParentSeq()
+                            : currentRound.getSeq();
+            // 检查是否需要追问
+            int followUpCount = roundService.countFollowUps(sessionId, parentSeq);
+            if (followUpCount < MAX_FOLLOW_UPS) {
+                FollowUpContext followUpContext =
+                        buildFollowUpContext(sessionId, entity, currentRound);
+                FollowUpDecision decision = followUpAgent.evaluate(followUpContext);
+                log.info(
+                        "追问决策 sessionId={} roundId={} shouldFollowUp={} type={} reason={}",
+                        sessionId,
+                        currentRound.getId(),
+                        decision.shouldFollowUp(),
+                        decision.followUpType(),
+                        decision.reason());
+                if (decision.shouldFollowUp()) {
+                    generateAndSendFollowUp(
+                            session, sessionId, parentSeq, followUpContext, decision);
+                    return;
+                }
+            }
+            // 不追问或追问已达上限，生成下一题
             generateAndSendQuestion(session, sessionId);
         }
     }
@@ -470,7 +502,113 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         log.info("生成问题完成 sessionId={} roundId={} seq={}", sessionId, round.getId(), seq);
     }
 
+    /** 流式生成追问问题并发送给客户端。 */
+    private void generateAndSendFollowUp(
+            WebSocketSession session,
+            Long sessionId,
+            int parentSeq,
+            FollowUpContext context,
+            FollowUpDecision decision) {
+        // 流式生成追问问题
+        List<String> chunks = new ArrayList<>();
+        try {
+            followUpAgent
+                    .streamFollowUp(context, decision)
+                    .doOnNext(chunks::add)
+                    .blockLast(STREAM_TIMEOUT);
+        } catch (Exception e) {
+            log.error("流式生成追问问题失败 sessionId={}", sessionId, e);
+            send(session, WsOutbound.error(ErrorCode.MODEL_CALL_FAILED.getCode(), "生成追问问题失败"));
+            return;
+        }
+
+        if (chunks.isEmpty()) {
+            log.warn("追问问题为空，改用决策中的追问问题 sessionId={}", sessionId);
+            chunks.add(decision.followUpQuestion());
+        }
+
+        String fullQuestion = String.join("", chunks);
+
+        // 创建追问轮次记录（seq 递增，parentSeq 指向主问题）
+        int seq = roundService.maxSeq(sessionId) + 1;
+        InterviewRoundEntity round =
+                roundService.createRound(
+                        sessionId, seq, fullQuestion, decision.followUpType().name(), parentSeq);
+
+        // 发送 QUESTION_START（携带 followUpType）
+        send(
+                session,
+                WsOutbound.questionStart(
+                        sessionId, round.getId(), seq, decision.followUpType().name()));
+
+        // 逐 chunk 发送
+        for (String chunk : chunks) {
+            send(session, WsOutbound.questionChunk(sessionId, round.getId(), chunk));
+        }
+
+        // 发送 QUESTION_END
+        send(session, WsOutbound.questionEnd(sessionId, round.getId(), seq, fullQuestion));
+
+        // 写入会话记忆
+        conversationMemory.addAssistant(
+                sessionId.toString(), fullQuestion, round.getId().toString());
+        log.info(
+                "生成追问完成 sessionId={} roundId={} seq={} parentSeq={} followUpType={}",
+                sessionId,
+                round.getId(),
+                seq,
+                parentSeq,
+                decision.followUpType());
+    }
+
     // ==================== 辅助方法 ====================
+
+    /** 构建追问上下文。 */
+    private FollowUpContext buildFollowUpContext(
+            Long sessionId, InterviewSessionEntity entity, InterviewRoundEntity currentRound) {
+        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        PositionEntity position = positionService.getById(entity.getPositionId());
+
+        // 从计划中获取当前题目的 followUpHints
+        List<String> followUpHints = List.of();
+        if (entity.getPlanJson() != null && !entity.getPlanJson().isBlank()) {
+            try {
+                InterviewPlan plan =
+                        objectMapper.readValue(entity.getPlanJson(), InterviewPlan.class);
+                if (plan != null && plan.questions() != null && !plan.questions().isEmpty()) {
+                    // 找到与当前 seq 对应的题目（seq 从 1 开始）
+                    int questionIdx =
+                            Math.min(currentRound.getSeq() - 1, plan.questions().size() - 1);
+                    if (questionIdx >= 0) {
+                        PlannedQuestion pq = plan.questions().get(questionIdx);
+                        followUpHints = pq.followUpHints();
+                    }
+                }
+            } catch (JsonProcessingException e) {
+                log.warn("反序列化面试计划失败 sessionId={}", sessionId, e);
+            }
+        }
+
+        // 收集最近已问过的问题（用于去重）
+        List<InterviewRoundEntity> allRounds = roundService.listBySession(sessionId);
+        List<String> recentQuestions =
+                allRounds.stream()
+                        .map(InterviewRoundEntity::getQuestion)
+                        .limit(RECENT_HISTORY_LIMIT)
+                        .toList();
+
+        return new FollowUpContext(
+                sessionId,
+                currentRound.getId(),
+                currentRound.getQuestion(),
+                currentRound.getAnswer(),
+                resume.getCandidateName(),
+                position.getTitle(),
+                position.getJdText(),
+                buildResumeSummary(resume),
+                followUpHints,
+                recentQuestions);
+    }
 
     /** 构建 InterviewContext。 */
     private InterviewContext buildInterviewContext(Long sessionId) {

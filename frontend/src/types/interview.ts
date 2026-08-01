@@ -86,6 +86,7 @@ export interface WsServerMessage {
   code?: number;
   message?: string;
   text?: string;
+  followUpType?: string;
 }
 
 /** 聊天消息 */
@@ -95,6 +96,8 @@ export interface ChatMessage {
   text: string;
   roundId?: number;
   seq?: number;
+  followUpType?: string;
+  parentSeq?: number;
   timestamp: string;
   streaming?: boolean;
 }
@@ -112,5 +115,7 @@ export interface RoundResponse {
   seq: number;
   question: string;
   answer: string | null;
+  followUpType: string | null;
+  parentSeq: number | null;
   createdAt: string;
 }

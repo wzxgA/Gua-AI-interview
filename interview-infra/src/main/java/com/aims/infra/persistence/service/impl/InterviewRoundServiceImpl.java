@@ -35,6 +35,21 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
 
     @Override
     @Transactional
+    public InterviewRoundEntity createRound(
+            Long sessionId, int seq, String question, String followUpType, int parentSeq) {
+        InterviewRoundEntity entity = new InterviewRoundEntity();
+        entity.setSessionId(sessionId);
+        entity.setSeq(seq);
+        entity.setQuestion(question);
+        entity.setFollowUpType(followUpType);
+        entity.setParentSeq(parentSeq);
+        entity.setCreatedAt(Instant.now());
+        roundMapper.insert(entity);
+        return entity;
+    }
+
+    @Override
+    @Transactional
     public InterviewRoundEntity updateAnswer(Long roundId, String answer) {
         InterviewRoundEntity entity = roundMapper.selectById(roundId);
         if (entity == null) {
@@ -56,6 +71,11 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
     @Override
     public int countAnswered(Long sessionId) {
         return roundMapper.countAnswered(sessionId);
+    }
+
+    @Override
+    public int countFollowUps(Long sessionId, int parentSeq) {
+        return roundMapper.countFollowUps(sessionId, parentSeq);
     }
 
     @Override

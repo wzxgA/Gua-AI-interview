@@ -5,7 +5,13 @@ import java.time.Instant;
 
 /** 面试轮次响应。 */
 public record RoundResponse(
-        Long id, Integer seq, String question, String answer, Instant createdAt) {
+        Long id,
+        Integer seq,
+        String question,
+        String answer,
+        String followUpType,
+        Integer parentSeq,
+        Instant createdAt) {
 
     /** 从持久化实体构建响应。 */
     public static RoundResponse from(InterviewRoundEntity entity) {
@@ -14,6 +20,8 @@ public record RoundResponse(
                 entity.getSeq(),
                 entity.getQuestion(),
                 entity.getAnswer(),
+                entity.getFollowUpType(),
+                entity.getParentSeq(),
                 entity.getCreatedAt());
     }
 }
