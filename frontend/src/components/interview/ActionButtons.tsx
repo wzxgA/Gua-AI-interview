@@ -29,7 +29,7 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onStart && (
-            <SilverButton onClick={onStart}>开始</SilverButton>
+            <SilverButton onClick={onStart}>开始生成面试计划</SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
             取消

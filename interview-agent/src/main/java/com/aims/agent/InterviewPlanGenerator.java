@@ -28,6 +28,8 @@ public class InterviewPlanGenerator {
      * @param jdText 岗位 JD 原文
      * @param resumeSummary 简历摘要
      * @param ragQuestions RAG 检索到的参考题目文本
+     * @param questionCount 题目数量
+     * @param difficulty 难度偏好（BASIC/BALANCED/ADVANCED）
      * @param estimatedMinutes 预计面试时长（分钟）
      * @return 结构化面试计划
      */
@@ -37,12 +39,19 @@ public class InterviewPlanGenerator {
             String jdText,
             String resumeSummary,
             String ragQuestions,
+            int questionCount,
+            String difficulty,
             int estimatedMinutes) {
         return aiChatFacade.callForEntity(
                 ModelTier.STANDARD,
-                InterviewPromptBuilder.planSystem(),
+                InterviewPromptBuilder.planSystem(questionCount, difficulty),
                 InterviewPromptBuilder.planUser(
-                        candidateName, positionTitle, jdText, resumeSummary, ragQuestions),
+                        candidateName,
+                        positionTitle,
+                        jdText,
+                        resumeSummary,
+                        ragQuestions,
+                        estimatedMinutes),
                 InterviewPlan.class);
     }
 }

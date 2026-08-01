@@ -50,8 +50,15 @@ public class InterviewController {
     /** RAG 检索 Top-K。 */
     private static final int RAG_TOP_K = 10;
 
-    /** 默认预计面试时长（分钟）。 */
-    private static final int ESTIMATED_MINUTES = 30;
+    /** 默认题数。 */
+    private static final int DEFAULT_QUESTION_COUNT = 10;
+
+    /** 默认难度偏好。 */
+    private static final String DEFAULT_DIFFICULTY = "BALANCED";
+
+    /** 难度对应每题时长（分钟）。 */
+    private static final java.util.Map<String, Integer> MINUTES_PER_QUESTION =
+            java.util.Map.of("BASIC", 2, "BALANCED", 3, "ADVANCED", 5);
 
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
@@ -111,7 +118,24 @@ public class InterviewController {
 
     @Operation(summary = "生成面试计划并开始", description = "生成面试计划，进入 IN_PROGRESS 状态；失败时状态置为 FAILED")
     @PostMapping("/{id}/start")
-    public Result<InterviewResponse> start(@PathVariable Long id) {
+    public Result<InterviewResponse> start(
+            @PathVariable Long id, @RequestBody(required = false) StartPlanRequest req) {
+        // 解析参数（可选，默认值兼容旧逻辑）
+        int questionCount = DEFAULT_QUESTION_COUNT;
+        String difficulty = DEFAULT_DIFFICULTY;
+        if (req != null) {
+            if (req.questionCount() != null
+                    && req.questionCount() >= 1
+                    && req.questionCount() <= 30) {
+                questionCount = req.questionCount();
+            }
+            if (req.difficulty() != null && !req.difficulty().isBlank()) {
+                difficulty = req.difficulty().toUpperCase();
+            }
+        }
+        int minutesPerQuestion = MINUTES_PER_QUESTION.getOrDefault(difficulty, 3);
+        int estimatedMinutes = questionCount * minutesPerQuestion;
+
         // 1. 查会话
         InterviewSessionEntity session = sessionService.getById(id);
         // 2. 校验状态为 CREATED
@@ -138,7 +162,9 @@ public class InterviewController {
                             position.getJdText(),
                             buildResumeSummary(resume),
                             ragQuestions,
-                            ESTIMATED_MINUTES);
+                            questionCount,
+                            difficulty,
+                            estimatedMinutes);
             // 8. 序列化并保存计划
             String planJson = objectMapper.writeValueAsString(plan);
             sessionService.savePlan(id, planJson);

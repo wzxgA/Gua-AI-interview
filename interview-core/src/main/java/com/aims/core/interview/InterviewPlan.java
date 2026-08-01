@@ -11,8 +11,7 @@ public record InterviewPlan(
         int estimatedMinutes,
         String version) {
 
-    public static final int MIN_QUESTIONS = 8;
-    public static final int MAX_QUESTIONS = 10;
+    public static final int DEFAULT_QUESTION_COUNT = 10;
 
     public InterviewPlan {
         if (candidateName == null || candidateName.isBlank()) {
@@ -23,8 +22,8 @@ public record InterviewPlan(
         }
         sections = sections == null ? List.of() : List.copyOf(sections);
         questions = questions == null ? List.of() : List.copyOf(questions);
-        if (questions.size() < MIN_QUESTIONS || questions.size() > MAX_QUESTIONS) {
-            throw new IllegalArgumentException("面试计划题目数必须在 8~10 题之间");
+        if (questions.isEmpty()) {
+            throw new IllegalArgumentException("面试计划题目不能为空");
         }
         if (sections.isEmpty()) {
             throw new IllegalArgumentException("面试计划至少需要一个模块");

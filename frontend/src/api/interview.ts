@@ -58,12 +58,18 @@ export function useCreateInterview() {
   });
 }
 
+/** 开始生成面试计划请求参数 */
+export interface StartPlanBody {
+  questionCount?: number;
+  difficulty?: 'BASIC' | 'BALANCED' | 'ADVANCED';
+}
+
 /** 开始面试（生成计划并开始） */
 export function useStartInterview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) =>
-      http.post<InterviewResponse>(`/api/v1/interviews/${id}/start`),
+    mutationFn: (params: { id: number; body?: StartPlanBody }) =>
+      http.post<InterviewResponse>(`/api/v1/interviews/${params.id}/start`, params.body ?? {}),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: [KEY] });
       qc.invalidateQueries({ queryKey: [KEY, data.id] });

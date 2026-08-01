@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -8,6 +9,7 @@ import { StatusCard } from '@/components/interview/StatusCard';
 import { PlanViewer } from '@/components/interview/PlanViewer';
 import { RoundTimeline } from '@/components/interview/RoundTimeline';
 import { ActionButtons } from '@/components/interview/ActionButtons';
+import { PlanConfigDialog } from '@/components/interview/PlanConfigDialog';
 import { EvaluationProgress } from '@/components/report/EvaluationProgress';
 import {
   useInterview,
@@ -17,6 +19,7 @@ import {
   usePauseInterview,
   useResumeInterview,
 } from '@/api/interview';
+import type { StartPlanBody } from '@/api/interview';
 
 export function InterviewConsolePage() {
   const { id } = useParams();
@@ -30,12 +33,22 @@ export function InterviewConsolePage() {
   const pauseMutation = usePauseInterview();
   const resumeMutation = useResumeInterview();
 
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+
   const handleStart = () => {
+    setPlanDialogOpen(true);
+  };
+
+  const handlePlanConfirm = (params: StartPlanBody) => {
     if (!interviewId) return;
-    startMutation.mutate(interviewId, {
-      onSuccess: () => toast.success('面试已开始，正在生成计划'),
-      onError: (err: Error) => toast.error(err.message || '启动失败'),
-    });
+    setPlanDialogOpen(false);
+    startMutation.mutate(
+      { id: interviewId, body: params },
+      {
+        onSuccess: () => toast.success('面试已开始，正在生成计划'),
+        onError: (err: Error) => toast.error(err.message || '启动失败'),
+      },
+    );
   };
 
   const handleCancel = () => {
@@ -161,6 +174,12 @@ export function InterviewConsolePage() {
           />
         </div>
       </div>
+
+      <PlanConfigDialog
+        open={planDialogOpen}
+        onClose={() => setPlanDialogOpen(false)}
+        onConfirm={handlePlanConfirm}
+      />
     </div>
   );
 }
