@@ -30,8 +30,8 @@ public final class InterviewPromptBuilder {
             要求：
             1. 只能基于提供的岗位、简历和题库事实生成计划，不编造候选人经历或公司信息
             2. 题目数必须为 %d 题
-            3. 难度偏好：%s（BASIC=偏基础，BALANCED=均衡，ADVANCED=偏深入）
-            4. 每道题必须标记 topic、difficulty、evaluationFocus
+            3. 难度偏好（控制 EASY/MEDIUM/HARD 的分布比例）：%s
+            4. 每道题必须标记 topic、difficulty（EASY/MEDIUM/HARD）、evaluationFocus
             5. 计划模块题目数之和必须等于计划题目数
             6. 只输出符合 InterviewPlan schema 的 JSON，不要额外说明
             """;
@@ -108,9 +108,9 @@ public final class InterviewPromptBuilder {
     /** 难度偏好描述映射 */
     private static final java.util.Map<String, String> DIFFICULTY_DESC =
             java.util.Map.of(
-                    "BASIC", "偏基础，侧重考查核心概念和基本功",
-                    "BALANCED", "均衡，基础与进阶合理搭配",
-                    "ADVANCED", "偏深入，侧重系统设计和底层原理");
+                    "BASIC", "以 EASY 为主（约60% EASY、30% MEDIUM、10% HARD）",
+                    "BALANCED", "均衡搭配（约20% EASY、50% MEDIUM、30% HARD）",
+                    "ADVANCED", "以 HARD 为主（约10% EASY、20% MEDIUM、70% HARD）");
 
     /**
      * 面试计划生成系统 Prompt。
@@ -143,22 +143,22 @@ public final class InterviewPromptBuilder {
             String ragQuestions,
             int estimatedMinutes) {
         return """
-               岗位名称：%s
-               岗位 JD：%s
-               候选人姓名：%s
-               简历摘要：%s
-               题库参考题目：
-               %s
-               预计面试时长：%d 分钟
+岗位名称：%s
+岗位 JD：%s
+候选人姓名：%s
+简历摘要：%s
+题库参考题目：
+%s
+预计面试时长：%d 分钟
 
-               请生成面试计划 JSON，字段说明：
-               - candidateName: 候选人姓名
-               - position: 岗位名称
-               - sections: 面试模块列表，每个含 name/questionCount/objective
-               - questions: 题目列表，每个含 questionId/topic/difficulty/followUpHints/evaluationFocus
-               - estimatedMinutes: 预计面试时长（分钟）
-               - version: 计划版本号，如 "1.0"
-               """
+请生成面试计划 JSON，字段说明：
+- candidateName: 候选人姓名
+- position: 岗位名称
+- sections: 面试模块列表，每个含 name/questionCount/objective
+- questions: 题目列表，每个含 questionId/topic/difficulty(EASY/MEDIUM/HARD)/followUpHints/evaluationFocus
+- estimatedMinutes: 预计面试时长（分钟）
+- version: 计划版本号，如 "1.0"
+"""
                 .formatted(
                         safe(positionTitle),
                         safe(jdText),

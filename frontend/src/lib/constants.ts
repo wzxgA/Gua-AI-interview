@@ -17,6 +17,9 @@ export const DIFFICULTY_LABELS: Record<string, string> = {
   EASY: '简单',
   MEDIUM: '中等',
   HARD: '困难',
+  BASIC: '基础',
+  BALANCED: '均衡',
+  ADVANCED: '深入',
 };
 
 export const PARSE_STATUS_LABELS: Record<string, string> = {
