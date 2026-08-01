@@ -13,6 +13,7 @@ import { PlanConfigDialog } from '@/components/interview/PlanConfigDialog';
 import { EvaluationProgress } from '@/components/report/EvaluationProgress';
 import {
   useInterview,
+  usePlanInterview,
   useStartInterview,
   useCancelInterview,
   useFinishInterview,
@@ -27,6 +28,7 @@ export function InterviewConsolePage() {
   const interviewId = id ? Number(id) : undefined;
 
   const { data: interview, isLoading, isError, error } = useInterview(interviewId);
+  const planMutation = usePlanInterview();
   const startMutation = useStartInterview();
   const cancelMutation = useCancelInterview();
   const finishMutation = useFinishInterview();
@@ -42,13 +44,21 @@ export function InterviewConsolePage() {
   const handlePlanConfirm = (params: StartPlanBody) => {
     if (!interviewId) return;
     setPlanDialogOpen(false);
-    startMutation.mutate(
+    planMutation.mutate(
       { id: interviewId, body: params },
       {
-        onSuccess: () => toast.success('面试已开始，正在生成计划'),
-        onError: (err: Error) => toast.error(err.message || '启动失败'),
+        onSuccess: () => toast.success('面试计划已生成'),
+        onError: (err: Error) => toast.error(err.message || '生成计划失败'),
       },
     );
+  };
+
+  const handleBeginInterview = () => {
+    if (!interviewId) return;
+    startMutation.mutate(interviewId, {
+      onSuccess: () => toast.success('面试已开始'),
+      onError: (err: Error) => toast.error(err.message || '开始失败'),
+    });
   };
 
   const handleCancel = () => {
@@ -84,7 +94,7 @@ export function InterviewConsolePage() {
   };
 
   // 全屏加载态（生成计划时）
-  if (startMutation.isPending) {
+  if (planMutation.isPending) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
         <div className="flex flex-col items-center gap-4">
@@ -146,6 +156,7 @@ export function InterviewConsolePage() {
             <ActionButtons
               status={interview.status}
               onStart={handleStart}
+              onBeginInterview={handleBeginInterview}
               onCancel={handleCancel}
               onEnterRoom={() => navigate(`/interviews/${interview.id}/room`)}
               onPause={handlePause}

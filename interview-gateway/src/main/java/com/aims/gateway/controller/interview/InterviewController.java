@@ -116,9 +116,9 @@ public class InterviewController {
         return Result.ok(InterviewResponse.from(entity));
     }
 
-    @Operation(summary = "生成面试计划并开始", description = "生成面试计划，进入 IN_PROGRESS 状态；失败时状态置为 FAILED")
-    @PostMapping("/{id}/start")
-    public Result<InterviewResponse> start(
+    @Operation(summary = "生成面试计划", description = "生成面试计划，进入 PLANNING 状态；失败时状态置为 FAILED")
+    @PostMapping("/{id}/plan")
+    public Result<InterviewResponse> plan(
             @PathVariable Long id, @RequestBody(required = false) StartPlanRequest req) {
         // 解析参数（可选，默认值兼容旧逻辑）
         int questionCount = DEFAULT_QUESTION_COUNT;
@@ -165,13 +165,10 @@ public class InterviewController {
                             questionCount,
                             difficulty,
                             estimatedMinutes);
-            // 8. 序列化并保存计划
+            // 8. 序列化并保存计划，保持在 PLANNING 状态等待用户确认
             String planJson = objectMapper.writeValueAsString(plan);
             sessionService.savePlan(id, planJson);
-            // 9. 进入 IN_PROGRESS 并标记开始
-            sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
-            sessionService.markStarted(id);
-            // 10. 返回最新会话
+            // 9. 返回最新会话（状态为 PLANNING）
             InterviewSessionEntity updated = sessionService.getById(id);
             return Result.ok(InterviewResponse.from(updated));
         } catch (BizException e) {
@@ -181,6 +178,20 @@ public class InterviewController {
             safeFail(id);
             throw new BizException(ErrorCode.SESSION_PLAN_FAILED, e.getMessage());
         }
+    }
+
+    @Operation(summary = "开始面试", description = "从 PLANNING 状态进入 IN_PROGRESS，标记开始时间")
+    @PostMapping("/{id}/start")
+    public Result<InterviewResponse> start(@PathVariable Long id) {
+        InterviewSessionEntity session = sessionService.getById(id);
+        SessionStatus current = SessionStatus.valueOf(session.getStatus());
+        if (current != SessionStatus.PLANNING) {
+            throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
+        }
+        sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
+        sessionService.markStarted(id);
+        InterviewSessionEntity updated = sessionService.getById(id);
+        return Result.ok(InterviewResponse.from(updated));
     }
 
     @Operation(summary = "结束面试", description = "将会话状态置为 EVALUATING，触发 Kafka 异步评估流程")
