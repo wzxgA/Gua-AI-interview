@@ -24,6 +24,9 @@ public class InterviewRoundEntity {
     @TableField("follow_up_type")
     private String followUpType;
 
+    @TableField("parent_seq")
+    private Integer parentSeq;
+
     @TableField("audio_url")
     private String audioUrl;
 
@@ -79,6 +82,14 @@ public class InterviewRoundEntity {
 
     public void setFollowUpType(String followUpType) {
         this.followUpType = followUpType;
+    }
+
+    public Integer getParentSeq() {
+        return parentSeq;
+    }
+
+    public void setParentSeq(Integer parentSeq) {
+        this.parentSeq = parentSeq;
     }
 
     public String getAudioUrl() {

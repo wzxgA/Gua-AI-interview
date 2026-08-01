@@ -12,9 +12,15 @@ public interface InterviewRoundMapper extends BaseMapper<InterviewRoundEntity> {
     @Select("SELECT COALESCE(MAX(seq), 0) FROM interview_round WHERE session_id = #{sessionId}")
     int maxSeq(@Param("sessionId") Long sessionId);
 
-    /** 查询会话的轮次数量（已回答）。 */
+    /** 查询会话的主问题数量（已回答，不含追问）。 */
     @Select(
-            "SELECT COUNT(*) FROM interview_round WHERE session_id = #{sessionId} AND answer IS NOT"
-                    + " NULL")
+            "SELECT COUNT(*) FROM interview_round WHERE session_id = #{sessionId}"
+                    + " AND parent_seq IS NULL AND answer IS NOT NULL")
     int countAnswered(@Param("sessionId") Long sessionId);
+
+    /** 查询某个主问题下的追问次数。 */
+    @Select(
+            "SELECT COUNT(*) FROM interview_round WHERE session_id = #{sessionId}"
+                    + " AND parent_seq = #{parentSeq}")
+    int countFollowUps(@Param("sessionId") Long sessionId, @Param("parentSeq") int parentSeq);
 }
