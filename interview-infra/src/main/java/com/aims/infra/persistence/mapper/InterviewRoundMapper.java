@@ -15,7 +15,7 @@ public interface InterviewRoundMapper extends BaseMapper<InterviewRoundEntity> {
     /** 查询会话的主问题数量（已回答，不含追问）。 */
     @Select(
             "SELECT COUNT(*) FROM interview_round WHERE session_id = #{sessionId}"
-                    + " AND parent_seq IS NULL AND answer IS NOT NULL")
+                    + " AND parent_seq IS NULL AND answer IS NOT NULL AND answer <> ''")
     int countAnswered(@Param("sessionId") Long sessionId);
 
     /** 查询某个主问题下的追问次数。 */

@@ -16,11 +16,11 @@ interface SessionStore {
   // Actions
   setSession: (sessionId: number, status: SessionStatus) => void;
   setStatus: (status: SessionStatus) => void;
-  startQuestion: (roundId: number, seq: number, followUpType?: string, parentSeq?: number) => void;
+  startQuestion: (roundId: number, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   appendChunk: (text: string) => void;
   finalizeQuestion: () => void;
   addAnswer: (text: string, roundId?: number) => void;
-  addQuestion: (roundId: number, seq: number, text: string, followUpType?: string, parentSeq?: number) => void;
+  addQuestion: (roundId: number, seq: number | undefined, text: string, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   hasRound: (roundId: number) => boolean;
   setConnected: (connected: boolean) => void;
   incrementRetry: () => void;
@@ -52,7 +52,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   setStatus: (status) => set({ status }),
 
-  startQuestion: (roundId, seq, followUpType, parentSeq) =>
+  startQuestion: (roundId, seq, followUpType, parentSeq, followUpIndex) =>
     set((state) => {
       if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
         return state;
@@ -71,6 +71,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             seq,
             followUpType,
             parentSeq,
+            followUpIndex,
             timestamp: new Date().toISOString(),
             streaming: true,
           },
@@ -124,7 +125,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       };
     }),
 
-  addQuestion: (roundId, seq, text, followUpType, parentSeq) =>
+  addQuestion: (roundId, seq, text, followUpType, parentSeq, followUpIndex) =>
     set((state) => {
       if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
         return state;
@@ -140,6 +141,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             seq,
             followUpType,
             parentSeq,
+            followUpIndex,
             timestamp: new Date().toISOString(),
             streaming: false,
           },

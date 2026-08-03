@@ -22,6 +22,10 @@ public interface InterviewSessionService {
     /** 更新会话状态（校验合法迁移）。 */
     InterviewSessionEntity updateStatus(Long id, SessionStatus target);
 
+    /** 原子条件状态转移。返回 true 表示成功转移，false 表示当前状态不匹配（已被其他线程转移）。 */
+    boolean tryTransitionTo(
+            Long id, SessionStatus target, SessionStatus from1, SessionStatus from2);
+
     /** 保存面试计划 JSON。 */
     InterviewSessionEntity savePlan(Long id, String planJson);
 

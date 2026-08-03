@@ -166,8 +166,17 @@ public class ReportServiceImpl implements ReportService {
         StringBuilder sb = new StringBuilder();
         for (InterviewRoundEntity round : rounds) {
             if (round.getAnswer() != null && !round.getAnswer().isBlank()) {
-                sb.append("Q")
-                        .append(round.getSeq())
+                // 追问显示 Q{parentSeq}.{followUpIndex}，主问题显示 Q{seq}
+                String roundLabel =
+                        round.getParentSeq() != null
+                                ? "Q"
+                                        + round.getParentSeq()
+                                        + "."
+                                        + (round.getFollowUpIndex() != null
+                                                ? round.getFollowUpIndex()
+                                                : 1)
+                                : "Q" + (round.getSeq() != null ? round.getSeq() : "?");
+                sb.append(roundLabel)
                         .append(": ")
                         .append(truncate(round.getQuestion(), 200))
                         .append("\nA: ")

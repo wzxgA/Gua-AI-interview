@@ -9,6 +9,8 @@ public record WsOutbound(
         Long sessionId,
         Long roundId,
         Integer seq,
+        Integer parentSeq,
+        Integer followUpIndex,
         String status,
         Integer code,
         String message,
@@ -17,48 +19,98 @@ public record WsOutbound(
 
     public static WsOutbound sessionReady(Long sessionId, String status) {
         return new WsOutbound(
-                "SESSION_READY", sessionId, null, null, status, null, null, null, null);
+                "SESSION_READY", sessionId, null, null, null, null, status, null, null, null, null);
     }
 
-    public static WsOutbound questionStart(Long sessionId, Long roundId, int seq) {
+    public static WsOutbound questionStart(Long sessionId, Long roundId, Integer seq) {
         return new WsOutbound(
-                "QUESTION_START", sessionId, roundId, seq, null, null, null, null, null);
+                "QUESTION_START",
+                sessionId,
+                roundId,
+                seq,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
+    /** 追问专用：携带 followUpType、parentSeq、followUpIndex，seq 为 null。 */
     public static WsOutbound questionStart(
-            Long sessionId, Long roundId, int seq, String followUpType) {
+            Long sessionId,
+            Long roundId,
+            Integer seq,
+            String followUpType,
+            Integer parentSeq,
+            Integer followUpIndex) {
         return new WsOutbound(
-                "QUESTION_START", sessionId, roundId, seq, null, null, null, null, followUpType);
+                "QUESTION_START",
+                sessionId,
+                roundId,
+                seq,
+                parentSeq,
+                followUpIndex,
+                null,
+                null,
+                null,
+                null,
+                followUpType);
     }
 
     public static WsOutbound questionChunk(Long sessionId, Long roundId, String text) {
         return new WsOutbound(
-                "QUESTION_CHUNK", sessionId, roundId, null, null, null, null, text, null);
+                "QUESTION_CHUNK",
+                sessionId,
+                roundId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                text,
+                null);
     }
 
-    public static WsOutbound questionEnd(Long sessionId, Long roundId, int seq, String text) {
+    public static WsOutbound questionEnd(Long sessionId, Long roundId, Integer seq, String text) {
         return new WsOutbound(
-                "QUESTION_END", sessionId, roundId, seq, null, null, null, text, null);
+                "QUESTION_END", sessionId, roundId, seq, null, null, null, null, null, text, null);
     }
 
     public static WsOutbound answerAck(Long sessionId, Long roundId) {
-        return new WsOutbound("ANSWER_ACK", sessionId, roundId, null, null, null, null, null, null);
+        return new WsOutbound(
+                "ANSWER_ACK", sessionId, roundId, null, null, null, null, null, null, null, null);
     }
 
     public static WsOutbound status(Long sessionId, String status) {
-        return new WsOutbound("STATUS", sessionId, null, null, status, null, null, null, null);
+        return new WsOutbound(
+                "STATUS", sessionId, null, null, null, null, status, null, null, null, null);
     }
 
     public static WsOutbound heartbeatAck(Long sessionId) {
-        return new WsOutbound("HEARTBEAT_ACK", sessionId, null, null, null, null, null, null, null);
+        return new WsOutbound(
+                "HEARTBEAT_ACK", sessionId, null, null, null, null, null, null, null, null, null);
     }
 
     public static WsOutbound completed(Long sessionId) {
         return new WsOutbound(
-                "SESSION_COMPLETED", sessionId, null, null, "COMPLETED", null, null, null, null);
+                "SESSION_COMPLETED",
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                "COMPLETED",
+                null,
+                null,
+                null,
+                null);
     }
 
     public static WsOutbound error(int code, String message) {
-        return new WsOutbound("ERROR", null, null, null, null, code, message, null, null);
+        return new WsOutbound(
+                "ERROR", null, null, null, null, null, null, code, message, null, null);
     }
 }

@@ -28,12 +28,6 @@ export const PARSE_STATUS_LABELS: Record<string, string> = {
   FAILED: '解析失败',
 };
 
-export const FOLLOW_UP_TYPE_LABELS: Record<string, string> = {
-  CLARIFY: '澄清',
-  DEEPEN: '深挖',
-  REDIRECT: '引导',
-};
-
 export const SESSION_STATUSES = [
   'CREATED',
   'PLANNING',

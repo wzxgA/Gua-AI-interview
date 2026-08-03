@@ -82,6 +82,8 @@ export interface WsServerMessage {
   sessionId?: number;
   roundId?: number;
   seq?: number;
+  parentSeq?: number;
+  followUpIndex?: number;
   status?: SessionStatus;
   code?: number;
   message?: string;
@@ -98,6 +100,7 @@ export interface ChatMessage {
   seq?: number;
   followUpType?: string;
   parentSeq?: number;
+  followUpIndex?: number;
   timestamp: string;
   streaming?: boolean;
 }
@@ -112,10 +115,11 @@ export interface InterviewQuery {
 /** 面试轮次响应 */
 export interface RoundResponse {
   id: number;
-  seq: number;
+  seq: number | null;
   question: string;
   answer: string | null;
   followUpType: string | null;
   parentSeq: number | null;
+  followUpIndex: number | null;
   createdAt: string;
 }

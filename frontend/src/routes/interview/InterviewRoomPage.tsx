@@ -44,7 +44,7 @@ export function InterviewRoomPage() {
     if (!rounds || rounds.length === 0) return;
 
     rounds.forEach((r) => {
-      addQuestion(r.id, r.seq, r.question, r.followUpType ?? undefined, r.parentSeq ?? undefined);
+      addQuestion(r.id, r.seq ?? undefined, r.question, r.followUpType ?? undefined, r.parentSeq ?? undefined, r.followUpIndex ?? undefined);
       if (r.answer) {
         addAnswer(r.answer, r.id);
       }

@@ -190,11 +190,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         "重连时发现已达题数上限，进入评估流程 sessionId={} answeredCount={}",
                         sessionId,
                         answeredCount);
-                sessionStore.forceUnlock(sessionId);
-                sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-                sessionService.updateEvaluationStatus(sessionId, "PENDING");
-                evaluationMessageProducer.sendEvaluationRequest(sessionId);
-                send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                if (triggerEvaluation(sessionId)) {
+                    send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                }
             } else {
                 // 补发下一题
                 log.info("重连后补发下一题 sessionId={} answeredCount={}", sessionId, answeredCount);
@@ -203,9 +201,22 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         } else {
             // 补发未回答的当前问题
             log.info("重连后补发当前未回答问题 sessionId={} roundId={}", sessionId, lastRound.getId());
-            send(
-                    session,
-                    WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+            // 追问补发：携带 parentSeq + followUpIndex
+            if (lastRound.getParentSeq() != null) {
+                send(
+                        session,
+                        WsOutbound.questionStart(
+                                sessionId,
+                                lastRound.getId(),
+                                null,
+                                lastRound.getFollowUpType(),
+                                lastRound.getParentSeq(),
+                                lastRound.getFollowUpIndex()));
+            } else {
+                send(
+                        session,
+                        WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+            }
             send(
                     session,
                     WsOutbound.questionChunk(
@@ -304,6 +315,31 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     // ==================== 消息处理 ====================
 
+    /**
+     * 触发评估流程（原子保证同一会话只触发一次）。
+     *
+     * <p>先通过原子条件更新将状态从 IN_PROGRESS/PAUSED 转为 EVALUATING，再释放连接锁、发送 Kafka 评估请求。 若状态已被其他线程转移，返回 false
+     * 跳过重复触发。
+     *
+     * @return true 表示成功触发评估，false 表示评估已被其他线程触发
+     */
+    private boolean triggerEvaluation(Long sessionId) {
+        boolean transitioned =
+                sessionService.tryTransitionTo(
+                        sessionId,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        if (!transitioned) {
+            log.info("评估已触发，跳过重复请求 sessionId={}", sessionId);
+            return false;
+        }
+        sessionStore.forceUnlock(sessionId);
+        sessionService.updateEvaluationStatus(sessionId, "PENDING");
+        evaluationMessageProducer.sendEvaluationRequest(sessionId);
+        return true;
+    }
+
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
     private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
         // 校验状态
@@ -351,49 +387,48 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // 更新回答
         roundService.updateAnswer(currentRound.getId(), text);
+        currentRound.setAnswer(text);
         // 写入会话记忆
         conversationMemory.addUser(sessionId.toString(), text, currentRound.getId().toString());
         // 发送确认
         send(session, WsOutbound.answerAck(sessionId, currentRound.getId()));
         log.info("收到回答 sessionId={} roundId={}", sessionId, currentRound.getId());
 
-        // 检查是否达到题目上限
+        // 确定主问题 seq（追问取 parentSeq，主问题取 seq）
+        int parentSeq =
+                currentRound.getParentSeq() != null
+                        ? currentRound.getParentSeq()
+                        : currentRound.getSeq();
+
+        // 1. 先检查是否需要追问（追问未达上限）
+        int followUpCount = roundService.countFollowUps(sessionId, parentSeq);
+        if (followUpCount < MAX_FOLLOW_UPS) {
+            FollowUpContext followUpContext = buildFollowUpContext(sessionId, entity, currentRound);
+            FollowUpDecision decision = followUpAgent.evaluate(followUpContext);
+            log.info(
+                    "追问决策 sessionId={} roundId={} shouldFollowUp={} type={} reason={}",
+                    sessionId,
+                    currentRound.getId(),
+                    decision.shouldFollowUp(),
+                    decision.followUpType(),
+                    decision.reason());
+            if (decision.shouldFollowUp()) {
+                generateAndSendFollowUp(
+                        session, sessionId, parentSeq, followUpCount, followUpContext, decision);
+                return;
+            }
+        }
+
+        // 2. 不追问或追问已达上限：检查是否达到题目上限
         int answeredCount = roundService.countAnswered(sessionId);
         int totalRounds = getTotalRounds(entity);
         if (totalRounds > 0 && answeredCount >= totalRounds) {
-            // 释放连接锁，进入评估流程
-            sessionStore.forceUnlock(sessionId);
-            sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-            sessionService.updateEvaluationStatus(sessionId, "PENDING");
-            evaluationMessageProducer.sendEvaluationRequest(sessionId);
-            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
-            log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
-        } else {
-            // 确定主问题 seq（如果当前是追问，取其 parentSeq；否则取当前 seq）
-            int parentSeq =
-                    currentRound.getParentSeq() != null
-                            ? currentRound.getParentSeq()
-                            : currentRound.getSeq();
-            // 检查是否需要追问
-            int followUpCount = roundService.countFollowUps(sessionId, parentSeq);
-            if (followUpCount < MAX_FOLLOW_UPS) {
-                FollowUpContext followUpContext =
-                        buildFollowUpContext(sessionId, entity, currentRound);
-                FollowUpDecision decision = followUpAgent.evaluate(followUpContext);
-                log.info(
-                        "追问决策 sessionId={} roundId={} shouldFollowUp={} type={} reason={}",
-                        sessionId,
-                        currentRound.getId(),
-                        decision.shouldFollowUp(),
-                        decision.followUpType(),
-                        decision.reason());
-                if (decision.shouldFollowUp()) {
-                    generateAndSendFollowUp(
-                            session, sessionId, parentSeq, followUpContext, decision);
-                    return;
-                }
+            if (triggerEvaluation(sessionId)) {
+                send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
             }
-            // 不追问或追问已达上限，生成下一题
+        } else {
+            // 3. 未达上限，生成下一题
             generateAndSendQuestion(session, sessionId);
         }
     }
@@ -428,15 +463,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                             "会话状态不允许 FINISH，当前: " + current));
             return;
         }
-        // 释放连接锁
-        sessionStore.forceUnlock(sessionId);
         // 状态转为 EVALUATING，触发评估
-        sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-        sessionService.updateEvaluationStatus(sessionId, "PENDING");
-        evaluationMessageProducer.sendEvaluationRequest(sessionId);
-        // 通知前端进入评估状态
-        send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
-        log.info("面试结束，进入评估流程 sessionId={}", sessionId);
+        if (triggerEvaluation(sessionId)) {
+            // 通知前端进入评估状态
+            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            log.info("面试结束，进入评估流程 sessionId={}", sessionId);
+        }
     }
 
     /** CANCEL：取消会话。 */
@@ -507,6 +539,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             WebSocketSession session,
             Long sessionId,
             int parentSeq,
+            int followUpCount,
             FollowUpContext context,
             FollowUpDecision decision) {
         // 流式生成追问问题
@@ -529,17 +562,27 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         String fullQuestion = String.join("", chunks);
 
-        // 创建追问轮次记录（seq 递增，parentSeq 指向主问题）
-        int seq = roundService.maxSeq(sessionId) + 1;
+        // 创建追问轮次记录（seq=null，parentSeq 指向主问题，followUpIndex 递增）
+        int followUpIndex = followUpCount + 1;
         InterviewRoundEntity round =
                 roundService.createRound(
-                        sessionId, seq, fullQuestion, decision.followUpType().name(), parentSeq);
+                        sessionId,
+                        null,
+                        fullQuestion,
+                        decision.followUpType().name(),
+                        parentSeq,
+                        followUpIndex);
 
-        // 发送 QUESTION_START（携带 followUpType）
+        // 发送 QUESTION_START（携带 followUpType、parentSeq、followUpIndex）
         send(
                 session,
                 WsOutbound.questionStart(
-                        sessionId, round.getId(), seq, decision.followUpType().name()));
+                        sessionId,
+                        round.getId(),
+                        null,
+                        decision.followUpType().name(),
+                        parentSeq,
+                        followUpIndex));
 
         // 逐 chunk 发送
         for (String chunk : chunks) {
@@ -547,17 +590,17 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 发送 QUESTION_END
-        send(session, WsOutbound.questionEnd(sessionId, round.getId(), seq, fullQuestion));
+        send(session, WsOutbound.questionEnd(sessionId, round.getId(), null, fullQuestion));
 
         // 写入会话记忆
         conversationMemory.addAssistant(
                 sessionId.toString(), fullQuestion, round.getId().toString());
         log.info(
-                "生成追问完成 sessionId={} roundId={} seq={} parentSeq={} followUpType={}",
+                "生成追问完成 sessionId={} roundId={} parentSeq={} followUpIndex={} followUpType={}",
                 sessionId,
                 round.getId(),
-                seq,
                 parentSeq,
+                followUpIndex,
                 decision.followUpType());
     }
 
@@ -576,9 +619,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 InterviewPlan plan =
                         objectMapper.readValue(entity.getPlanJson(), InterviewPlan.class);
                 if (plan != null && plan.questions() != null && !plan.questions().isEmpty()) {
-                    // 找到与当前 seq 对应的题目（seq 从 1 开始）
-                    int questionIdx =
-                            Math.min(currentRound.getSeq() - 1, plan.questions().size() - 1);
+                    // 找到与当前题目对应的计划题目（追问取 parentSeq，主问题取 seq，从 1 开始）
+                    int seqForPlan =
+                            currentRound.getParentSeq() != null
+                                    ? currentRound.getParentSeq()
+                                    : currentRound.getSeq();
+                    int questionIdx = Math.min(seqForPlan - 1, plan.questions().size() - 1);
                     if (questionIdx >= 0) {
                         PlannedQuestion pq = plan.questions().get(questionIdx);
                         followUpHints = pq.followUpHints();
