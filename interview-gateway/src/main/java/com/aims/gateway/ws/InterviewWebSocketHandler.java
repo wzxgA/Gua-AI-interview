@@ -394,46 +394,41 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         send(session, WsOutbound.answerAck(sessionId, currentRound.getId()));
         log.info("收到回答 sessionId={} roundId={}", sessionId, currentRound.getId());
 
-        // 检查是否达到题目上限
+        // 确定主问题 seq（追问取 parentSeq，主问题取 seq）
+        int parentSeq =
+                currentRound.getParentSeq() != null
+                        ? currentRound.getParentSeq()
+                        : currentRound.getSeq();
+
+        // 1. 先检查是否需要追问（追问未达上限）
+        int followUpCount = roundService.countFollowUps(sessionId, parentSeq);
+        if (followUpCount < MAX_FOLLOW_UPS) {
+            FollowUpContext followUpContext = buildFollowUpContext(sessionId, entity, currentRound);
+            FollowUpDecision decision = followUpAgent.evaluate(followUpContext);
+            log.info(
+                    "追问决策 sessionId={} roundId={} shouldFollowUp={} type={} reason={}",
+                    sessionId,
+                    currentRound.getId(),
+                    decision.shouldFollowUp(),
+                    decision.followUpType(),
+                    decision.reason());
+            if (decision.shouldFollowUp()) {
+                generateAndSendFollowUp(
+                        session, sessionId, parentSeq, followUpCount, followUpContext, decision);
+                return;
+            }
+        }
+
+        // 2. 不追问或追问已达上限：检查是否达到题目上限
         int answeredCount = roundService.countAnswered(sessionId);
         int totalRounds = getTotalRounds(entity);
         if (totalRounds > 0 && answeredCount >= totalRounds) {
-            // 释放连接锁，进入评估流程
             if (triggerEvaluation(sessionId)) {
                 send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
                 log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
             }
         } else {
-            // 确定主问题 seq（如果当前是追问，取其 parentSeq；否则取当前 seq）
-            int parentSeq =
-                    currentRound.getParentSeq() != null
-                            ? currentRound.getParentSeq()
-                            : currentRound.getSeq();
-            // 检查是否需要追问
-            int followUpCount = roundService.countFollowUps(sessionId, parentSeq);
-            if (followUpCount < MAX_FOLLOW_UPS) {
-                FollowUpContext followUpContext =
-                        buildFollowUpContext(sessionId, entity, currentRound);
-                FollowUpDecision decision = followUpAgent.evaluate(followUpContext);
-                log.info(
-                        "追问决策 sessionId={} roundId={} shouldFollowUp={} type={} reason={}",
-                        sessionId,
-                        currentRound.getId(),
-                        decision.shouldFollowUp(),
-                        decision.followUpType(),
-                        decision.reason());
-                if (decision.shouldFollowUp()) {
-                    generateAndSendFollowUp(
-                            session,
-                            sessionId,
-                            parentSeq,
-                            followUpCount,
-                            followUpContext,
-                            decision);
-                    return;
-                }
-            }
-            // 不追问或追问已达上限，生成下一题
+            // 3. 未达上限，生成下一题
             generateAndSendQuestion(session, sessionId);
         }
     }
