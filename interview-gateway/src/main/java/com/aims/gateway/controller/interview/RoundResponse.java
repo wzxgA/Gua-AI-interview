@@ -11,6 +11,7 @@ public record RoundResponse(
         String answer,
         String followUpType,
         Integer parentSeq,
+        Integer followUpIndex,
         Instant createdAt) {
 
     /** 从持久化实体构建响应。 */
@@ -22,6 +23,7 @@ public record RoundResponse(
                 entity.getAnswer(),
                 entity.getFollowUpType(),
                 entity.getParentSeq(),
+                entity.getFollowUpIndex(),
                 entity.getCreatedAt());
     }
 }

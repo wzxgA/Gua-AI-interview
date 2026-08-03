@@ -36,13 +36,19 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
     @Override
     @Transactional
     public InterviewRoundEntity createRound(
-            Long sessionId, int seq, String question, String followUpType, int parentSeq) {
+            Long sessionId,
+            Integer seq,
+            String question,
+            String followUpType,
+            int parentSeq,
+            int followUpIndex) {
         InterviewRoundEntity entity = new InterviewRoundEntity();
         entity.setSessionId(sessionId);
         entity.setSeq(seq);
         entity.setQuestion(question);
         entity.setFollowUpType(followUpType);
         entity.setParentSeq(parentSeq);
+        entity.setFollowUpIndex(followUpIndex);
         entity.setCreatedAt(Instant.now());
         roundMapper.insert(entity);
         return entity;
@@ -65,7 +71,7 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
         return roundMapper.selectList(
                 Wrappers.<InterviewRoundEntity>lambdaQuery()
                         .eq(InterviewRoundEntity::getSessionId, sessionId)
-                        .orderByAsc(InterviewRoundEntity::getSeq));
+                        .orderByAsc(InterviewRoundEntity::getCreatedAt));
     }
 
     @Override

@@ -5,7 +5,9 @@ package com.aims.core.evaluation;
  *
  * @param sessionId 会话 ID
  * @param roundId 轮次 ID
- * @param seq 轮次序号
+ * @param seq 轮次序号（追问为 null）
+ * @param parentSeq 追问所属主问题 seq（主问题为 null）
+ * @param followUpIndex 同一主问题下第几次追问（主问题为 null）
  * @param question 面试问题
  * @param answer 候选人回答
  * @param positionTitle 岗位名称
@@ -15,7 +17,9 @@ package com.aims.core.evaluation;
 public record EvaluationContext(
         Long sessionId,
         Long roundId,
-        int seq,
+        Integer seq,
+        Integer parentSeq,
+        Integer followUpIndex,
         String question,
         String answer,
         String positionTitle,

@@ -6,18 +6,35 @@ import type { ChatMessage } from '@/types/interview';
 
 interface QuestionBubbleProps {
   message: ChatMessage;
-  followUpIndex?: number;
 }
 
-/** AI 面试官问题气泡：左侧竖条（主问题银色 / 追问 amber），流式文本 + 打字机光标 */
-export function QuestionBubble({ message, followUpIndex }: QuestionBubbleProps) {
+/** 按 followUpType 映射色系 */
+const FOLLOW_UP_COLORS: Record<string, { stripe: string; badge: string }> = {
+  CLARIFY: {
+    stripe: 'from-amber-400 to-amber-200',
+    badge: 'border-amber-400/30 bg-amber-500/10 text-amber-400',
+  },
+  DEEPEN: {
+    stripe: 'from-orange-400 to-orange-200',
+    badge: 'border-orange-400/30 bg-orange-500/10 text-orange-400',
+  },
+  REDIRECT: {
+    stripe: 'from-sky-400 to-sky-200',
+    badge: 'border-sky-400/30 bg-sky-500/10 text-sky-400',
+  },
+};
+
+/** AI 面试官问题气泡：左侧竖条（主问题银色 / 追问按类型分色），流式文本 + 打字机光标 */
+export function QuestionBubble({ message }: QuestionBubbleProps) {
   const isFollowUp = message.parentSeq != null && message.followUpType;
+  const color = FOLLOW_UP_COLORS[message.followUpType ?? ''] ?? FOLLOW_UP_COLORS.CLARIFY;
+
   const stripeClass = isFollowUp
-    ? 'bg-gradient-to-b from-amber-400 to-amber-200'
+    ? `bg-gradient-to-b ${color.stripe}`
     : 'bg-gradient-to-b from-silver-300 to-silver-100';
 
   const seqLabel = isFollowUp
-    ? `Q${message.parentSeq}.${followUpIndex ?? 1}`
+    ? `Q${message.parentSeq}.${message.followUpIndex ?? 1}`
     : message.seq != null
       ? `Q${message.seq}`
       : null;
@@ -39,7 +56,7 @@ export function QuestionBubble({ message, followUpIndex }: QuestionBubbleProps) 
             <span
               className={`rounded-full border px-2 py-0.5 text-xs ${
                 isFollowUp
-                  ? 'border-amber-400/30 bg-amber-500/10 text-amber-400'
+                  ? color.badge
                   : 'border-border-default bg-surface-hover text-text-muted'
               }`}
             >

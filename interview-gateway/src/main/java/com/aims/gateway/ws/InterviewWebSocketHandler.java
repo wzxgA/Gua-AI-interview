@@ -203,9 +203,22 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         } else {
             // 补发未回答的当前问题
             log.info("重连后补发当前未回答问题 sessionId={} roundId={}", sessionId, lastRound.getId());
-            send(
-                    session,
-                    WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+            // 追问补发：携带 parentSeq + followUpIndex
+            if (lastRound.getParentSeq() != null) {
+                send(
+                        session,
+                        WsOutbound.questionStart(
+                                sessionId,
+                                lastRound.getId(),
+                                null,
+                                lastRound.getFollowUpType(),
+                                lastRound.getParentSeq(),
+                                lastRound.getFollowUpIndex()));
+            } else {
+                send(
+                        session,
+                        WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+            }
             send(
                     session,
                     WsOutbound.questionChunk(
@@ -389,7 +402,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         decision.reason());
                 if (decision.shouldFollowUp()) {
                     generateAndSendFollowUp(
-                            session, sessionId, parentSeq, followUpContext, decision);
+                            session,
+                            sessionId,
+                            parentSeq,
+                            followUpCount,
+                            followUpContext,
+                            decision);
                     return;
                 }
             }
@@ -507,6 +525,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             WebSocketSession session,
             Long sessionId,
             int parentSeq,
+            int followUpCount,
             FollowUpContext context,
             FollowUpDecision decision) {
         // 流式生成追问问题
@@ -529,17 +548,27 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         String fullQuestion = String.join("", chunks);
 
-        // 创建追问轮次记录（seq 递增，parentSeq 指向主问题）
-        int seq = roundService.maxSeq(sessionId) + 1;
+        // 创建追问轮次记录（seq=null，parentSeq 指向主问题，followUpIndex 递增）
+        int followUpIndex = followUpCount + 1;
         InterviewRoundEntity round =
                 roundService.createRound(
-                        sessionId, seq, fullQuestion, decision.followUpType().name(), parentSeq);
+                        sessionId,
+                        null,
+                        fullQuestion,
+                        decision.followUpType().name(),
+                        parentSeq,
+                        followUpIndex);
 
-        // 发送 QUESTION_START（携带 followUpType）
+        // 发送 QUESTION_START（携带 followUpType、parentSeq、followUpIndex）
         send(
                 session,
                 WsOutbound.questionStart(
-                        sessionId, round.getId(), seq, decision.followUpType().name()));
+                        sessionId,
+                        round.getId(),
+                        null,
+                        decision.followUpType().name(),
+                        parentSeq,
+                        followUpIndex));
 
         // 逐 chunk 发送
         for (String chunk : chunks) {
@@ -547,17 +576,17 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 发送 QUESTION_END
-        send(session, WsOutbound.questionEnd(sessionId, round.getId(), seq, fullQuestion));
+        send(session, WsOutbound.questionEnd(sessionId, round.getId(), null, fullQuestion));
 
         // 写入会话记忆
         conversationMemory.addAssistant(
                 sessionId.toString(), fullQuestion, round.getId().toString());
         log.info(
-                "生成追问完成 sessionId={} roundId={} seq={} parentSeq={} followUpType={}",
+                "生成追问完成 sessionId={} roundId={} parentSeq={} followUpIndex={} followUpType={}",
                 sessionId,
                 round.getId(),
-                seq,
                 parentSeq,
+                followUpIndex,
                 decision.followUpType());
     }
 
@@ -576,9 +605,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 InterviewPlan plan =
                         objectMapper.readValue(entity.getPlanJson(), InterviewPlan.class);
                 if (plan != null && plan.questions() != null && !plan.questions().isEmpty()) {
-                    // 找到与当前 seq 对应的题目（seq 从 1 开始）
-                    int questionIdx =
-                            Math.min(currentRound.getSeq() - 1, plan.questions().size() - 1);
+                    // 找到与当前题目对应的计划题目（追问取 parentSeq，主问题取 seq，从 1 开始）
+                    int seqForPlan =
+                            currentRound.getParentSeq() != null
+                                    ? currentRound.getParentSeq()
+                                    : currentRound.getSeq();
+                    int questionIdx = Math.min(seqForPlan - 1, plan.questions().size() - 1);
                     if (questionIdx >= 0) {
                         PlannedQuestion pq = plan.questions().get(questionIdx);
                         followUpHints = pq.followUpHints();

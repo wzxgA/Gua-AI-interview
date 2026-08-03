@@ -85,6 +85,8 @@ public class EvaluationServiceImpl implements EvaluationService {
                                 sessionId,
                                 round.getId(),
                                 round.getSeq(),
+                                round.getParentSeq(),
+                                round.getFollowUpIndex(),
                                 round.getQuestion(),
                                 round.getAnswer(),
                                 position.getTitle(),

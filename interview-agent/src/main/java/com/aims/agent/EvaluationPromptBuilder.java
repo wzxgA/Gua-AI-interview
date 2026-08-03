@@ -34,12 +34,20 @@ public final class EvaluationPromptBuilder {
 
     /** 构造评估用户 Prompt。 */
     public static String evaluatorUser(EvaluationContext context) {
+        // 追问显示 Q{parentSeq}.{followUpIndex}，主问题显示 Q{seq}
+        String roundLabel =
+                context.parentSeq() != null
+                        ? "Q"
+                                + context.parentSeq()
+                                + "."
+                                + (context.followUpIndex() != null ? context.followUpIndex() : 1)
+                        : "Q" + (context.seq() != null ? context.seq() : "?");
         return """
                岗位名称：%s
                岗位 JD：%s
                简历摘要：%s
 
-               第 %d 轮问答：
+               第 %s 轮问答：
                问题：%s
                回答：%s
 
@@ -54,7 +62,7 @@ public final class EvaluationPromptBuilder {
                         safe(context.positionTitle()),
                         safe(context.jdText()),
                         safe(context.resumeSummary()),
-                        context.seq(),
+                        roundLabel,
                         safe(context.question()),
                         safe(context.answer()));
     }

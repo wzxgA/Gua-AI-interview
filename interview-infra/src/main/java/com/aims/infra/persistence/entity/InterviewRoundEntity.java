@@ -27,6 +27,9 @@ public class InterviewRoundEntity {
     @TableField("parent_seq")
     private Integer parentSeq;
 
+    @TableField("follow_up_index")
+    private Integer followUpIndex;
+
     @TableField("audio_url")
     private String audioUrl;
 
@@ -90,6 +93,14 @@ public class InterviewRoundEntity {
 
     public void setParentSeq(Integer parentSeq) {
         this.parentSeq = parentSeq;
+    }
+
+    public Integer getFollowUpIndex() {
+        return followUpIndex;
+    }
+
+    public void setFollowUpIndex(Integer followUpIndex) {
+        this.followUpIndex = followUpIndex;
     }
 
     public String getAudioUrl() {
