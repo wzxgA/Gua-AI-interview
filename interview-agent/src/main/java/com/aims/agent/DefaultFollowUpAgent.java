@@ -5,6 +5,7 @@ import com.aims.ai.router.ModelTier;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
+import com.aims.core.interview.InterviewerPersona;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,9 +49,11 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
 
     @Override
     public Flux<String> streamFollowUp(FollowUpContext context, FollowUpDecision decision) {
+        InterviewerPersona persona =
+                context.persona() != null ? context.persona() : InterviewerPersona.FRIENDLY;
         return aiChatFacade.stream(
                         ModelTier.FLAGSHIP,
-                        InterviewPromptBuilder.interviewerSystem(),
+                        InterviewPromptBuilder.interviewerSystem(persona),
                         FollowUpPromptBuilder.followUpUser(context, decision))
                 .filter(chunk -> chunk != null && !chunk.isBlank());
     }

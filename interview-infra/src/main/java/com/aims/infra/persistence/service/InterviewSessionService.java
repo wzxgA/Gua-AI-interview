@@ -11,7 +11,7 @@ import java.util.function.Function;
 public interface InterviewSessionService {
 
     /** 创建面试会话（CREATED）。 */
-    InterviewSessionEntity create(Long candidateId, Long positionId);
+    InterviewSessionEntity create(Long candidateId, Long positionId, String persona);
 
     /** 查询会话详情，不存在抛 BizException。 */
     InterviewSessionEntity getById(Long id);

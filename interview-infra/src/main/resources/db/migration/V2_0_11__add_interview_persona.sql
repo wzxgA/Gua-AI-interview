@@ -1,0 +1,4 @@
+-- 面试官人设字段
+ALTER TABLE interview_session
+    ADD COLUMN IF NOT EXISTS persona VARCHAR(20) NOT NULL DEFAULT 'FRIENDLY';
+COMMENT ON COLUMN interview_session.persona IS '面试官人设：FRIENDLY/PRESSURE/TECHNICAL';

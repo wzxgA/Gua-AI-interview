@@ -2,6 +2,7 @@ package com.aims.infra.persistence.service.impl;
 
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.BizException;
+import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
@@ -32,13 +33,14 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     @Override
     @Transactional
-    public InterviewSessionEntity create(Long candidateId, Long positionId) {
+    public InterviewSessionEntity create(Long candidateId, Long positionId, String persona) {
         if (candidateId == null) {
             throw new BizException(ErrorCode.PARAM_INVALID, "候选人 ID 不能为空");
         }
         InterviewSessionEntity entity = new InterviewSessionEntity();
         entity.setCandidateId(candidateId);
         entity.setPositionId(positionId);
+        entity.setPersona(InterviewerPersona.fromString(persona).name());
         entity.setStatus(SessionStatus.CREATED.name());
         Instant now = Instant.now();
         entity.setCreatedAt(now);

@@ -51,3 +51,9 @@ export const SESSION_STATUS_LABELS: Record<string, string> = {
   CANCELLED: '已取消',
   FAILED: '失败',
 };
+
+export const PERSONA_LABELS: Record<string, string> = {
+  FRIENDLY: '温和型',
+  PRESSURE: '压力面型',
+  TECHNICAL: '深度技术型',
+};

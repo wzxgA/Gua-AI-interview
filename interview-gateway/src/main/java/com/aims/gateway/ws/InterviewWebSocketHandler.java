@@ -8,6 +8,7 @@ import com.aims.core.common.ErrorCode;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.InterviewPlan;
+import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
@@ -653,7 +654,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 position.getJdText(),
                 buildResumeSummary(resume),
                 followUpHints,
-                recentQuestions);
+                recentQuestions,
+                InterviewerPersona.fromString(entity.getPersona()));
     }
 
     /** 构建 InterviewContext。 */
@@ -707,7 +709,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 recentQuestions,
                 recentAnswers,
                 buildResumeSummary(resume),
-                ragQuestions);
+                ragQuestions,
+                InterviewerPersona.fromString(entity.getPersona()));
     }
 
     /** 从 WebSocket URI 路径中提取 sessionId。 */

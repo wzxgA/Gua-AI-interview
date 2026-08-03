@@ -13,10 +13,12 @@ public record FollowUpContext(
         String jdText,
         String resumeSummary,
         List<String> followUpHints,
-        List<String> recentQuestions) {
+        List<String> recentQuestions,
+        InterviewerPersona persona) {
 
     public FollowUpContext {
         followUpHints = followUpHints == null ? List.of() : List.copyOf(followUpHints);
         recentQuestions = recentQuestions == null ? List.of() : List.copyOf(recentQuestions);
+        persona = persona == null ? InterviewerPersona.FRIENDLY : persona;
     }
 }

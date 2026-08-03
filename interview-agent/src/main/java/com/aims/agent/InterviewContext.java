@@ -1,6 +1,7 @@
 package com.aims.agent;
 
 import com.aims.core.interview.InterviewPlan;
+import com.aims.core.interview.InterviewerPersona;
 import java.util.List;
 
 /**
@@ -15,6 +16,7 @@ import java.util.List;
  * @param recentAnswers 最近已收到的回答
  * @param resumeFacts 简历事实摘要
  * @param ragQuestions RAG 检索到的参考题目
+ * @param persona 面试官人设
  */
 public record InterviewContext(
         Long sessionId,
@@ -25,7 +27,8 @@ public record InterviewContext(
         List<String> recentQuestions,
         List<String> recentAnswers,
         String resumeFacts,
-        String ragQuestions) {
+        String ragQuestions,
+        InterviewerPersona persona) {
 
     public int totalRounds() {
         return plan != null && plan.questions() != null ? plan.questions().size() : 0;
