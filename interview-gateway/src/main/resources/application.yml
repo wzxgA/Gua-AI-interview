@@ -112,7 +112,7 @@ aims:
     api-key: ${VOLC_TTS_API_KEY:}
     resource-id: ${VOLC_TTS_RESOURCE_ID:seed-tts-2.0}
     base-url: ${VOLC_TTS_BASE_URL:https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional}
-    default-speaker: ${VOLC_TTS_SPEAKER:zh_male_yunzhou_moon_bigtts}
+    default-speaker: ${VOLC_TTS_SPEAKER:zh_male_m191_uranus_bigtts}
     format: mp3
     sample-rate: 24000
     speech-rate: 0

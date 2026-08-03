@@ -27,7 +27,7 @@ public record TtsProperties(
             resourceId = "seed-tts-2.0";
         }
         if (defaultSpeaker == null || defaultSpeaker.isBlank()) {
-            defaultSpeaker = "zh_male_yunzhou_moon_bigtts";
+            defaultSpeaker = "zh_male_m191_uranus_bigtts";
         }
         if (format == null || format.isBlank()) {
             format = "mp3";

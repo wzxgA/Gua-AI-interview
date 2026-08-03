@@ -24,6 +24,9 @@ public interface InterviewRoundService {
     /** 更新轮次回答。 */
     InterviewRoundEntity updateAnswer(Long roundId, String answer);
 
+    /** 更新轮次 TTS 音频信息。 */
+    void updateAudio(Long roundId, String audioUrl, int durationMs);
+
     /** 查询会话所有轮次，按 createdAt 排序。 */
     List<InterviewRoundEntity> listBySession(Long sessionId);
 

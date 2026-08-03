@@ -8,13 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -76,23 +76,25 @@ public class VolcanoTtsService implements TtsService {
                 return null;
             }
 
-            // 4. 逐行解析 JSON，收集音频帧 + 提取时长
-            var decoder = Base64.getDecoder();
-            var buffer = new ByteArrayOutputStream();
-            int durationMs = 0;
+            // 4. 解析响应：HTTP 接口返回单个 JSON {"code":0,"data":"base64音频"}
+            log.debug("TTS 原始响应体: {}", truncate(response.body(), 500));
+            JsonNode root = objectMapper.readTree(response.body());
 
-            for (String line : response.body().split("\n")) {
-                if (line.isBlank()) continue;
-                JsonNode node = objectMapper.readTree(line);
-                String event = node.path("event").asText();
-                if ("TTSResponse".equals(event)) {
-                    buffer.write(decoder.decode(node.path("data").asText()));
-                } else if ("TTSStopped".equals(event)) {
-                    durationMs = node.path("duration_ms").asInt(0);
-                }
+            int respCode = root.path("code").asInt(-1);
+            if (respCode != 0) {
+                log.warn(
+                        "TTS API 业务错误 code={} message={}", respCode, root.path("message").asText());
+                return null;
             }
 
-            byte[] audioBytes = buffer.toByteArray();
+            String base64Audio = root.path("data").asText();
+            if (base64Audio.isBlank()) {
+                log.warn("TTS 响应 data 字段为空 textLen={}", text.length());
+                return null;
+            }
+
+            byte[] audioBytes = Base64.getDecoder().decode(base64Audio);
+            int durationMs = root.path("duration_ms").asInt(0);
             if (audioBytes.length == 0) {
                 log.warn("TTS 合成音频为空 textLen={}", text.length());
                 return null;
@@ -127,30 +129,31 @@ public class VolcanoTtsService implements TtsService {
         }
         return switch (persona) {
             case FRIENDLY -> "zh_female_vv_uranus_bigtts";
-            case PRESSURE -> "zh_male_xiaotian_mars_bigtts";
-            case TECHNICAL -> "zh_male_yunzhou_moon_bigtts";
+            case PRESSURE -> "zh_male_taocheng_uranus_bigtts";
+            case TECHNICAL -> "zh_male_m191_uranus_bigtts";
         };
     }
 
     /** 构造请求体 JSON。 */
+    @SuppressWarnings("unchecked")
     private String buildRequestBody(String text, String speaker) throws Exception {
-        Map<String, Object> body =
-                Map.of(
-                        "user", Map.of("uid", "aims-interview"),
-                        "namespace", "BidirectionalTTS",
-                        "req_params",
-                                Map.of(
-                                        "text",
-                                        text,
-                                        "speaker",
-                                        speaker,
-                                        "audio_params",
-                                        Map.of(
-                                                "format", ttsProperties.format(),
-                                                "sample_rate", ttsProperties.sampleRate(),
-                                                "speech_rate", ttsProperties.speechRate()),
-                                        "additions",
-                                        Map.of("disable_markdown_filter", true)));
+        Map<String, Object> audioParams = new HashMap<>();
+        audioParams.put("format", ttsProperties.format());
+        audioParams.put("sample_rate", ttsProperties.sampleRate());
+        audioParams.put("speech_rate", ttsProperties.speechRate());
+
+        Map<String, Object> reqParams = new HashMap<>();
+        reqParams.put("text", text);
+        reqParams.put("speaker", speaker);
+        reqParams.put("audio_params", audioParams);
+        reqParams.put(
+                "additions",
+                objectMapper.writeValueAsString(Map.of("disable_markdown_filter", true)));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("user", Map.of("uid", "aims-interview"));
+        body.put("namespace", "BidirectionalTTS");
+        body.put("req_params", reqParams);
         return objectMapper.writeValueAsString(body);
     }
 

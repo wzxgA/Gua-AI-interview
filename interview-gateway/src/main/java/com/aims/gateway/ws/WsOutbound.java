@@ -15,11 +15,25 @@ public record WsOutbound(
         Integer code,
         String message,
         String text,
-        String followUpType) {
+        String followUpType,
+        String audioUrl,
+        Integer durationMs) {
 
     public static WsOutbound sessionReady(Long sessionId, String status) {
         return new WsOutbound(
-                "SESSION_READY", sessionId, null, null, null, null, status, null, null, null, null);
+                "SESSION_READY",
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     public static WsOutbound questionStart(Long sessionId, Long roundId, Integer seq) {
@@ -28,6 +42,8 @@ public record WsOutbound(
                 sessionId,
                 roundId,
                 seq,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -56,7 +72,9 @@ public record WsOutbound(
                 null,
                 null,
                 null,
-                followUpType);
+                followUpType,
+                null,
+                null);
     }
 
     public static WsOutbound questionChunk(Long sessionId, Long roundId, String text) {
@@ -71,27 +89,66 @@ public record WsOutbound(
                 null,
                 null,
                 text,
+                null,
+                null,
                 null);
     }
 
     public static WsOutbound questionEnd(Long sessionId, Long roundId, Integer seq, String text) {
         return new WsOutbound(
-                "QUESTION_END", sessionId, roundId, seq, null, null, null, null, null, text, null);
+                "QUESTION_END",
+                sessionId,
+                roundId,
+                seq,
+                null,
+                null,
+                null,
+                null,
+                null,
+                text,
+                null,
+                null,
+                null);
     }
 
     public static WsOutbound answerAck(Long sessionId, Long roundId) {
         return new WsOutbound(
-                "ANSWER_ACK", sessionId, roundId, null, null, null, null, null, null, null, null);
+                "ANSWER_ACK",
+                sessionId,
+                roundId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     public static WsOutbound status(Long sessionId, String status) {
         return new WsOutbound(
-                "STATUS", sessionId, null, null, null, null, status, null, null, null, null);
+                "STATUS", sessionId, null, null, null, null, status, null, null, null, null, null,
+                null);
     }
 
     public static WsOutbound heartbeatAck(Long sessionId) {
         return new WsOutbound(
-                "HEARTBEAT_ACK", sessionId, null, null, null, null, null, null, null, null, null);
+                "HEARTBEAT_ACK",
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
     }
 
     public static WsOutbound completed(Long sessionId) {
@@ -106,11 +163,32 @@ public record WsOutbound(
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
     public static WsOutbound error(int code, String message) {
         return new WsOutbound(
-                "ERROR", null, null, null, null, null, null, code, message, null, null);
+                "ERROR", null, null, null, null, null, null, code, message, null, null, null, null);
+    }
+
+    /** TTS 音频合成完成通知。 */
+    public static WsOutbound audioReady(
+            Long sessionId, Long roundId, String audioUrl, Integer durationMs) {
+        return new WsOutbound(
+                "AUDIO_READY",
+                sessionId,
+                roundId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                audioUrl,
+                durationMs);
     }
 }
