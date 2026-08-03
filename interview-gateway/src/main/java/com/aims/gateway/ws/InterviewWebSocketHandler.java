@@ -190,11 +190,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         "重连时发现已达题数上限，进入评估流程 sessionId={} answeredCount={}",
                         sessionId,
                         answeredCount);
-                sessionStore.forceUnlock(sessionId);
-                sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-                sessionService.updateEvaluationStatus(sessionId, "PENDING");
-                evaluationMessageProducer.sendEvaluationRequest(sessionId);
-                send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                if (triggerEvaluation(sessionId)) {
+                    send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                }
             } else {
                 // 补发下一题
                 log.info("重连后补发下一题 sessionId={} answeredCount={}", sessionId, answeredCount);
@@ -317,6 +315,31 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     // ==================== 消息处理 ====================
 
+    /**
+     * 触发评估流程（原子保证同一会话只触发一次）。
+     *
+     * <p>先通过原子条件更新将状态从 IN_PROGRESS/PAUSED 转为 EVALUATING，再释放连接锁、发送 Kafka 评估请求。 若状态已被其他线程转移，返回 false
+     * 跳过重复触发。
+     *
+     * @return true 表示成功触发评估，false 表示评估已被其他线程触发
+     */
+    private boolean triggerEvaluation(Long sessionId) {
+        boolean transitioned =
+                sessionService.tryTransitionTo(
+                        sessionId,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        if (!transitioned) {
+            log.info("评估已触发，跳过重复请求 sessionId={}", sessionId);
+            return false;
+        }
+        sessionStore.forceUnlock(sessionId);
+        sessionService.updateEvaluationStatus(sessionId, "PENDING");
+        evaluationMessageProducer.sendEvaluationRequest(sessionId);
+        return true;
+    }
+
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
     private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
         // 校验状态
@@ -364,6 +387,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // 更新回答
         roundService.updateAnswer(currentRound.getId(), text);
+        currentRound.setAnswer(text);
         // 写入会话记忆
         conversationMemory.addUser(sessionId.toString(), text, currentRound.getId().toString());
         // 发送确认
@@ -375,12 +399,10 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         int totalRounds = getTotalRounds(entity);
         if (totalRounds > 0 && answeredCount >= totalRounds) {
             // 释放连接锁，进入评估流程
-            sessionStore.forceUnlock(sessionId);
-            sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-            sessionService.updateEvaluationStatus(sessionId, "PENDING");
-            evaluationMessageProducer.sendEvaluationRequest(sessionId);
-            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
-            log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
+            if (triggerEvaluation(sessionId)) {
+                send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                log.info("达到题数上限，进入评估流程 sessionId={} answeredCount={}", sessionId, answeredCount);
+            }
         } else {
             // 确定主问题 seq（如果当前是追问，取其 parentSeq；否则取当前 seq）
             int parentSeq =
@@ -446,15 +468,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                             "会话状态不允许 FINISH，当前: " + current));
             return;
         }
-        // 释放连接锁
-        sessionStore.forceUnlock(sessionId);
         // 状态转为 EVALUATING，触发评估
-        sessionService.updateStatus(sessionId, SessionStatus.EVALUATING);
-        sessionService.updateEvaluationStatus(sessionId, "PENDING");
-        evaluationMessageProducer.sendEvaluationRequest(sessionId);
-        // 通知前端进入评估状态
-        send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
-        log.info("面试结束，进入评估流程 sessionId={}", sessionId);
+        if (triggerEvaluation(sessionId)) {
+            // 通知前端进入评估状态
+            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            log.info("面试结束，进入评估流程 sessionId={}", sessionId);
+        }
     }
 
     /** CANCEL：取消会话。 */

@@ -81,6 +81,14 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     }
 
     @Override
+    public boolean tryTransitionTo(
+            Long id, SessionStatus target, SessionStatus from1, SessionStatus from2) {
+        int affected =
+                sessionMapper.tryTransitionStatus(id, target.name(), from1.name(), from2.name());
+        return affected > 0;
+    }
+
+    @Override
     @Transactional
     public InterviewSessionEntity savePlan(Long id, String planJson) {
         InterviewSessionEntity entity = getById(id);

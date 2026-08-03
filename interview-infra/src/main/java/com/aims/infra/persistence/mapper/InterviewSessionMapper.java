@@ -38,4 +38,14 @@ public interface InterviewSessionMapper extends BaseMapper<InterviewSessionEntit
             "UPDATE interview_session SET total_score = #{score}, updated_at = now() WHERE id ="
                     + " #{id}")
     int updateTotalScore(@Param("id") Long id, @Param("score") BigDecimal score);
+
+    /** 原子条件状态转移：仅当当前状态在 from 列表中时才更新为 target，返回受影响行数。 */
+    @Update(
+            "UPDATE interview_session SET status = #{target}, updated_at = now()"
+                    + " WHERE id = #{id} AND status IN (#{from1}, #{from2})")
+    int tryTransitionStatus(
+            @Param("id") Long id,
+            @Param("target") String target,
+            @Param("from1") String from1,
+            @Param("from2") String from2);
 }

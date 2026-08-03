@@ -202,13 +202,20 @@ public class InterviewController {
         if (current != SessionStatus.IN_PROGRESS && current != SessionStatus.PAUSED) {
             throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
         }
-        // 释放连接锁
-        sessionStore.forceUnlock(id);
-        // 状态转为 EVALUATING
-        sessionService.updateStatus(id, SessionStatus.EVALUATING);
-        sessionService.updateEvaluationStatus(id, "PENDING");
-        // 发送 Kafka 评估请求
-        evaluationMessageProducer.sendEvaluationRequest(id);
+        // 原子条件状态转移：仅当当前状态为 IN_PROGRESS 或 PAUSED 时才转为 EVALUATING
+        boolean transitioned =
+                sessionService.tryTransitionTo(
+                        id,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        if (transitioned) {
+            sessionStore.forceUnlock(id);
+            sessionService.updateEvaluationStatus(id, "PENDING");
+            evaluationMessageProducer.sendEvaluationRequest(id);
+        } else {
+            log.info("评估已触发，跳过重复请求 sessionId={}", id);
+        }
         InterviewSessionEntity updated = sessionService.getById(id);
         return Result.ok(InterviewResponse.from(updated));
     }
