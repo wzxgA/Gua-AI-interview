@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -76,25 +77,40 @@ public class VolcanoTtsService implements TtsService {
                 return null;
             }
 
-            // 4. 解析响应：HTTP 接口返回单个 JSON {"code":0,"data":"base64音频"}
-            log.debug("TTS 原始响应体: {}", truncate(response.body(), 500));
-            JsonNode root = objectMapper.readTree(response.body());
+            // 4. 解析响应：HTTP 流式接口返回 NDJSON（每行一个 JSON，各含一个 base64 音频分片）
+            String body = response.body();
+            log.debug("TTS 响应体长度={} 包含换行={}", body.length(), body.contains("\n"));
 
-            int respCode = root.path("code").asInt(-1);
-            if (respCode != 0) {
-                log.warn(
-                        "TTS API 业务错误 code={} message={}", respCode, root.path("message").asText());
-                return null;
+            var buffer = new ByteArrayOutputStream();
+            int durationMs = 0;
+            int lineCount = 0;
+
+            for (String line : body.split("\n")) {
+                if (line.isBlank()) continue;
+                JsonNode node = objectMapper.readTree(line);
+                lineCount++;
+
+                int respCode = node.path("code").asInt(-1);
+                if (respCode != 0 && respCode != 20000000) {
+                    log.warn(
+                            "TTS API 业务错误 code={} message={}",
+                            respCode,
+                            node.path("message").asText());
+                    return null;
+                }
+
+                String chunk = node.path("data").asText();
+                if (!chunk.isBlank()) {
+                    buffer.write(Base64.getDecoder().decode(chunk));
+                }
+                if (node.has("duration_ms")) {
+                    durationMs = node.path("duration_ms").asInt(0);
+                }
             }
 
-            String base64Audio = root.path("data").asText();
-            if (base64Audio.isBlank()) {
-                log.warn("TTS 响应 data 字段为空 textLen={}", text.length());
-                return null;
-            }
+            log.debug("TTS 解析完成 共{}行 音频{}字节 durationMs={}", lineCount, buffer.size(), durationMs);
 
-            byte[] audioBytes = Base64.getDecoder().decode(base64Audio);
-            int durationMs = root.path("duration_ms").asInt(0);
+            byte[] audioBytes = buffer.toByteArray();
             if (audioBytes.length == 0) {
                 log.warn("TTS 合成音频为空 textLen={}", text.length());
                 return null;

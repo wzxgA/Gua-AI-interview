@@ -83,6 +83,7 @@ export interface WsServerMessage {
     | 'STATUS'
     | 'SESSION_COMPLETED'
     | 'HEARTBEAT_ACK'
+    | 'AUDIO_READY'
     | 'ERROR';
   sessionId?: number;
   roundId?: number;
@@ -94,6 +95,8 @@ export interface WsServerMessage {
   message?: string;
   text?: string;
   followUpType?: string;
+  audioUrl?: string;
+  durationMs?: number;
 }
 
 /** 聊天消息 */
@@ -106,6 +109,8 @@ export interface ChatMessage {
   followUpType?: string;
   parentSeq?: number;
   followUpIndex?: number;
+  audioUrl?: string;
+  durationMs?: number;
   timestamp: string;
   streaming?: boolean;
 }

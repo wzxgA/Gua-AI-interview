@@ -48,6 +48,7 @@ public class SecurityConfig {
                                         .hasRole("ADMIN")
                                         .requestMatchers(
                                                 "/api/smoke/**",
+                                                "/api/v1/audio/**",
                                                 "/swagger-ui/**",
                                                 "/v3/api-docs/**")
                                         .permitAll()
