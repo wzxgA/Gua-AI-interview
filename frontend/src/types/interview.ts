@@ -12,12 +12,16 @@ export type SessionStatus =
 
 export const TERMINAL_STATUSES: SessionStatus[] = ['COMPLETED', 'CANCELLED', 'FAILED'];
 
+/** 面试官人设 */
+export type InterviewerPersona = 'FRIENDLY' | 'PRESSURE' | 'TECHNICAL';
+
 /** 对齐 InterviewResponse */
 export interface InterviewResponse {
   id: number;
   candidateId: number;
   positionId: number | null;
   status: SessionStatus;
+  persona: InterviewerPersona;
   planJson: string | null;
   startedAt: string | null;
   endedAt: string | null;
@@ -33,6 +37,7 @@ export interface InterviewResponse {
 export interface CreateInterviewRequest {
   candidateId: number;
   positionId?: number | null;
+  persona?: InterviewerPersona;
 }
 
 /** 对齐 InterviewPlan */

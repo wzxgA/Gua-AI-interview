@@ -2,6 +2,7 @@ package com.aims.agent;
 
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelTier;
+import com.aims.core.interview.InterviewerPersona;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
@@ -45,11 +46,13 @@ public class DefaultInterviewerAgent implements InterviewerAgent {
         if (context.plan() == null || context.currentRound() > context.totalRounds()) {
             return pickFallback(context.recentQuestions());
         }
+        InterviewerPersona persona =
+                context.persona() != null ? context.persona() : InterviewerPersona.FRIENDLY;
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             String result =
                     aiChatFacade.call(
                             ModelTier.FLAGSHIP,
-                            InterviewPromptBuilder.interviewerSystem(),
+                            InterviewPromptBuilder.interviewerSystem(persona),
                             InterviewPromptBuilder.interviewerUser(context));
             if (result != null && !result.isBlank()) {
                 return result.trim();
@@ -73,9 +76,11 @@ public class DefaultInterviewerAgent implements InterviewerAgent {
         if (context.plan() == null || context.currentRound() > context.totalRounds()) {
             return Flux.just(pickFallback(context.recentQuestions()));
         }
+        InterviewerPersona persona =
+                context.persona() != null ? context.persona() : InterviewerPersona.FRIENDLY;
         return aiChatFacade.stream(
                         ModelTier.FLAGSHIP,
-                        InterviewPromptBuilder.interviewerSystem(),
+                        InterviewPromptBuilder.interviewerSystem(persona),
                         InterviewPromptBuilder.interviewerUser(context))
                 .filter(chunk -> chunk != null && !chunk.isBlank())
                 .switchIfEmpty(

@@ -105,7 +105,8 @@ public class InterviewController {
     @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
-        InterviewSessionEntity entity = sessionService.create(req.candidateId(), req.positionId());
+        InterviewSessionEntity entity =
+                sessionService.create(req.candidateId(), req.positionId(), req.persona());
         return Result.ok(InterviewResponse.from(entity));
     }
 

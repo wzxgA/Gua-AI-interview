@@ -56,6 +56,9 @@ public class InterviewSessionEntity {
     @TableField("total_rounds_to_evaluate")
     private Integer totalRoundsToEvaluate;
 
+    @TableField("persona")
+    private String persona;
+
     public Long getId() {
         return id;
     }
@@ -174,5 +177,13 @@ public class InterviewSessionEntity {
 
     public void setTotalRoundsToEvaluate(Integer totalRoundsToEvaluate) {
         this.totalRoundsToEvaluate = totalRoundsToEvaluate;
+    }
+
+    public String getPersona() {
+        return persona;
+    }
+
+    public void setPersona(String persona) {
+        this.persona = persona;
     }
 }

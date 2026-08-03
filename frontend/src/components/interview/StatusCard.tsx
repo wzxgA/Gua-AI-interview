@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { StatusDot } from '@/components/ui/status-dot';
-import { SESSION_STATUS_LABELS } from '@/lib/constants';
+import { PERSONA_LABELS, SESSION_STATUS_LABELS } from '@/lib/constants';
 import type { InterviewResponse } from '@/types/interview';
 
 interface StatusCardProps {
@@ -73,6 +73,12 @@ export function StatusCard({ interview }: StatusCardProps) {
             </span>
           </div>
         )}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-text-muted">面试官人设</span>
+          <span className="text-sm text-text-secondary">
+            {PERSONA_LABELS[interview.persona] ?? interview.persona}
+          </span>
+        </div>
       </div>
     </GlassCard>
   );

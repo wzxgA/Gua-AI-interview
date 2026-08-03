@@ -1,5 +1,7 @@
 package com.aims.agent;
 
+import com.aims.core.interview.InterviewerPersona;
+
 /**
  * 面试 Prompt 统一构建器：集中管理面试官提问和计划生成的 Prompt 模板。
  *
@@ -38,11 +40,51 @@ public final class InterviewPromptBuilder {
 
     private InterviewPromptBuilder() {}
 
+    // ---- 人设提示词 ----
+
+    /** 各人设的系统提示词前缀（追加到基础面试官 Prompt 之后）。 */
+    private static final java.util.Map<InterviewerPersona, String> PERSONA_PROMPTS =
+            java.util.Map.of(
+                    InterviewerPersona.FRIENDLY,
+                    """
+                    面试风格：温和型
+                    - 语气亲和友好，鼓励候选人充分展示
+                    - 候选人回答后先肯定合理部分，再深入追问
+                    - 给予候选人充分的思考时间，不要催促
+                    - 适当引导，帮助紧张的候选人放松
+                    """,
+                    InterviewerPersona.PRESSURE,
+                    """
+                    面试风格：压力面型
+                    - 语气严肃直接，模拟高压面试场景
+                    - 候选人回答不充分时直接指出不足
+                    - 追问时施加压力，质疑回答中的漏洞
+                    - 适当制造紧迫感，考察抗压能力
+                    - 注意：保持专业，不要人身攻击或侮辱
+                    """,
+                    InterviewerPersona.TECHNICAL,
+                    """
+                    面试风格：深度技术型
+                    - 聚焦技术原理与底层实现
+                    - 要求候选人给出具体方案设计、架构图思路
+                    - 追问边界条件、异常处理、性能权衡
+                    - 考察技术选型的理由与 trade-off
+                    - 适当考察系统设计能力
+                    """);
+
     // ---- 面试官提问 ----
 
-    /** 面试官系统 Prompt。 */
+    /** 面试官系统 Prompt（默认温和型）。 */
     public static String interviewerSystem() {
-        return INTERVIEWER_SYSTEM;
+        return interviewerSystem(InterviewerPersona.FRIENDLY);
+    }
+
+    /** 面试官系统 Prompt（带人设）。 */
+    public static String interviewerSystem(InterviewerPersona persona) {
+        String personaPrompt = PERSONA_PROMPTS.getOrDefault(persona, "");
+        return personaPrompt.isBlank()
+                ? INTERVIEWER_SYSTEM
+                : INTERVIEWER_SYSTEM + "\n" + personaPrompt;
     }
 
     /**

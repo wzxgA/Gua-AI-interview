@@ -9,11 +9,19 @@ import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useCreateInterview } from '@/api/interview';
 import { useResumeList } from '@/api/resumes';
 import { usePositionList } from '@/api/positions';
+import type { InterviewerPersona } from '@/types/interview';
+
+const PERSONA_OPTIONS = [
+  { value: 'FRIENDLY', label: '温和型', desc: '鼓励引导，适合初级岗位' },
+  { value: 'PRESSURE', label: '压力面型', desc: '直接质疑，考察抗压能力' },
+  { value: 'TECHNICAL', label: '深度技术型', desc: '原理深挖，适合高级技术岗' },
+] as const;
 
 export function InterviewCreatePage() {
   const navigate = useNavigate();
   const [candidateId, setCandidateId] = useState<number | ''>('');
   const [positionId, setPositionId] = useState<number | ''>('');
+  const [persona, setPersona] = useState<InterviewerPersona>('FRIENDLY');
 
   // 加载已解析的简历（仅 PARSED）
   const { data: resumeData, isLoading: resumesLoading, isError: resumesError } =
@@ -38,6 +46,7 @@ export function InterviewCreatePage() {
       {
         candidateId,
         positionId: positionId || null,
+        persona,
       },
       {
         onSuccess: (data) => {
@@ -122,6 +131,29 @@ export function InterviewCreatePage() {
                 ))}
               </Select>
             )}
+          </div>
+
+          {/* 面试官人设 */}
+          <div>
+            <Label>面试官人设</Label>
+            <div className="space-y-2">
+              {PERSONA_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPersona(opt.value as InterviewerPersona)}
+                  className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    persona === opt.value
+                      ? 'border-silver-400 bg-silver-400/10'
+                      : 'border-border-default bg-surface-overlay hover:border-border-strong'
+                  }`}
+                >
+                  <div>
+                    <span className="text-sm font-medium text-text-primary">{opt.label}</span>
+                    <span className="ml-2 text-xs text-text-muted">{opt.desc}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 提交按钮 */}
