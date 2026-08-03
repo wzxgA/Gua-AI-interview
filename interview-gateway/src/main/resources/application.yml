@@ -106,6 +106,17 @@ aims:
       secret: ${AIMS_JWT_SECRET}
       access-ttl: ${AIMS_JWT_ACCESS_TTL:7200}
       refresh-ttl: ${AIMS_JWT_REFRESH_TTL:604800}
+  tts:
+    enabled: ${AIMS_TTS_ENABLED:false}
+    provider: ${AIMS_TTS_PROVIDER:volc}
+    api-key: ${VOLC_TTS_API_KEY:}
+    resource-id: ${VOLC_TTS_RESOURCE_ID:seed-tts-2.0}
+    base-url: ${VOLC_TTS_BASE_URL:https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional}
+    default-speaker: ${VOLC_TTS_SPEAKER:zh_male_yunzhou_moon_bigtts}
+    format: mp3
+    sample-rate: 24000
+    speech-rate: 0
+    persona-voice-link: true
 
 logging:
   level:

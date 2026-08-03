@@ -14,7 +14,7 @@ import org.springframework.kafka.config.TopicBuilder;
  * 开始真正收发消息。
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(MinioProperties.class)
+@EnableConfigurationProperties({MinioProperties.class, TtsProperties.class})
 public class InfraConfig {
 
     /** P4 评估请求 topic（P1 仅创建）。 */
