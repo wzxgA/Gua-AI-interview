@@ -50,6 +50,12 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
           invalidateRounds();
           break;
 
+        case 'AUDIO_READY':
+          if (msg.roundId != null && msg.audioUrl) {
+            store.setAudio(msg.roundId, msg.audioUrl, msg.durationMs);
+          }
+          break;
+
         case 'HEARTBEAT_ACK':
           break;
 

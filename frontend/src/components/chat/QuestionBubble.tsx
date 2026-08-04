@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
 import { TypewriterCursor } from './TypewriterCursor';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { AudioPlayer } from './AudioPlayer';
 import type { ChatMessage } from '@/types/interview';
 
 interface QuestionBubbleProps {
@@ -72,10 +73,15 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
             <TypewriterCursor />
           </div>
         ) : (
-          <MarkdownRenderer
-            content={message.text}
-            className="text-sm text-text-primary"
-          />
+          <>
+            <MarkdownRenderer
+              content={message.text}
+              className="text-sm text-text-primary"
+            />
+            {message.audioUrl && (
+              <AudioPlayer audioUrl={message.audioUrl} durationMs={message.durationMs} />
+            )}
+          </>
         )}
       </GlassCard>
     </motion.div>

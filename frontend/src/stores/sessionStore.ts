@@ -21,6 +21,7 @@ interface SessionStore {
   finalizeQuestion: () => void;
   addAnswer: (text: string, roundId?: number) => void;
   addQuestion: (roundId: number, seq: number | undefined, text: string, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
+  setAudio: (roundId: number, audioUrl: string, durationMs?: number) => void;
   hasRound: (roundId: number) => boolean;
   setConnected: (connected: boolean) => void;
   incrementRetry: () => void;
@@ -148,6 +149,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         ],
       };
     }),
+
+  setAudio: (roundId, audioUrl, durationMs) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.roundId === roundId ? { ...m, audioUrl, durationMs } : m,
+      ),
+    })),
 
   hasRound: (roundId) =>
     get().messages.some((m) => m.role === 'question' && m.roundId === roundId),

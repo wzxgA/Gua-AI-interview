@@ -67,6 +67,18 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
     }
 
     @Override
+    @Transactional
+    public void updateAudio(Long roundId, String audioUrl, int durationMs) {
+        InterviewRoundEntity entity = roundMapper.selectById(roundId);
+        if (entity == null) {
+            return;
+        }
+        entity.setAudioUrl(audioUrl);
+        entity.setDurationMs(durationMs);
+        roundMapper.updateById(entity);
+    }
+
+    @Override
     public List<InterviewRoundEntity> listBySession(Long sessionId) {
         return roundMapper.selectList(
                 Wrappers.<InterviewRoundEntity>lambdaQuery()

@@ -23,6 +23,7 @@ import com.aims.infra.persistence.service.InterviewSessionStore;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -33,6 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -82,6 +84,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final ConversationMemory conversationMemory;
     private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<TtsService> ttsServiceProvider;
 
     public InterviewWebSocketHandler(
             InterviewSessionService sessionService,
@@ -94,7 +97,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             QuestionRagService questionRagService,
             ConversationMemory conversationMemory,
             EvaluationMessageProducer evaluationMessageProducer,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ObjectProvider<TtsService> ttsServiceProvider) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.sessionStore = sessionStore;
@@ -106,6 +110,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.conversationMemory = conversationMemory;
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
+        this.ttsServiceProvider = ttsServiceProvider;
     }
 
     // ==================== 连接生命周期 ====================
@@ -533,6 +538,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         conversationMemory.addAssistant(
                 sessionId.toString(), fullQuestion, round.getId().toString());
         log.info("生成问题完成 sessionId={} roundId={} seq={}", sessionId, round.getId(), seq);
+
+        // 异步触发 TTS 语音合成
+        triggerTts(session, sessionId, round.getId(), fullQuestion, context.persona());
     }
 
     /** 流式生成追问问题并发送给客户端。 */
@@ -603,9 +611,50 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 parentSeq,
                 followUpIndex,
                 decision.followUpType());
+
+        // 异步触发 TTS 语音合成
+        triggerTts(session, sessionId, round.getId(), fullQuestion, context.persona());
     }
 
     // ==================== 辅助方法 ====================
+
+    /**
+     * 异步触发 TTS 语音合成。
+     *
+     * <p>使用虚拟线程异步执行，不阻塞面试主流程。TTS 未启用或合成失败时静默降级。
+     */
+    private void triggerTts(
+            WebSocketSession session,
+            Long sessionId,
+            Long roundId,
+            String text,
+            InterviewerPersona persona) {
+        TtsService ttsService = ttsServiceProvider.getIfAvailable();
+        if (ttsService == null) {
+            return;
+        }
+        Thread.startVirtualThread(
+                () -> {
+                    try {
+                        TtsService.TtsResult result = ttsService.synthesize(text, persona);
+                        if (result == null) {
+                            return;
+                        }
+                        roundService.updateAudio(roundId, result.audioUrl(), result.durationMs());
+                        if (session.isOpen()) {
+                            send(
+                                    session,
+                                    WsOutbound.audioReady(
+                                            sessionId,
+                                            roundId,
+                                            result.audioUrl(),
+                                            result.durationMs()));
+                        }
+                    } catch (Exception e) {
+                        log.warn("TTS 异步合成失败 sessionId={} roundId={}", sessionId, roundId, e);
+                    }
+                });
+    }
 
     /** 构建追问上下文。 */
     private FollowUpContext buildFollowUpContext(
