@@ -38,6 +38,18 @@ export function AudioPlayer({ audioUrl, durationMs }: AudioPlayerProps) {
     };
   }, []);
 
+  // 自动播放：音频就绪后自动播放（浏览器可能阻止，阻止时降级为手动点击）
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.play()
+      .then(() => setPlaying(true))
+      .catch(() => {
+        // 浏览器 autoplay policy 阻止自动播放，用户需手动点击播放按钮
+      });
+  }, [fullUrl]);
+
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio) return;
