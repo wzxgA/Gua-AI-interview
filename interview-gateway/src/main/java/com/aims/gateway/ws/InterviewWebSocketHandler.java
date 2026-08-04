@@ -85,6 +85,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TtsService> ttsServiceProvider;
+    private final RollingSummaryService rollingSummaryService;
 
     public InterviewWebSocketHandler(
             InterviewSessionService sessionService,
@@ -98,7 +99,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             ConversationMemory conversationMemory,
             EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper,
-            ObjectProvider<TtsService> ttsServiceProvider) {
+            ObjectProvider<TtsService> ttsServiceProvider,
+            RollingSummaryService rollingSummaryService) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.sessionStore = sessionStore;
@@ -111,6 +113,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
         this.ttsServiceProvider = ttsServiceProvider;
+        this.rollingSummaryService = rollingSummaryService;
     }
 
     // ==================== 连接生命周期 ====================
@@ -399,6 +402,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         // 发送确认
         send(session, WsOutbound.answerAck(sessionId, currentRound.getId()));
         log.info("收到回答 sessionId={} roundId={}", sessionId, currentRound.getId());
+
+        // 异步触发滚动摘要生成（每 5 轮回答后触发，含追问轮次）
+        rollingSummaryService.triggerSummaryIfNeeded(sessionId);
 
         // 确定主问题 seq（追问取 parentSeq，主问题取 seq）
         int parentSeq =
@@ -732,12 +738,22 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         .filter(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
                         .toList();
 
-        // 提取最近的问答
-        int recentSize = Math.min(RECENT_HISTORY_LIMIT, answered.size());
-        List<InterviewRoundEntity> recent =
+        // 读取滚动摘要（异步生成，可能尚未就绪）
+        String runningSummary = rollingSummaryService.getRunningSummary(sessionId);
+        int lastSummarizedCount = rollingSummaryService.getLastSummarizedCount(sessionId);
+
+        // 提取最近的问答：排除已被摘要覆盖的早期轮次
+        List<InterviewRoundEntity> recent;
+        if (lastSummarizedCount >= answered.size()) {
+            recent = List.of();
+        } else {
+            recent = answered.subList(lastSummarizedCount, answered.size());
+        }
+        int recentSize = Math.min(RECENT_HISTORY_LIMIT, recent.size());
+        recent =
                 recentSize == 0
                         ? List.of()
-                        : answered.subList(answered.size() - recentSize, answered.size());
+                        : recent.subList(recent.size() - recentSize, recent.size());
         List<String> recentQuestions =
                 recent.stream().map(InterviewRoundEntity::getQuestion).toList();
         List<String> recentAnswers = recent.stream().map(InterviewRoundEntity::getAnswer).toList();
@@ -759,7 +775,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 recentAnswers,
                 buildResumeSummary(resume),
                 ragQuestions,
-                InterviewerPersona.fromString(entity.getPersona()));
+                InterviewerPersona.fromString(entity.getPersona()),
+                runningSummary);
     }
 
     /** 从 WebSocket URI 路径中提取 sessionId。 */

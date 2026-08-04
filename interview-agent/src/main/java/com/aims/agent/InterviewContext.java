@@ -17,6 +17,7 @@ import java.util.List;
  * @param resumeFacts 简历事实摘要
  * @param ragQuestions RAG 检索到的参考题目
  * @param persona 面试官人设
+ * @param runningSummary 早期轮次的滚动摘要（前 5 轮为 null，之后每 5 轮更新）
  */
 public record InterviewContext(
         Long sessionId,
@@ -28,7 +29,8 @@ public record InterviewContext(
         List<String> recentAnswers,
         String resumeFacts,
         String ragQuestions,
-        InterviewerPersona persona) {
+        InterviewerPersona persona,
+        String runningSummary) {
 
     public int totalRounds() {
         return plan != null && plan.questions() != null ? plan.questions().size() : 0;

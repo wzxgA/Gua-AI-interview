@@ -26,7 +26,7 @@
 ai-ms/
 ├── interview-core        # 核心层：领域模型(7模块)、统一响应体、错误码、异常体系、分页参数
 ├── interview-ai          # AI 层：多模型路由(ModelRouter)、ChatClient 封装(AiChatFacade)、三个基础 Advisor、embed/embedBatch
-├── interview-agent       # Agent 编排层：InterviewerAgent（问题生成）、FollowUpAgent（动态追问）、InterviewPlanGenerator（计划生成）、EvaluatorAgent（评估）、ReportAgent（报告）
+├── interview-agent       # Agent 编排层：InterviewerAgent（问题生成）、FollowUpAgent（动态追问）、InterviewPlanGenerator（计划生成）、EvaluatorAgent（评估）、ReportAgent（报告）、SummaryAgent（滚动摘要）
 ├── interview-infra       # 基础设施层：持久层(Entity/Mapper/Service)、RAG 检索、Redis 会话快照、MinIO、Flyway、健康检查
 ├── interview-gateway     # 网关层：Spring Boot 启动入口、业务 Controller、面试 WebSocket Handler、全局异常处理、OpenAPI
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
