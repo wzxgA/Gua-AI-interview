@@ -19,7 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /** Spring Security 配置：无状态 JWT，放行 /auth/**，其余需认证。 */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
 public class SecurityConfig {
 

@@ -12,12 +12,22 @@
 
     <artifactId>interview-agent</artifactId>
     <name>interview-agent</name>
-    <description>Agent 编排层（P1 空壳占位，P3/P5 填充；langchain4j 依赖 P5 再引入）</description>
+    <description>Agent 层：面试官 / 评估 / 报告等 Agent 实现 + LangGraph4j 编排骨架。</description>
 
     <dependencies>
         <dependency>
             <groupId>com.aims</groupId>
             <artifactId>interview-ai</artifactId>
+        </dependency>
+
+        <!-- LangGraph4j：Agent 编排框架 -->
+        <dependency>
+            <groupId>org.bsc.langgraph4j</groupId>
+            <artifactId>langgraph4j-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bsc.langgraph4j</groupId>
+            <artifactId>langgraph4j-spring-ai</artifactId>
         </dependency>
     </dependencies>
 </project>
