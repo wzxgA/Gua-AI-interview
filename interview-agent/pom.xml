@@ -29,5 +29,12 @@
             <groupId>org.bsc.langgraph4j</groupId>
             <artifactId>langgraph4j-spring-ai</artifactId>
         </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
