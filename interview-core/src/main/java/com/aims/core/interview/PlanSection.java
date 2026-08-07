@@ -1,7 +1,10 @@
 package com.aims.core.interview;
 
+import java.io.Serializable;
+
 /** 面试计划中的一个模块。 */
-public record PlanSection(String name, int questionCount, String objective) {
+public record PlanSection(String name, int questionCount, String objective)
+        implements Serializable {
 
     public PlanSection {
         if (name == null || name.isBlank()) {

@@ -1,5 +1,6 @@
 package com.aims.core.interview;
 
+import java.io.Serializable;
 import java.util.List;
 
 /** 结构化面试计划。 */
@@ -9,7 +10,8 @@ public record InterviewPlan(
         List<PlanSection> sections,
         List<PlannedQuestion> questions,
         int estimatedMinutes,
-        String version) {
+        String version)
+        implements Serializable {
 
     public static final int MIN_QUESTION_COUNT = 8;
     public static final int DEFAULT_QUESTION_COUNT = 10;

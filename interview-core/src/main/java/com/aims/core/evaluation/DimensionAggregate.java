@@ -1,5 +1,6 @@
 package com.aims.core.evaluation;
 
+import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -8,7 +9,9 @@ import java.util.Map;
  *
  * <p>key 为 {@link EvaluationDimension}，value 为 {@link DimensionScore}。
  */
-public class DimensionAggregate {
+public class DimensionAggregate implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final Map<EvaluationDimension, DimensionScore> scores =
             new EnumMap<>(EvaluationDimension.class);
@@ -41,7 +44,7 @@ public class DimensionAggregate {
     }
 
     /** 维度评分聚合记录。 */
-    public record DimensionScore(int totalScore, int count) {
+    public record DimensionScore(int totalScore, int count) implements Serializable {
         /** 平均分。 */
         public double avgScore() {
             return count == 0 ? 0.0 : (double) totalScore / count;

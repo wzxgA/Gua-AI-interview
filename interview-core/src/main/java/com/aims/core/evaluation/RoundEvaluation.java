@@ -1,5 +1,7 @@
 package com.aims.core.evaluation;
 
+import java.io.Serializable;
+
 /**
  * 单维度评分结果（AI 结构化输出的一部分）。
  *
@@ -9,4 +11,5 @@ package com.aims.core.evaluation;
  * @param evidenceQuote 佐证原话（候选人回答引用）
  */
 public record RoundEvaluation(
-        EvaluationDimension dimension, int score, String comment, String evidenceQuote) {}
+        EvaluationDimension dimension, int score, String comment, String evidenceQuote)
+        implements Serializable {}

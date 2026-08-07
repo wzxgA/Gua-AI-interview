@@ -1,5 +1,7 @@
 package com.aims.core.interview;
 
+import java.io.Serializable;
+
 /**
  * 单组问答对，用于摘要生成的输入。
  *
@@ -7,4 +9,4 @@ package com.aims.core.interview;
  * @param question 面试问题
  * @param answer 候选人回答
  */
-public record QaPair(int seq, String question, String answer) {}
+public record QaPair(int seq, String question, String answer) implements Serializable {}

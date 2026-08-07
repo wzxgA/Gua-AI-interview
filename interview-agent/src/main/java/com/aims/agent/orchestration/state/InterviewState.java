@@ -80,8 +80,9 @@ public class InterviewState extends AgentState {
     /** SCHEMA：为每个字段指定 Channel 策略（Replace / Append）。 */
     public static final Map<String, Channel<?>> SCHEMA =
             Map.ofEntries(
-                    // 会话元数据 — Replace
-                    Map.entry(SESSION_ID, Channels.base(() -> null)),
+                    // 会话元数据 — Replace（null 默认值字段用 Reducer 避免
+                    // initialDataFromSchema 的 Collectors.toMap NPE）
+                    Map.entry(SESSION_ID, Channels.base((old, v) -> v)),
                     Map.entry(CANDIDATE_NAME, Channels.base(() -> "")),
                     Map.entry(POSITION_TITLE, Channels.base(() -> "")),
                     Map.entry(JD_TEXT, Channels.base(() -> "")),
@@ -89,8 +90,8 @@ public class InterviewState extends AgentState {
                     Map.entry(PERSONA, Channels.base(() -> InterviewerPersona.FRIENDLY)),
                     Map.entry(SESSION_STATUS, Channels.base(() -> SessionStatus.CREATED)),
 
-                    // 面试计划 — Replace
-                    Map.entry(INTERVIEW_PLAN, Channels.base(() -> null)),
+                    // 面试计划 — Replace（null 默认值用 Reducer 避免 NPE）
+                    Map.entry(INTERVIEW_PLAN, Channels.base((old, v) -> v)),
                     Map.entry(TOTAL_ROUNDS, Channels.base(() -> 0)),
 
                     // 对话历史 — Append
@@ -98,16 +99,16 @@ public class InterviewState extends AgentState {
                     Map.entry(QUESTIONS_ASKED, Channels.appender(ArrayList::new)),
 
                     // 当前轮次 — Replace
-                    Map.entry(CURRENT_ROUND_ID, Channels.base(() -> null)),
+                    Map.entry(CURRENT_ROUND_ID, Channels.base((old, v) -> v)),
                     Map.entry(CURRENT_SEQ, Channels.base(() -> 0)),
                     Map.entry(CURRENT_QUESTION, Channels.base(() -> "")),
                     Map.entry(CURRENT_ANSWER, Channels.base(() -> "")),
-                    Map.entry(PARENT_SEQ, Channels.base(() -> null)),
-                    Map.entry(FOLLOW_UP_INDEX, Channels.base(() -> null)),
+                    Map.entry(PARENT_SEQ, Channels.base((old, v) -> v)),
+                    Map.entry(FOLLOW_UP_INDEX, Channels.base((old, v) -> v)),
                     Map.entry(FOLLOW_UP_TYPE, Channels.base(() -> FollowUpType.NONE)),
 
                     // 追问决策 — Replace
-                    Map.entry(FOLLOW_UP_DECISION, Channels.base(() -> null)),
+                    Map.entry(FOLLOW_UP_DECISION, Channels.base((old, v) -> v)),
                     Map.entry(FOLLOW_UP_COUNT, Channels.base(() -> 0)),
 
                     // 评估结果 — Append
@@ -115,16 +116,16 @@ public class InterviewState extends AgentState {
                     Map.entry(EVALUATED_ROUND_IDS, Channels.appender(ArrayList::new)),
 
                     // 摘要与报告 — Replace
-                    Map.entry(RUNNING_SUMMARY, Channels.base(() -> null)),
+                    Map.entry(RUNNING_SUMMARY, Channels.base((old, v) -> v)),
                     Map.entry(LAST_SUMMARIZED_SEQ, Channels.base(() -> 0)),
-                    Map.entry(REPORT_RESULT, Channels.base(() -> null)),
+                    Map.entry(REPORT_RESULT, Channels.base((old, v) -> v)),
 
                     // 错误与重试 — Replace
-                    Map.entry(LAST_ERROR, Channels.base(() -> null)),
+                    Map.entry(LAST_ERROR, Channels.base((old, v) -> v)),
                     Map.entry(RETRY_COUNT, Channels.base(() -> 0)),
 
                     // RAG 检索 — Replace
-                    Map.entry(RAG_QUESTIONS, Channels.base(() -> null)));
+                    Map.entry(RAG_QUESTIONS, Channels.base((old, v) -> v)));
 
     // ===== 构造函数 =====
     public InterviewState(Map<String, Object> initData) {
