@@ -11,6 +11,7 @@ import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.session.SessionStatus;
+import com.aims.gateway.orchestration.InterviewWorkflowEngine;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
@@ -86,6 +87,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TtsService> ttsServiceProvider;
     private final RollingSummaryService rollingSummaryService;
+    // Phase 5 新增：Engine 委托路径 + 会话管理
+    private final InterviewWorkflowEngine engine;
+    private final WebSocketSessionManager sessionManager;
 
     public InterviewWebSocketHandler(
             InterviewSessionService sessionService,
@@ -100,7 +104,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper,
             ObjectProvider<TtsService> ttsServiceProvider,
-            RollingSummaryService rollingSummaryService) {
+            RollingSummaryService rollingSummaryService,
+            InterviewWorkflowEngine engine,
+            WebSocketSessionManager sessionManager) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.sessionStore = sessionStore;
@@ -114,6 +120,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.objectMapper = objectMapper;
         this.ttsServiceProvider = ttsServiceProvider;
         this.rollingSummaryService = rollingSummaryService;
+        this.engine = engine;
+        this.sessionManager = sessionManager;
     }
 
     // ==================== 连接生命周期 ====================
@@ -152,6 +160,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         // 存储上下文
         session.getAttributes().put(ATTR_SESSION_ID, sessionId);
         session.getAttributes().put(ATTR_CONNECTION_ID, connectionId);
+
+        // Phase 5：注册到 SessionManager，供 Engine 推送流式输出
+        sessionManager.register(sessionId, session);
 
         log.info("WebSocket 连接建立 sessionId={} connectionId={}", sessionId, connectionId);
         send(session, WsOutbound.sessionReady(sessionId, entity.getStatus()));
@@ -303,6 +314,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // 释放连接锁
         sessionStore.unlock(sessionId, connectionId);
+        // Phase 5：从 SessionManager 注销
+        sessionManager.unregister(sessionId);
         log.info(
                 "WebSocket 连接关闭 sessionId={} connectionId={} status={}",
                 sessionId,
@@ -351,6 +364,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
     private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
+        // Phase 5：Engine 启用时委托 Engine，否则走旧命令式路径
+        if (engine.isEnabled()) {
+            handleAnswerViaEngine(session, sessionId, text);
+            return;
+        }
+
         // 校验状态
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
@@ -458,6 +477,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** PAUSE：暂停会话。 */
     private void handlePause(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            engine.pauseInterview(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.PAUSED.name()));
+            log.info("会话暂停（Engine）sessionId={}", sessionId);
+            return;
+        }
         sessionService.updateStatus(sessionId, SessionStatus.PAUSED);
         send(session, WsOutbound.status(sessionId, SessionStatus.PAUSED.name()));
         log.info("会话暂停 sessionId={}", sessionId);
@@ -465,6 +491,11 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** FINISH：结束会话，触发评估流程。 */
     private void handleFinish(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            handleFinishViaEngine(session, sessionId);
+            return;
+        }
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
         if (current != SessionStatus.IN_PROGRESS) {
@@ -485,11 +516,79 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** CANCEL：取消会话。 */
     private void handleCancel(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            try {
+                engine.cancelInterview(sessionId);
+            } catch (Exception e) {
+                log.warn("Engine 取消面试失败 sessionId={}", sessionId, e);
+            }
+            sessionStore.forceUnlock(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
+            log.info("会话取消（Engine）sessionId={}", sessionId);
+            return;
+        }
         sessionService.updateStatus(sessionId, SessionStatus.CANCELLED);
         sessionService.markEnded(sessionId);
         sessionStore.forceUnlock(sessionId);
         send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
         log.info("会话取消 sessionId={}", sessionId);
+    }
+
+    // ==================== Phase 5 Engine 委托方法 ====================
+
+    /**
+     * Phase 5：通过 Engine 提交回答。
+     *
+     * <p>Graph 在 interruptBefore(ANSWER) 暂停时，Engine.submitAnswer 注入 answer → resume → 执行到下一个 ASK 或
+     * END。流式 chunk 由 WebSocketStreamEmitter 自动推送。
+     */
+    private void handleAnswerViaEngine(WebSocketSession session, Long sessionId, String text) {
+        if (text == null || text.isBlank()) {
+            send(
+                    session,
+                    WsOutbound.error(ErrorCode.SESSION_MESSAGE_INVALID.getCode(), "回答内容不能为空"));
+            return;
+        }
+        if (text.length() > MAX_ANSWER_LENGTH) {
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
+                            "回答内容超过 " + MAX_ANSWER_LENGTH + " 字符"));
+            return;
+        }
+        try {
+            engine.submitAnswer(sessionId, text);
+            log.info("回答已提交（Engine）sessionId={}", sessionId);
+        } catch (Exception e) {
+            log.error("Engine 提交回答失败 sessionId={}", sessionId, e);
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.INTERNAL_ERROR.getCode(),
+                            "Engine 处理回答失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Phase 5：通过 Engine 结束面试。
+     *
+     * <p>设置 FORCE_END=true → 执行到 END（生成报告）。流式 chunk 由 WebSocketStreamEmitter 推送。
+     */
+    private void handleFinishViaEngine(WebSocketSession session, Long sessionId) {
+        try {
+            engine.finishInterview(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.COMPLETED.name()));
+            log.info("面试已结束（Engine）sessionId={}", sessionId);
+        } catch (Exception e) {
+            log.error("Engine 结束面试失败 sessionId={}", sessionId, e);
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.INTERNAL_ERROR.getCode(),
+                            "Engine 结束面试失败: " + e.getMessage()));
+        }
     }
 
     // ==================== 核心业务方法 ====================

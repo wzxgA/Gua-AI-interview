@@ -74,6 +74,10 @@ public class InterviewState extends AgentState {
     public static final String LAST_ERROR = "lastError";
     public static final String RETRY_COUNT = "retryCount";
 
+    // ===== Key 常量：流程控制（Replace）=====
+    /** FINISH 时设置为 true，routeAfterEndCheck 检测到此值后强制路由到 REPORT。 */
+    public static final String FORCE_END = "forceEnd";
+
     // ===== Key 常量：RAG 检索（Replace）=====
     public static final String RAG_QUESTIONS = "ragQuestions";
 
@@ -123,6 +127,9 @@ public class InterviewState extends AgentState {
                     // 错误与重试 — Replace
                     Map.entry(LAST_ERROR, Channels.base((old, v) -> v)),
                     Map.entry(RETRY_COUNT, Channels.base(() -> 0)),
+
+                    // 流程控制 — Replace
+                    Map.entry(FORCE_END, Channels.base(() -> false)),
 
                     // RAG 检索 — Replace
                     Map.entry(RAG_QUESTIONS, Channels.base((old, v) -> v)));
@@ -250,6 +257,12 @@ public class InterviewState extends AgentState {
 
     public int retryCount() {
         return this.<Integer>value(RETRY_COUNT).orElse(0);
+    }
+
+    // ===== Accessor：流程控制 =====
+    /** 是否被外部强制结束（FINISH 消息触发）。 */
+    public boolean forceEnd() {
+        return this.<Boolean>value(FORCE_END).orElse(false);
     }
 
     // ===== Accessor：RAG 检索 =====

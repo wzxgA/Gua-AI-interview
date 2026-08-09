@@ -177,6 +177,18 @@ class InterviewGraphFactoryTest {
                     TestStateBuilder.forTesting().withCurrentSeq(0).withTotalRounds(0).build();
             assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
         }
+
+        @Test
+        @DisplayName("forceEnd=true → REPORT（即使 currentSeq < totalRounds）")
+        void forceEndOverrides() throws Exception {
+            InterviewState state =
+                    TestStateBuilder.forTesting()
+                            .withCurrentSeq(1)
+                            .withTotalRounds(3)
+                            .withForceEnd(true)
+                            .build();
+            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+        }
     }
 
     // ─── Graph 编译验证 ───

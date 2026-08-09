@@ -173,6 +173,27 @@ public class InterviewGraphFactory {
         return buildGraph().compile(config);
     }
 
+    /**
+     * 带 Checkpointer + interruptBefore(ANSWER) 编译（Phase 5 Engine 使用）。
+     *
+     * <p>Graph 执行到 ASK 节点后，会在进入 ANSWER 之前暂停，{@code invoke} 返回空 Optional。 调用方需通过 {@link
+     * CompiledGraph#stateOf(RunnableConfig)} 读取 next 节点，确认暂停位置。 提交回答时把 CURRENT_ANSWER 注入 state，再次
+     * invoke 即从 ANSWER 继续。
+     *
+     * @param checkpointer Redis Checkpointer（可为 null，用于纯验证测试）
+     * @return 编译后的 CompiledGraph
+     * @throws Exception 如果图配置有误
+     */
+    public CompiledGraph<InterviewState> compileWithInterruptBeforeAnswer(
+            BaseCheckpointSaver checkpointer) throws Exception {
+        CompileConfig.Builder builder =
+                CompileConfig.builder().recursionLimit(100).interruptBefore(NodeNames.ANSWER);
+        if (checkpointer != null) {
+            builder.checkpointSaver(checkpointer);
+        }
+        return buildGraph().compile(builder.build());
+    }
+
     // ─── 条件边路由方法（package-private，可独立单元测试）───
 
     /**
@@ -209,6 +230,7 @@ public class InterviewGraphFactory {
      *
      * <ol>
      *   <li>lastError 非空 → REPORT（错误时终止，生成报告）
+     *   <li>forceEnd=true → REPORT（外部 FINISH 强制结束）
      *   <li>currentSeq &gt;= totalRounds → REPORT（面试结束）
      *   <li>否则 → ASK（循环回提问）
      * </ol>
@@ -218,6 +240,9 @@ public class InterviewGraphFactory {
      */
     String routeAfterEndCheck(InterviewState state) throws Exception {
         if (state.lastError() != null) {
+            return NodeNames.REPORT;
+        }
+        if (state.forceEnd()) {
             return NodeNames.REPORT;
         }
         if (state.currentSeq() >= state.totalRounds()) {

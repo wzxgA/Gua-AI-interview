@@ -55,6 +55,11 @@ public class TestStateBuilder {
         return this;
     }
 
+    public TestStateBuilder withForceEnd(boolean forceEnd) {
+        data.put(InterviewState.FORCE_END, forceEnd);
+        return this;
+    }
+
     public TestStateBuilder with(String key, Object value) {
         data.put(key, value);
         return this;
