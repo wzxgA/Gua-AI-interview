@@ -21,6 +21,11 @@ aims:
     secret-key: ${MINIO_ROOT_PASSWORD:aims12345}
     buckets: aims-resume,aims-audio,aims-report
 
+interview:
+  checkpoint:
+    ttl-hours: 24
+    history-enabled: true
+
 logging:
   level:
     com.aims: DEBUG
