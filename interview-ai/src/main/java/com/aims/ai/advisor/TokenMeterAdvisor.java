@@ -82,6 +82,7 @@ public class TokenMeterAdvisor implements CallAdvisor, StreamAdvisor {
     private void record(ChatClientRequest request, Usage usage, long latencyMs) {
         String tier = tag(request, AiAdvisorContext.TIER);
         String model = tag(request, AiAdvisorContext.MODEL);
+        String node = tag(request, AiAdvisorContext.NODE);
 
         meterRegistry
                 .timer("aims.llm.latency", "tier", tier, "model", model)
@@ -89,9 +90,10 @@ public class TokenMeterAdvisor implements CallAdvisor, StreamAdvisor {
 
         if (usage == null || isEmpty(usage)) {
             log.warn(
-                    "模型未返回 usage，跳过 token 计量 tier={} model={} latency={}ms",
+                    "模型未返回 usage，跳过 token 计量 tier={} model={} node={} latency={}ms",
                     tier,
                     model,
+                    node,
                     latencyMs);
             return;
         }
@@ -105,11 +107,20 @@ public class TokenMeterAdvisor implements CallAdvisor, StreamAdvisor {
                 .counter("aims.llm.tokens", "tier", tier, "model", model, "type", "completion")
                 .increment(completion);
 
+        // Phase 6: per-node Token 归因（node tag 由 GraphTraceAspect 经 NodeContextHolder 透传）
+        meterRegistry
+                .counter("aims.graph.node.tokens", "node", node, "tier", tier, "type", "prompt")
+                .increment(prompt);
+        meterRegistry
+                .counter("aims.graph.node.tokens", "node", node, "tier", tier, "type", "completion")
+                .increment(completion);
+
         String cost = estimateCost(model, prompt, completion);
         log.info(
-                "tier={} model={} prompt={} completion={} cost={} latency={}ms",
+                "tier={} model={} node={} prompt={} completion={} cost={} latency={}ms",
                 tier,
                 model,
+                node,
                 prompt,
                 completion,
                 cost,

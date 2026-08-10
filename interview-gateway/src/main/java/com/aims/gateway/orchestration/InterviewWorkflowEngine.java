@@ -2,9 +2,12 @@ package com.aims.gateway.orchestration;
 
 import com.aims.agent.orchestration.checkpoint.RedisCheckpointSaver;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
+import com.aims.agent.orchestration.observability.GraphExecutionEvent;
+import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.session.SessionStatus;
 import com.aims.gateway.ws.WebSocketStreamEmitter;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.bsc.langgraph4j.CompiledGraph;
@@ -12,7 +15,9 @@ import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.checkpoint.Checkpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -46,23 +51,51 @@ public class InterviewWorkflowEngine {
     private final com.aims.infra.persistence.service.InterviewSessionService sessionService;
     private final WebSocketStreamEmitter streamEmitter;
 
+    /** Phase 6：指标埋点（可为 null，兼容无 metrics 上下文）。 */
+    private final GraphMetricsRegistry metrics;
+
+    /** Phase 6：事件发布器，用于发布 CheckpointRestored 等事件。 */
+    private final ApplicationEventPublisher eventPublisher;
+
     /** Phase 5 灰度开关：true 时 Handler 委托 Engine，false 时走旧命令式路径。 */
     @Value("${interview.engine.enabled:false}")
     private boolean engineEnabled;
 
     private CompiledGraph<InterviewState> compiledGraph;
 
+    @Autowired
     public InterviewWorkflowEngine(
             InterviewGraphFactory graphFactory,
             RedisCheckpointSaver checkpointSaver,
             StatePersistenceService statePersistenceService,
             com.aims.infra.persistence.service.InterviewSessionService sessionService,
-            WebSocketStreamEmitter streamEmitter) {
+            WebSocketStreamEmitter streamEmitter,
+            GraphMetricsRegistry metrics,
+            ApplicationEventPublisher eventPublisher) {
         this.graphFactory = graphFactory;
         this.checkpointSaver = checkpointSaver;
         this.statePersistenceService = statePersistenceService;
         this.sessionService = sessionService;
         this.streamEmitter = streamEmitter;
+        this.metrics = metrics;
+        this.eventPublisher = eventPublisher;
+    }
+
+    /** 测试用：无 metrics 与事件发布器（保持与 Phase 5 已有测试兼容）。 */
+    InterviewWorkflowEngine(
+            InterviewGraphFactory graphFactory,
+            RedisCheckpointSaver checkpointSaver,
+            StatePersistenceService statePersistenceService,
+            com.aims.infra.persistence.service.InterviewSessionService sessionService,
+            WebSocketStreamEmitter streamEmitter) {
+        this(
+                graphFactory,
+                checkpointSaver,
+                statePersistenceService,
+                sessionService,
+                streamEmitter,
+                null,
+                null);
     }
 
     /**
@@ -76,6 +109,7 @@ public class InterviewWorkflowEngine {
      */
     public void startInterview(Long sessionId) throws Exception {
         log.info("Engine 启动面试 sessionId={}", sessionId);
+        incrementExecution("startInterview", "invoked");
 
         InterviewState initial = statePersistenceService.buildInitialState(sessionId);
         RunnableConfig config = newConfig(sessionId);
@@ -92,6 +126,7 @@ public class InterviewWorkflowEngine {
         InterviewState pausedState = loadStateFromCheckpoint(config);
         if (pausedState != null) {
             statePersistenceService.syncFromState(sessionId, pausedState);
+            updateRoundGauge(pausedState);
             log.info(
                     "Engine 启动面试完成 sessionId={} seq={} questionLen={}",
                     sessionId,
@@ -101,6 +136,7 @@ public class InterviewWorkflowEngine {
                             : 0);
         }
         sessionService.updateStatus(sessionId, SessionStatus.IN_PROGRESS);
+        incrementExecution("startInterview", "success");
     }
 
     /**
@@ -115,10 +151,12 @@ public class InterviewWorkflowEngine {
      */
     public void submitAnswer(Long sessionId, String answer) throws Exception {
         log.info("Engine 提交回答 sessionId={} answerLen={}", sessionId, answer.length());
+        incrementExecution("submitAnswer", "invoked");
 
         RunnableConfig config = newConfig(sessionId);
         InterviewState pausedState = loadStateFromCheckpoint(config);
         if (pausedState == null) {
+            incrementExecution("submitAnswer", "error");
             throw new IllegalStateException("无 checkpoint，无法提交回答: sessionId=" + sessionId);
         }
 
@@ -136,6 +174,7 @@ public class InterviewWorkflowEngine {
         InterviewState newState = loadStateFromCheckpoint(config);
         if (newState != null) {
             statePersistenceService.syncFromState(sessionId, newState);
+            updateRoundGauge(newState);
             log.info(
                     "Engine 提交回答完成 sessionId={} seq={} qaCount={}",
                     sessionId,
@@ -146,6 +185,7 @@ public class InterviewWorkflowEngine {
                 sessionService.markEnded(sessionId);
             }
         }
+        incrementExecution("submitAnswer", "success");
     }
 
     /**
@@ -158,10 +198,12 @@ public class InterviewWorkflowEngine {
      */
     public void finishInterview(Long sessionId) throws Exception {
         log.info("Engine 结束面试 sessionId={}", sessionId);
+        incrementExecution("finishInterview", "invoked");
 
         RunnableConfig config = newConfig(sessionId);
         InterviewState pausedState = loadStateFromCheckpoint(config);
         if (pausedState == null) {
+            incrementExecution("finishInterview", "error");
             throw new IllegalStateException("无 checkpoint，无法结束: sessionId=" + sessionId);
         }
 
@@ -180,9 +222,11 @@ public class InterviewWorkflowEngine {
         InterviewState finalState = loadStateFromCheckpoint(config);
         if (finalState != null) {
             statePersistenceService.syncFromState(sessionId, finalState);
+            updateRoundGauge(finalState);
         }
         sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
         sessionService.markEnded(sessionId);
+        incrementExecution("finishInterview", "success");
     }
 
     /**
@@ -192,7 +236,9 @@ public class InterviewWorkflowEngine {
      */
     public void pauseInterview(Long sessionId) {
         log.info("Engine 暂停面试 sessionId={}", sessionId);
+        incrementExecution("pauseInterview", "invoked");
         sessionService.updateStatus(sessionId, SessionStatus.PAUSED);
+        incrementExecution("pauseInterview", "success");
     }
 
     /**
@@ -203,6 +249,7 @@ public class InterviewWorkflowEngine {
      */
     public void cancelInterview(Long sessionId) throws Exception {
         log.info("Engine 取消面试 sessionId={}", sessionId);
+        incrementExecution("cancelInterview", "invoked");
         RunnableConfig config = newConfig(sessionId);
         try {
             checkpointSaver.release(config);
@@ -211,11 +258,22 @@ public class InterviewWorkflowEngine {
         }
         sessionService.updateStatus(sessionId, SessionStatus.CANCELLED);
         sessionService.markEnded(sessionId);
+        incrementExecution("cancelInterview", "success");
     }
 
     /** Engine 是否启用（Phase 5 灰度开关）。 */
     public boolean isEnabled() {
         return engineEnabled;
+    }
+
+    /** Phase 6：CompiledGraph 是否已就绪（供健康检查）。 */
+    public boolean isGraphReady() {
+        return compiledGraph != null;
+    }
+
+    /** Phase 6：暴露 checkpointSaver 是否可用（供健康检查）。 */
+    public boolean isCheckpointBackendAvailable() {
+        return checkpointSaver != null;
     }
 
     /** 初始化：编译带 interruptBefore(ANSWER) + Redis Checkpointer 的 Graph。 */
@@ -233,6 +291,9 @@ public class InterviewWorkflowEngine {
     /**
      * 从 checkpoint 加载最新 InterviewState。
      *
+     * <p>Phase 6：加载到非空 state 时发布 {@link GraphExecutionEvent.CheckpointRestored} 事件，由 {@code
+     * CheckpointRestoreListener} 触发 {@code aims.graph.checkpoint.restore} 计数。
+     *
      * @param config RunnableConfig（含 threadId）
      * @return 最新 state；无 checkpoint 时返回 null
      * @throws Exception checkpoint 读取异常
@@ -242,6 +303,32 @@ public class InterviewWorkflowEngine {
         if (checkpoint.isEmpty()) {
             return null;
         }
-        return new InterviewState(checkpoint.get().getState());
+        InterviewState state = new InterviewState(checkpoint.get().getState());
+        publishCheckpointRestored(config);
+        return state;
+    }
+
+    /** Phase 6：发布 checkpoint 恢复事件（null-guarded）。 */
+    private void publishCheckpointRestored(RunnableConfig config) {
+        if (eventPublisher == null) {
+            return;
+        }
+        String sessionId = config.threadId().orElse("-");
+        eventPublisher.publishEvent(
+                new GraphExecutionEvent.CheckpointRestored(sessionId, "checkpoint", Instant.now()));
+    }
+
+    /** Phase 6：累加 Engine 入口指标（null-guarded）。 */
+    private void incrementExecution(String entrypoint, String outcome) {
+        if (metrics != null) {
+            metrics.incrementExecution(entrypoint, outcome);
+        }
+    }
+
+    /** Phase 6：更新当前轮次 Gauge（null-guarded）。 */
+    private void updateRoundGauge(InterviewState state) {
+        if (metrics != null && state != null) {
+            metrics.updateCurrentRound(state.currentSeq(), state.totalRounds());
+        }
     }
 }

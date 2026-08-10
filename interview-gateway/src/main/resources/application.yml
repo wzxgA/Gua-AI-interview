@@ -43,10 +43,19 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        # Phase 6: 新增 prometheus（P7 Prometheus 接入时启用抓取）
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        # Phase 6: 为节点耗时与模型延迟启用直方图（P50/P95/P99）
+        aims.graph.node.duration: true
+        aims.llm.latency: true
 
 springdoc:
   swagger-ui:
@@ -119,6 +128,9 @@ aims:
     persona-voice-link: true
 
 logging:
+  # Phase 6: 注入 MDC 上下文（sessionId/node/round），统一面试流程日志格式
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] [%X{sessionId:-}] [%X{node:-}/%X{round:-}] %-5level %logger{36} - %msg%n"
   level:
     org.springframework.web.client: DEBUG
     org.springframework.ai.openai.api: DEBUG

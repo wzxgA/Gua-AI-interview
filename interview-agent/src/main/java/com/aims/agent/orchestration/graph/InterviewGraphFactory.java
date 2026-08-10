@@ -13,6 +13,7 @@ import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
 import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.SummaryNode;
+import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.interview.FollowUpDecision;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.bsc.langgraph4j.action.NodeAction;
 import org.bsc.langgraph4j.checkpoint.BaseCheckpointSaver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -71,6 +73,9 @@ public class InterviewGraphFactory {
     private final EndCheckNode endCheckNode;
     private final ReportNode reportNode;
 
+    /** Phase 6：注入用于 FaultTolerantNode 重试埋点；可为 null（测试场景）。 */
+    private final GraphMetricsRegistry metricsRegistry;
+
     public InterviewGraphFactory(
             PlanNode planNode,
             QuestionNode questionNode,
@@ -81,6 +86,32 @@ public class InterviewGraphFactory {
             SummaryNode summaryNode,
             EndCheckNode endCheckNode,
             ReportNode reportNode) {
+        this(
+                planNode,
+                questionNode,
+                answerNode,
+                followUpDecisionNode,
+                followUpNode,
+                evaluateNode,
+                summaryNode,
+                endCheckNode,
+                reportNode,
+                null);
+    }
+
+    /** Phase 6 构造函数：注入 GraphMetricsRegistry 用于 FaultTolerantNode 重试埋点。 */
+    @Autowired
+    public InterviewGraphFactory(
+            PlanNode planNode,
+            QuestionNode questionNode,
+            AnswerNode answerNode,
+            FollowUpDecisionNode followUpDecisionNode,
+            FollowUpNode followUpNode,
+            EvaluateNode evaluateNode,
+            SummaryNode summaryNode,
+            EndCheckNode endCheckNode,
+            ReportNode reportNode,
+            GraphMetricsRegistry metricsRegistry) {
         this.planNode = planNode;
         this.questionNode = questionNode;
         this.answerNode = answerNode;
@@ -90,6 +121,7 @@ public class InterviewGraphFactory {
         this.summaryNode = summaryNode;
         this.endCheckNode = endCheckNode;
         this.reportNode = reportNode;
+        this.metricsRegistry = metricsRegistry;
     }
 
     // ─── Graph 构建 ───
@@ -255,7 +287,7 @@ public class InterviewGraphFactory {
 
     private NodeAction<InterviewState> wrap(
             NodeAction<InterviewState> node, int retries, long delayMs) {
-        return new FaultTolerantNode<>(node, retries, delayMs);
+        return new FaultTolerantNode<>(node, retries, delayMs, metricsRegistry);
     }
 
     /** 将同步 NodeAction 适配为 LangGraph4j 要求的 AsyncNodeAction。 */

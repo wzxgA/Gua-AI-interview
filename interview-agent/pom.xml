@@ -30,6 +30,12 @@
             <artifactId>langgraph4j-spring-ai</artifactId>
         </dependency>
 
+        <!-- AOP：Phase 6 GraphTraceAspect 切面（spring-boot-dependencies BOM 管理版本） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- 测试 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -64,4 +70,14 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- LG.8 Phase 7 T11: JaCoCo 覆盖率（orchestration 包 ≥ 70% 门槛） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>
