@@ -82,14 +82,24 @@ class InterviewGraphIntegrationTest {
     void setUp() {
         StreamEmitter emitter = StreamEmitter.NOOP;
         // 使用测试专用 AnswerNode：QuestionNode 会清空 CURRENT_ANSWER，
-        // 测试无法做暂停-恢复注入，因此 AnswerNode 直接使用固定 Mock 回答
+        // 测试无法做暂停-恢复注入，因此 AnswerNode 直接使用固定 Mock 回答。
+        // 追问标记逻辑与真实 AnswerNode 保持一致：PENDING_FOLLOW_UP=true 时构造追问 QaPair
         AnswerNode testAnswerNode =
                 new AnswerNode() {
                     @Override
                     public Map<String, Object> apply(InterviewState state) throws Exception {
                         QaPair qaPair =
-                                new QaPair(
-                                        state.currentSeq(), state.currentQuestion(), "Mock answer");
+                                state.pendingFollowUp()
+                                        ? new QaPair(
+                                                state.currentSeq(),
+                                                state.currentQuestion(),
+                                                "Mock answer",
+                                                state.followUpIndex(),
+                                                state.followUpType())
+                                        : new QaPair(
+                                                state.currentSeq(),
+                                                state.currentQuestion(),
+                                                "Mock answer");
                         return Map.of(InterviewState.QA_HISTORY, qaPair);
                     }
                 };
@@ -236,8 +246,19 @@ class InterviewGraphIntegrationTest {
         when(followUpAgent.streamFollowUp(any(), any()))
                 .thenReturn(Flux.just("Follow-up question"));
 
-        // Evaluate: 每轮返回 1 个评估
-        when(evaluatorAgent.evaluate(any())).thenReturn(List.of(mockEvaluation()));
+        // Evaluate: 每次返回互不相等的评估——ROUND_EVALUATIONS 是去重 appender 通道，
+        // 相同值会被合并，无法断言条数
+        java.util.concurrent.atomic.AtomicInteger evalSeq =
+                new java.util.concurrent.atomic.AtomicInteger();
+        when(evaluatorAgent.evaluate(any()))
+                .thenAnswer(
+                        inv ->
+                                List.of(
+                                        new RoundEvaluation(
+                                                EvaluationDimension.PROFESSIONAL,
+                                                4,
+                                                "good-" + evalSeq.incrementAndGet(),
+                                                "evidence")));
 
         // Summary
         when(summaryAgent.summarize(any())).thenReturn("Summary text");
@@ -272,8 +293,19 @@ class InterviewGraphIntegrationTest {
         InterviewState finalState = result.get();
         assertTrue(finalState.lastError() == null, "lastError should be null");
         assertNotNull(finalState.reportResult(), "reportResult should not be null");
-        assertEquals(8, finalState.qaHistory().size(), "should have 8 QaPairs");
-        assertTrue(finalState.followUpCount() >= 1, "followUpCount should be >= 1");
+        // 8 条主问题 Q&A + 1 条追问 Q&A（追问回答经 followUp→answer 回环收集）
+        assertEquals(9, finalState.qaHistory().size(), "should have 8 main + 1 followUp QaPairs");
+        long followUpQaCount = finalState.qaHistory().stream().filter(QaPair::isFollowUp).count();
+        assertEquals(1, followUpQaCount, "should have 1 followUp QaPair");
+        QaPair followUpQa =
+                finalState.qaHistory().stream()
+                        .filter(QaPair::isFollowUp)
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(1, followUpQa.followUpIndex());
+        assertEquals(FollowUpType.DEEPEN, followUpQa.followUpType());
+        // 追问 Q&A 与主问题一并被评估
+        assertEquals(9, finalState.roundEvaluations().size());
     }
 
     @Test

@@ -98,6 +98,9 @@ public class QuestionNode extends AbstractNode<InterviewState> {
         updates.put(InterviewState.CURRENT_SEQ, nextSeq);
         updates.put(InterviewState.QUESTIONS_ASKED, question);
         updates.put(InterviewState.CURRENT_ANSWER, "");
+        // 换题时重置追问上下文：计数严格按题，追问暂停标记清零
+        updates.put(InterviewState.FOLLOW_UP_COUNT, 0);
+        updates.put(InterviewState.PENDING_FOLLOW_UP, false);
         return updates;
     }
 }

@@ -55,6 +55,38 @@ class FollowUpNodeTest {
     }
 
     @Test
+    @DisplayName("追问协议帧：emitFollowUpStart 携带 type/parentSeq/index，emitFollowUpEnd 携带完整文本")
+    void followUp_protocolFrames() throws Exception {
+        var state =
+                stateWithDecision(FollowUpDecision.of(FollowUpType.CLARIFY, "追问", "需要澄清"), null);
+        when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("能否", "具体"));
+
+        node.apply(state);
+
+        verify(streamEmitter).emitFollowUpStart(1L, FollowUpType.CLARIFY, 3, 1);
+        verify(streamEmitter).emitFollowUpEnd(1L, "能否具体");
+    }
+
+    @Test
+    @DisplayName("生成后计数：FOLLOW_UP_COUNT+1、PENDING_FOLLOW_UP=true")
+    void followUp_incrementsCount_andSetsPendingFlag() throws Exception {
+        Map<String, Object> data = new HashMap<>();
+        data.put(InterviewState.SESSION_ID, 1L);
+        data.put(InterviewState.CURRENT_SEQ, 3);
+        data.put(InterviewState.FOLLOW_UP_COUNT, 1);
+        data.put(
+                InterviewState.FOLLOW_UP_DECISION,
+                FollowUpDecision.of(FollowUpType.DEEPEN, "追问", "需要深挖"));
+        var state = new InterviewState(data);
+        when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("问题"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals(2, result.get(InterviewState.FOLLOW_UP_COUNT));
+        assertEquals(true, result.get(InterviewState.PENDING_FOLLOW_UP));
+    }
+
+    @Test
     @DisplayName("FOLLOW_UP_INDEX 递增：null → 1，已有值 +1")
     void followUpIndex_incremented() throws Exception {
         var decision = FollowUpDecision.of(FollowUpType.DEEPEN, "追问", "需要深挖");

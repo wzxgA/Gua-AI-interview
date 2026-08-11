@@ -26,11 +26,32 @@ public class AnswerNode extends AbstractNode<InterviewState> {
     public Map<String, Object> apply(InterviewState state) throws Exception {
         String answer = state.currentAnswer();
         if (answer == null || answer.isBlank()) {
+            // FINISH 强制结束：暂停点尚无回答，跳过 QA 收集，让流程走到 endCheck → report
+            if (state.forceEnd()) {
+                log.info(
+                        "forceEnd 跳过空回答 sessionId={} seq={}",
+                        state.sessionId(),
+                        state.currentSeq());
+                return Map.of();
+            }
             throw new IllegalStateException("AnswerNode 收到空回答");
         }
 
-        QaPair qaPair = new QaPair(state.currentSeq(), state.currentQuestion(), answer);
-        log.debug("接收回答 sessionId={} seq={}", state.sessionId(), state.currentSeq());
+        // 追问回答：携带 followUpIndex/followUpType 标记，seq 沿用主问题 seq
+        QaPair qaPair =
+                state.pendingFollowUp()
+                        ? new QaPair(
+                                state.currentSeq(),
+                                state.currentQuestion(),
+                                answer,
+                                state.followUpIndex(),
+                                state.followUpType())
+                        : new QaPair(state.currentSeq(), state.currentQuestion(), answer);
+        log.debug(
+                "接收回答 sessionId={} seq={} followUp={}",
+                state.sessionId(),
+                state.currentSeq(),
+                state.pendingFollowUp());
 
         return Map.of(InterviewState.QA_HISTORY, qaPair);
     }

@@ -9,5 +9,17 @@ public enum FollowUpType {
     /** 深挖：回答浅显，追问细节 */
     DEEPEN,
     /** 引导：偏题，引导回正轨 */
-    REDIRECT
+    REDIRECT;
+
+    /** 容错解析：null/空串/非法值返回 null。 */
+    public static FollowUpType fromString(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 }

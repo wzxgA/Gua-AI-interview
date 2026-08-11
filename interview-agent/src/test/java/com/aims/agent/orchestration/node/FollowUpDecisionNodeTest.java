@@ -42,7 +42,7 @@ class FollowUpDecisionNodeTest {
     }
 
     @Test
-    @DisplayName("正常决策：返回 FOLLOW_UP_DECISION 和递增的 FOLLOW_UP_COUNT")
+    @DisplayName("正常决策：只返回 FOLLOW_UP_DECISION（计数职责在 FollowUpNode）")
     void evaluate_returnsDecision() throws Exception {
         var state =
                 new InterviewState(
@@ -56,12 +56,12 @@ class FollowUpDecisionNodeTest {
         Map<String, Object> result = node.apply(state);
 
         assertEquals(decision, result.get(InterviewState.FOLLOW_UP_DECISION));
-        assertEquals(1, result.get(InterviewState.FOLLOW_UP_COUNT));
+        assertFalse(result.containsKey(InterviewState.FOLLOW_UP_COUNT));
     }
 
     @Test
-    @DisplayName("noFollowUp 时 FOLLOW_UP_COUNT 不递增")
-    void evaluate_noFollowUp_countNotIncremented() throws Exception {
+    @DisplayName("noFollowUp 时同样只写 FOLLOW_UP_DECISION")
+    void evaluate_noFollowUp_onlyWritesDecision() throws Exception {
         var state =
                 new InterviewState(
                         Map.of(
@@ -73,7 +73,8 @@ class FollowUpDecisionNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals(2, result.get(InterviewState.FOLLOW_UP_COUNT));
+        assertEquals(decision, result.get(InterviewState.FOLLOW_UP_DECISION));
+        assertEquals(1, result.size());
     }
 
     @Test

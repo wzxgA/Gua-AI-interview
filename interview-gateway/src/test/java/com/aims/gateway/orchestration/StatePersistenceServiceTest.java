@@ -237,6 +237,153 @@ class StatePersistenceServiceTest {
     }
 
     @Test
+    @DisplayName("syncFromState 追问 Q&A 创建追问轮次（seq=null + parentSeq + followUpIndex + type）")
+    void syncFromState_followUpQa_createsFollowUpRound() {
+        InterviewState state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.QA_HISTORY,
+                                new ArrayList<>(
+                                        List.of(
+                                                new QaPair(1, "问题1", "答案1"),
+                                                new QaPair(
+                                                        1,
+                                                        "追问1",
+                                                        "追问答案1",
+                                                        1,
+                                                        com.aims.core.interview.FollowUpType
+                                                                .DEEPEN))),
+                                InterviewState.SESSION_STATUS,
+                                SessionStatus.IN_PROGRESS));
+        when(roundService.listBySession(100L)).thenReturn(List.of());
+
+        service.syncFromState(100L, state);
+
+        verify(roundService).createRound(100L, 1, "问题1");
+        verify(roundService).createRound(100L, null, "追问1", "DEEPEN", 1, 1);
+    }
+
+    @Test
+    @DisplayName("syncFromState 已存在的追问轮次只回填 answer，不重复创建")
+    void syncFromState_existingFollowUpRound_updatesAnswerOnly() {
+        InterviewState state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.QA_HISTORY,
+                                new ArrayList<>(
+                                        List.of(
+                                                new QaPair(
+                                                        1,
+                                                        "追问1",
+                                                        "追问答案1",
+                                                        1,
+                                                        com.aims.core.interview.FollowUpType
+                                                                .DEEPEN))),
+                                InterviewState.SESSION_STATUS,
+                                SessionStatus.IN_PROGRESS));
+        InterviewRoundEntity existing = new InterviewRoundEntity();
+        existing.setId(60L);
+        existing.setSeq(null);
+        existing.setParentSeq(1);
+        existing.setFollowUpIndex(1);
+        existing.setAnswer(null);
+        when(roundService.listBySession(100L)).thenReturn(List.of(existing));
+
+        service.syncFromState(100L, state);
+
+        verify(roundService).updateAnswer(60L, "追问答案1");
+        verify(roundService, never())
+                .createRound(anyLong(), any(), anyString(), anyString(), anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("syncFromState 追问暂停窗口：预创建待答追问轮次")
+    void syncFromState_pendingFollowUp_preCreatesRound() {
+        InterviewState state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.QA_HISTORY,
+                                new ArrayList<>(),
+                                InterviewState.CURRENT_QUESTION,
+                                "追问问题",
+                                InterviewState.CURRENT_ANSWER,
+                                "",
+                                InterviewState.PENDING_FOLLOW_UP,
+                                true,
+                                InterviewState.PARENT_SEQ,
+                                1,
+                                InterviewState.FOLLOW_UP_INDEX,
+                                1,
+                                InterviewState.FOLLOW_UP_TYPE,
+                                com.aims.core.interview.FollowUpType.CLARIFY,
+                                InterviewState.SESSION_STATUS,
+                                SessionStatus.IN_PROGRESS));
+        when(roundService.listBySession(100L)).thenReturn(List.of());
+
+        service.syncFromState(100L, state);
+
+        verify(roundService).createRound(100L, null, "追问问题", "CLARIFY", 1, 1);
+    }
+
+    @Test
+    @DisplayName("syncFromState 主问题暂停窗口：预创建待答主问题轮次")
+    void syncFromState_pendingMainQuestion_preCreatesRound() {
+        InterviewState state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.QA_HISTORY,
+                                new ArrayList<>(),
+                                InterviewState.CURRENT_SEQ,
+                                3,
+                                InterviewState.CURRENT_QUESTION,
+                                "主问题3",
+                                InterviewState.CURRENT_ANSWER,
+                                "",
+                                InterviewState.SESSION_STATUS,
+                                SessionStatus.IN_PROGRESS));
+        when(roundService.listBySession(100L)).thenReturn(List.of());
+
+        service.syncFromState(100L, state);
+
+        verify(roundService).createRound(100L, 3, "主问题3");
+    }
+
+    @Test
+    @DisplayName("rebuildFromDb 追问轮次重建为带标记的 QaPair")
+    void rebuildFromDb_restoresFollowUpQaPairs() {
+        InterviewSessionEntity entity = mockSessionEntity(1L);
+        entity.setPlanJson(mockPlanJson());
+        when(sessionService.getById(1L)).thenReturn(entity);
+        when(resumeService.getById(10L)).thenReturn(mockResume());
+        when(positionService.getById(20L)).thenReturn(mockPosition());
+
+        InterviewRoundEntity main = new InterviewRoundEntity();
+        main.setId(100L);
+        main.setSeq(1);
+        main.setQuestion("问题1");
+        main.setAnswer("答案1");
+        InterviewRoundEntity followUp = new InterviewRoundEntity();
+        followUp.setId(101L);
+        followUp.setSeq(null);
+        followUp.setParentSeq(1);
+        followUp.setFollowUpIndex(1);
+        followUp.setFollowUpType("DEEPEN");
+        followUp.setQuestion("追问1");
+        followUp.setAnswer("追问答案1");
+        when(roundService.listBySession(1L)).thenReturn(List.of(main, followUp));
+
+        InterviewState state = service.rebuildFromDb(1L);
+
+        assertEquals(2, state.qaHistory().size());
+        assertEquals(1, state.currentSeq(), "currentSeq 只统计主问题");
+        QaPair fu = state.qaHistory().get(1);
+        assertTrue(fu.isFollowUp());
+        assertEquals(1, fu.seq());
+        assertEquals(1, fu.followUpIndex());
+        assertEquals(com.aims.core.interview.FollowUpType.DEEPEN, fu.followUpType());
+    }
+
+    @Test
     @DisplayName("rebuildFromDb 从 DB 重建完整 State")
     void rebuildFromDb_restoresAllFields() {
         InterviewSessionEntity entity = mockSessionEntity(1L);

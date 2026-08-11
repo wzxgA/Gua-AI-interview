@@ -51,7 +51,6 @@ public class FollowUpDecisionNode extends AbstractNode<InterviewState> {
         log.debug("追问决策 sessionId={} seq={}", state.sessionId(), state.currentSeq());
 
         FollowUpDecision decision = followUpAgent.evaluate(ctx);
-        int newCount = state.followUpCount() + (decision.shouldFollowUp() ? 1 : 0);
 
         log.info(
                 "追问决策完成 sessionId={} shouldFollowUp={} type={}",
@@ -59,9 +58,8 @@ public class FollowUpDecisionNode extends AbstractNode<InterviewState> {
                 decision.shouldFollowUp(),
                 decision.followUpType());
 
-        return Map.of(
-                InterviewState.FOLLOW_UP_DECISION, decision,
-                InterviewState.FOLLOW_UP_COUNT, newCount);
+        // 计数职责在 FollowUpNode（生成后才 +1），此处只写决策结果
+        return Map.of(InterviewState.FOLLOW_UP_DECISION, decision);
     }
 
     /** 从 plan 按 seq 提取 followUpHints。 */

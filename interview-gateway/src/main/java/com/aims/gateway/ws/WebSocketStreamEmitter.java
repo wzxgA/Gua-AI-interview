@@ -1,6 +1,7 @@
 package com.aims.gateway.ws;
 
 import com.aims.agent.orchestration.node.StreamEmitter;
+import com.aims.core.interview.FollowUpType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -66,6 +67,34 @@ public class WebSocketStreamEmitter implements StreamEmitter {
 
     @Override
     public void emitEnd(Long sessionId, String fullQuestion) {
+        WebSocketSession session = resolve(sessionId);
+        if (session == null) {
+            return;
+        }
+        send(session, WsOutbound.questionEnd(sessionId, null, null, fullQuestion));
+    }
+
+    @Override
+    public void emitFollowUpStart(
+            Long sessionId, FollowUpType type, int parentSeq, int followUpIndex) {
+        WebSocketSession session = resolve(sessionId);
+        if (session == null) {
+            return;
+        }
+        // roundId 在 chunk 阶段尚未创建，传 null；前端按 followUpType/parentSeq/followUpIndex 创建追问气泡
+        send(
+                session,
+                WsOutbound.questionStart(
+                        sessionId,
+                        null,
+                        null,
+                        type != null ? type.name() : null,
+                        parentSeq,
+                        followUpIndex));
+    }
+
+    @Override
+    public void emitFollowUpEnd(Long sessionId, String fullQuestion) {
         WebSocketSession session = resolve(sessionId);
         if (session == null) {
             return;

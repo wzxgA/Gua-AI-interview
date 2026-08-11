@@ -44,7 +44,18 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
         FollowUpContext ctx = buildContext(state);
         Long sessionId = state.sessionId();
 
-        log.debug("流式生成追问 sessionId={} seq={}", sessionId, state.currentSeq());
+        Integer currentIndex = state.followUpIndex();
+        int newIndex = currentIndex == null ? 1 : currentIndex + 1;
+
+        log.debug(
+                "流式生成追问 sessionId={} seq={} followUpIndex={}",
+                sessionId,
+                state.currentSeq(),
+                newIndex);
+
+        // 通知前端追问开始（携带 followUpType/parentSeq/followUpIndex）
+        streamEmitter.emitFollowUpStart(
+                sessionId, decision.followUpType(), state.currentSeq(), newIndex);
 
         // 流式：emit chunks + 累积完整文本
         // sessionId 经 Reactor Context 传播：chunk 在 reactor-netty 线程发出，ThreadLocal 不可用。
@@ -69,8 +80,9 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
                 .blockLast();
 
         String question = full.toString().trim();
-        Integer currentIndex = state.followUpIndex();
-        int newIndex = currentIndex == null ? 1 : currentIndex + 1;
+
+        // 通知前端追问结束
+        streamEmitter.emitFollowUpEnd(sessionId, question);
 
         log.info(
                 "追问生成完成 sessionId={} seq={} followUpIndex={}",
@@ -85,6 +97,9 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
         updates.put(InterviewState.FOLLOW_UP_TYPE, decision.followUpType());
         updates.put(InterviewState.PARENT_SEQ, state.currentSeq());
         updates.put(InterviewState.CURRENT_ANSWER, "");
+        // 生成后才计数（路由条件 followUpCount < 3 语义=本题已生成追问数）；标记等待追问回答
+        updates.put(InterviewState.FOLLOW_UP_COUNT, state.followUpCount() + 1);
+        updates.put(InterviewState.PENDING_FOLLOW_UP, true);
         return updates;
     }
 

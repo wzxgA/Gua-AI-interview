@@ -40,10 +40,11 @@ import org.springframework.stereotype.Component;
  *
  * <pre>
  *   START → plan → ask → answer → followUpDecision
- *                                     ├─ followUp → evaluate (固定边)
- *                                     └─ evaluate → summary → endCheck
- *                                          ├─ ask (循环回提问)
- *                                          └─ report → END
+ *                      ↑      ├─ followUp → answer（追问回环，interruptBefore(ANSWER) 暂停等待追问回答）
+ *                      │      └─ evaluate → summary → endCheck
+ *                      │                        ├─ ask (循环回提问)
+ *                      └────────────────────────┘
+ *                                                report → END
  * </pre>
  *
  * <h2>条件边路由</h2>
@@ -152,7 +153,9 @@ public class InterviewGraphFactory {
         graph.addEdge(NodeNames.PLAN, NodeNames.ASK);
         graph.addEdge(NodeNames.ASK, NodeNames.ANSWER);
         graph.addEdge(NodeNames.ANSWER, NodeNames.FOLLOW_UP_DECISION);
-        graph.addEdge(NodeNames.FOLLOW_UP, NodeNames.EVALUATE);
+        // 追问回环：followUp 生成追问问题后回到 ANSWER 等待候选人回答
+        // （interruptBefore(ANSWER) 为节点级中断，ask→answer 与 followUp→answer 两条入边均会暂停）
+        graph.addEdge(NodeNames.FOLLOW_UP, NodeNames.ANSWER);
         graph.addEdge(NodeNames.EVALUATE, NodeNames.SUMMARY);
         graph.addEdge(NodeNames.SUMMARY, NodeNames.END_CHECK);
         graph.addEdge(NodeNames.REPORT, END);

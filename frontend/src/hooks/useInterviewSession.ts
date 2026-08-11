@@ -34,7 +34,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
         case 'QUESTION_START':
           store.setConnected(true);
           store.startQuestion(
-            msg.roundId ?? msg.seq ?? 0,
+            msg.roundId ?? undefined,
             msg.seq,
             msg.followUpType,
             msg.parentSeq,

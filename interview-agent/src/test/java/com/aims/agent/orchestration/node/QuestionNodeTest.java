@@ -73,6 +73,23 @@ class QuestionNodeTest {
     }
 
     @Test
+    @DisplayName("换题时重置追问上下文：FOLLOW_UP_COUNT=0、PENDING_FOLLOW_UP=false")
+    void streamQuestion_resetsFollowUpContext() throws Exception {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put(InterviewState.SESSION_ID, 1L);
+        data.put(InterviewState.CURRENT_SEQ, 2);
+        data.put(InterviewState.FOLLOW_UP_COUNT, 3);
+        data.put(InterviewState.PENDING_FOLLOW_UP, true);
+        var state = new InterviewState(data);
+        when(interviewerAgent.streamQuestion(any())).thenReturn(Flux.just("问题"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals(0, result.get(InterviewState.FOLLOW_UP_COUNT));
+        assertEquals(false, result.get(InterviewState.PENDING_FOLLOW_UP));
+    }
+
+    @Test
     @DisplayName("Agent 异常时异常传播")
     void streamQuestion_agentThrows() {
         var state =

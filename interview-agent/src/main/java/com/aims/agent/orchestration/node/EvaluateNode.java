@@ -40,7 +40,8 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
         List<Long> newIds = new ArrayList<>();
 
         for (QaPair qa : state.qaHistory()) {
-            if (evaluated.contains((long) qa.seq())) continue;
+            long key = evalKey(qa);
+            if (evaluated.contains(key)) continue;
 
             EvaluationContext ctx =
                     new EvaluationContext(
@@ -55,11 +56,11 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
                             state.jdText(),
                             state.resumeSummary());
 
-            log.debug("评估轮次 sessionId={} seq={}", state.sessionId(), qa.seq());
+            log.debug("评估轮次 sessionId={} seq={} key={}", state.sessionId(), qa.seq(), key);
 
             List<RoundEvaluation> evals = evaluatorAgent.evaluate(ctx);
             newEvals.addAll(evals);
-            newIds.add((long) qa.seq());
+            newIds.add(key);
         }
 
         log.info("批量评估完成 sessionId={} 新评估轮次数={}", state.sessionId(), newIds.size());
@@ -68,5 +69,10 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
         updates.put(InterviewState.ROUND_EVALUATIONS, newEvals);
         updates.put(InterviewState.EVALUATED_ROUND_IDS, newIds);
         return updates;
+    }
+
+    /** 评估去重键：主问题用 seq；追问编码为 seq*100+followUpIndex（追问 ≤3 次，与主问题 seq 无碰撞）。 */
+    private long evalKey(QaPair qa) {
+        return qa.followUpIndex() == null ? qa.seq() : qa.seq() * 100L + qa.followUpIndex();
     }
 }

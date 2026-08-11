@@ -1,5 +1,7 @@
 package com.aims.agent.orchestration.node;
 
+import com.aims.core.interview.FollowUpType;
+
 /** 流式 chunk 推送接口：将流式 Agent 输出的文本 chunk 推送到 WebSocket。 */
 public interface StreamEmitter {
 
@@ -14,6 +16,13 @@ public interface StreamEmitter {
 
     /** 流式结束后推送 QUESTION_END，fullQuestion 为完整问题文本。默认 NOOP。 */
     default void emitEnd(Long sessionId, String fullQuestion) {}
+
+    /** 追问开始：推送携带 followUpType/parentSeq/followUpIndex 的 QUESTION_START。默认 NOOP。 */
+    default void emitFollowUpStart(
+            Long sessionId, FollowUpType type, int parentSeq, int followUpIndex) {}
+
+    /** 追问结束：推送 QUESTION_END。默认 NOOP。 */
+    default void emitFollowUpEnd(Long sessionId, String fullQuestion) {}
 
     /** 空实现：丢弃所有 chunk（测试用）。 */
     StreamEmitter NOOP = new StreamEmitter() {};

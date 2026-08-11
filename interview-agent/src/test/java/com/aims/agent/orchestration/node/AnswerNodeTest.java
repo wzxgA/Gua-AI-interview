@@ -3,6 +3,7 @@ package com.aims.agent.orchestration.node;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.aims.agent.orchestration.state.InterviewState;
+import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.QaPair;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,54 @@ class AnswerNodeTest {
                                 InterviewState.CURRENT_ANSWER, ""));
 
         assertThrows(IllegalStateException.class, () -> node.apply(state));
+    }
+
+    @Test
+    @DisplayName("追问回答：QaPair 携带 followUpIndex/followUpType，seq 沿用主问题 seq")
+    void followUpAnswer_carriesFollowUpMarkers() throws Exception {
+        var state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.CURRENT_SEQ,
+                                2,
+                                InterviewState.CURRENT_QUESTION,
+                                "能详细说明吗？",
+                                InterviewState.CURRENT_ANSWER,
+                                "具体来说...",
+                                InterviewState.PENDING_FOLLOW_UP,
+                                true,
+                                InterviewState.FOLLOW_UP_INDEX,
+                                1,
+                                InterviewState.FOLLOW_UP_TYPE,
+                                FollowUpType.DEEPEN));
+
+        Map<String, Object> result = node.apply(state);
+        QaPair qa = (QaPair) result.get(InterviewState.QA_HISTORY);
+
+        assertEquals(2, qa.seq());
+        assertEquals("能详细说明吗？", qa.question());
+        assertEquals("具体来说...", qa.answer());
+        assertEquals(1, qa.followUpIndex());
+        assertEquals(FollowUpType.DEEPEN, qa.followUpType());
+        assertTrue(qa.isFollowUp());
+    }
+
+    @Test
+    @DisplayName("主问题回答：QaPair 不带追问标记")
+    void mainAnswer_noFollowUpMarkers() throws Exception {
+        var state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.CURRENT_SEQ, 1,
+                                InterviewState.CURRENT_QUESTION, "Q1",
+                                InterviewState.CURRENT_ANSWER, "A1"));
+
+        Map<String, Object> result = node.apply(state);
+        QaPair qa = (QaPair) result.get(InterviewState.QA_HISTORY);
+
+        assertNull(qa.followUpIndex());
+        assertNull(qa.followUpType());
+        assertFalse(qa.isFollowUp());
     }
 
     @Test

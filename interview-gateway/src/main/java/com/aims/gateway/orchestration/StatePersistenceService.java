@@ -1,6 +1,7 @@
 package com.aims.gateway.orchestration;
 
 import com.aims.agent.orchestration.state.InterviewState;
+import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.QaPair;
@@ -108,7 +109,8 @@ public class StatePersistenceService {
      * <p>同步策略：
      *
      * <ol>
-     *   <li>QA_HISTORY → InterviewRoundEntity（幂等：按 seq 判断是否已存在）
+     *   <li>QA_HISTORY → InterviewRoundEntity（幂等：主问题按 seq、追问按 parentSeq+followUpIndex 判断是否已存在）
+     *   <li>暂停窗口待答问题预落库：CURRENT_QUESTION 非空且 CURRENT_ANSWER 为空时预创建轮次（主问题 + 追问）， 保证断线重连能补发当前问题
      *   <li>SESSION_STATUS → sessionService.updateStatus（仅当状态非初始时）
      *   <li>REPORT_RESULT → 暂不处理（Phase 6 接入 ReportService）
      * </ol>
@@ -117,35 +119,96 @@ public class StatePersistenceService {
      * @param state Graph 执行后的最新 State
      */
     public void syncFromState(Long sessionId, InterviewState state) {
-        // 1. QA_HISTORY → InterviewRoundEntity（幂等）
+        // 1. 现有轮次索引：主问题按 seq，追问按 parentSeq:followUpIndex
         List<InterviewRoundEntity> existingRounds = roundService.listBySession(sessionId);
-        Map<Integer, InterviewRoundEntity> existingBySeq = new HashMap<>();
+        Map<Integer, InterviewRoundEntity> mainBySeq = new HashMap<>();
+        Map<String, InterviewRoundEntity> followUpByKey = new HashMap<>();
         for (InterviewRoundEntity r : existingRounds) {
             if (r.getSeq() != null) {
-                existingBySeq.put(r.getSeq(), r);
+                mainBySeq.put(r.getSeq(), r);
+            } else if (r.getParentSeq() != null && r.getFollowUpIndex() != null) {
+                followUpByKey.put(r.getParentSeq() + ":" + r.getFollowUpIndex(), r);
             }
         }
 
+        // 2. QA_HISTORY → InterviewRoundEntity（幂等）
         for (QaPair qa : state.qaHistory()) {
-            InterviewRoundEntity existing = existingBySeq.get(qa.seq());
-            if (existing == null) {
-                // 新问题：创建 round
-                roundService.createRound(sessionId, qa.seq(), qa.question());
-                log.debug(
-                        "syncFromState 创建轮次 sessionId={} seq={} questionLen={}",
-                        sessionId,
-                        qa.seq(),
-                        qa.question() != null ? qa.question().length() : 0);
-            } else if (qa.answer() != null
-                    && !qa.answer().isBlank()
-                    && (existing.getAnswer() == null || existing.getAnswer().isBlank())) {
-                // 已有问题，新回答：更新 answer
-                roundService.updateAnswer(existing.getId(), qa.answer());
-                log.debug("syncFromState 更新回答 sessionId={} seq={}", sessionId, qa.seq());
+            if (qa.followUpIndex() == null) {
+                // 主问题：按 seq 幂等
+                InterviewRoundEntity existing = mainBySeq.get(qa.seq());
+                if (existing == null) {
+                    InterviewRoundEntity created =
+                            roundService.createRound(sessionId, qa.seq(), qa.question());
+                    mainBySeq.put(qa.seq(), created);
+                    log.debug(
+                            "syncFromState 创建轮次 sessionId={} seq={} questionLen={}",
+                            sessionId,
+                            qa.seq(),
+                            qa.question() != null ? qa.question().length() : 0);
+                } else if (qa.answer() != null
+                        && !qa.answer().isBlank()
+                        && (existing.getAnswer() == null || existing.getAnswer().isBlank())) {
+                    roundService.updateAnswer(existing.getId(), qa.answer());
+                    log.debug("syncFromState 更新回答 sessionId={} seq={}", sessionId, qa.seq());
+                }
+            } else {
+                // 追问：按 parentSeq:followUpIndex 幂等
+                String key = qa.seq() + ":" + qa.followUpIndex();
+                InterviewRoundEntity existing = followUpByKey.get(key);
+                if (existing == null) {
+                    InterviewRoundEntity created =
+                            roundService.createRound(
+                                    sessionId,
+                                    null,
+                                    qa.question(),
+                                    qa.followUpType() != null ? qa.followUpType().name() : null,
+                                    qa.seq(),
+                                    qa.followUpIndex());
+                    followUpByKey.put(key, created);
+                    log.debug(
+                            "syncFromState 创建追问轮次 sessionId={} parentSeq={} followUpIndex={}",
+                            sessionId,
+                            qa.seq(),
+                            qa.followUpIndex());
+                } else if (qa.answer() != null
+                        && !qa.answer().isBlank()
+                        && (existing.getAnswer() == null || existing.getAnswer().isBlank())) {
+                    roundService.updateAnswer(existing.getId(), qa.answer());
+                    log.debug("syncFromState 更新追问回答 sessionId={} key={}", sessionId, key);
+                }
             }
         }
 
-        // 2. SESSION_STATUS → DB（仅当非 IN_PROGRESS 初始态时更新）
+        // 3. 暂停窗口预落库：CURRENT_QUESTION 非空且 CURRENT_ANSWER 为空 → 待答问题尚未进入 QA_HISTORY，
+        //    预创建轮次保证断线重连补发（主问题 + 追问）
+        String pendingQuestion = state.currentQuestion();
+        if (pendingQuestion != null
+                && !pendingQuestion.isBlank()
+                && (state.currentAnswer() == null || state.currentAnswer().isBlank())) {
+            if (state.pendingFollowUp()
+                    && state.parentSeq() != null
+                    && state.followUpIndex() != null) {
+                String key = state.parentSeq() + ":" + state.followUpIndex();
+                if (!followUpByKey.containsKey(key)) {
+                    roundService.createRound(
+                            sessionId,
+                            null,
+                            pendingQuestion,
+                            state.followUpType() != null ? state.followUpType().name() : null,
+                            state.parentSeq(),
+                            state.followUpIndex());
+                    log.debug("syncFromState 预创建追问轮次 sessionId={} key={}", sessionId, key);
+                }
+            } else {
+                int seq = state.currentSeq();
+                if (!mainBySeq.containsKey(seq)) {
+                    roundService.createRound(sessionId, seq, pendingQuestion);
+                    log.debug("syncFromState 预创建主问题轮次 sessionId={} seq={}", sessionId, seq);
+                }
+            }
+        }
+
+        // 4. SESSION_STATUS → DB（仅当非 IN_PROGRESS 初始态时更新）
         SessionStatus status = state.sessionStatus();
         if (status != SessionStatus.IN_PROGRESS && status != SessionStatus.CREATED) {
             sessionService.updateStatus(sessionId, status);
@@ -170,14 +233,25 @@ public class StatePersistenceService {
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
 
-        // 加载所有轮次，重建 QA_HISTORY
+        // 加载所有轮次，重建 QA_HISTORY（主问题 + 追问；追问沿用主问题 seq 并携带 followUpIndex/followUpType）
         List<InterviewRoundEntity> rounds = roundService.listBySession(sessionId);
         List<QaPair> qaHistory = new ArrayList<>();
         int currentSeq = 0;
         for (InterviewRoundEntity r : rounds) {
-            if (r.getSeq() != null && r.getAnswer() != null && !r.getAnswer().isBlank()) {
+            if (r.getAnswer() == null || r.getAnswer().isBlank()) {
+                continue;
+            }
+            if (r.getSeq() != null) {
                 qaHistory.add(new QaPair(r.getSeq(), r.getQuestion(), r.getAnswer()));
                 currentSeq = Math.max(currentSeq, r.getSeq());
+            } else if (r.getParentSeq() != null && r.getFollowUpIndex() != null) {
+                qaHistory.add(
+                        new QaPair(
+                                r.getParentSeq(),
+                                r.getQuestion(),
+                                r.getAnswer(),
+                                r.getFollowUpIndex(),
+                                FollowUpType.fromString(r.getFollowUpType())));
             }
         }
 

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.bsc.langgraph4j.CompiledGraph;
+import org.bsc.langgraph4j.GraphInput;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.checkpoint.Checkpoint;
 import org.slf4j.Logger;
@@ -25,8 +26,13 @@ import org.springframework.stereotype.Component;
  *
  * <p>Phase 5 核心：替代 {@code InterviewWebSocketHandler} 中命令式主循环，用 Graph 声明式编排。
  *
- * <p>使用 {@code interruptBefore(ANSWER)} 实现提问后暂停——Graph 执行到 ASK 节点后， 在进入 ANSWER 之前自动暂停， 等待外部 {@link
- * #submitAnswer} 注入回答后 resume 继续。
+ * <p>使用 {@code interruptBefore(ANSWER)} 实现提问后暂停——Graph 执行到 ASK（或追问回环的 FOLLOW_UP）节点后， 在进入 ANSWER
+ * 之前自动暂停，等待外部 {@link #submitAnswer} 注入回答后 resume 继续。
+ *
+ * <p><b>恢复机制（重要）</b>：resume 必须使用 {@link GraphInput#resume(java.util.Map)}——它会从 checkpoint 重建执行上下文
+ * （nextNodeId=中断点后继节点），把更新数据合并进 checkpoint state 后从中断节点继续。 切勿使用 {@code invoke(Map, config)}：非空 Map
+ * 会被包装为 {@code GraphInput.args}， 语义是<b>从 START 重新执行</b>（仅合并 checkpoint state），会导致 plan/ask
+ * 重跑、注入的回答被 QuestionNode 清空。
  *
  * <p>5 个公开方法：
  *
@@ -142,8 +148,8 @@ public class InterviewWorkflowEngine {
     /**
      * 提交回答：注入 answer → resume → 执行到下一个 ASK 或 END。
      *
-     * <p>从 checkpoint 加载暂停时的 state，注入 CURRENT_ANSWER，再次 invoke 让 Graph 从 ANSWER 节点继续。 执行完成后会暂停在下一个
-     * ANSWER 前（若未结束）或执行到 END。
+     * <p>用 {@link GraphInput#resume(Map)} 把 CURRENT_ANSWER 合并进 checkpoint state，Graph 从中断点（ANSWER
+     * 节点）继续。 执行完成后会暂停在下一个 ANSWER 前（主问题或追问）或执行到 END。
      *
      * @param sessionId 面试 sessionId
      * @param answer 候选人回答文本
@@ -160,11 +166,10 @@ public class InterviewWorkflowEngine {
             throw new IllegalStateException("无 checkpoint，无法提交回答: sessionId=" + sessionId);
         }
 
-        // 注入 answer：构造新的 inputs map，含原 state + CURRENT_ANSWER
-        Map<String, Object> inputs = new java.util.HashMap<>(pausedState.data());
-        inputs.put(InterviewState.CURRENT_ANSWER, answer);
-
-        compiledGraph.invoke(inputs, config);
+        // 从 checkpoint 断点恢复：answer 经 resume 更新数据合并进 checkpoint state，由 ANSWER 节点消费。
+        // 不可用 invoke(Map)——那是 GraphArgs 语义，会从 START 重跑并丢失回答。
+        compiledGraph.invoke(
+                GraphInput.resume(Map.of(InterviewState.CURRENT_ANSWER, answer)), config);
 
         InterviewState newState = loadStateFromCheckpoint(config);
         if (newState != null) {
@@ -186,7 +191,8 @@ public class InterviewWorkflowEngine {
     /**
      * 结束面试：设置 FORCE_END → 执行到 END。
      *
-     * <p>从 checkpoint 加载 state，注入 FORCE_END=true，用无 interrupt 的 graph 执行到 END（直接生成报告）。
+     * <p>用 {@link GraphInput#resume(Map)} 把 FORCE_END=true 合并进 checkpoint state，用无 interrupt 的
+     * graph 从中断点继续执行到 END（生成报告）。暂停点无回答时 AnswerNode 检测到 forceEnd 会跳过 QA 收集。
      *
      * @param sessionId 面试 sessionId
      * @throws Exception Graph 执行异常
@@ -202,12 +208,9 @@ public class InterviewWorkflowEngine {
             throw new IllegalStateException("无 checkpoint，无法结束: sessionId=" + sessionId);
         }
 
-        Map<String, Object> inputs = new java.util.HashMap<>(pausedState.data());
-        inputs.put(InterviewState.FORCE_END, true);
-
-        // 用无 interrupt 的 graph 执行到 END
+        // 用无 interrupt 的 graph 从 checkpoint 断点恢复执行到 END
         CompiledGraph<InterviewState> noInterrupt = graphFactory.compile(checkpointSaver);
-        noInterrupt.invoke(inputs, config);
+        noInterrupt.invoke(GraphInput.resume(Map.of(InterviewState.FORCE_END, true)), config);
 
         InterviewState finalState = loadStateFromCheckpoint(config);
         if (finalState != null) {

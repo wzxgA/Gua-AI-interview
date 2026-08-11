@@ -61,6 +61,9 @@ public class InterviewState extends AgentState {
     public static final String FOLLOW_UP_DECISION = "followUpDecision";
     public static final String FOLLOW_UP_COUNT = "followUpCount";
 
+    /** true=当前暂停等待的是追问回答（AnswerNode 据此构造追问 QaPair）。QuestionNode 换题时清零。 */
+    public static final String PENDING_FOLLOW_UP = "pendingFollowUp";
+
     // ===== Key 常量：评估结果（Append）=====
     public static final String ROUND_EVALUATIONS = "roundEvaluations";
     public static final String EVALUATED_ROUND_IDS = "evaluatedRoundIds";
@@ -114,6 +117,7 @@ public class InterviewState extends AgentState {
                     // 追问决策 — Replace
                     Map.entry(FOLLOW_UP_DECISION, Channels.base((old, v) -> v)),
                     Map.entry(FOLLOW_UP_COUNT, Channels.base(() -> 0)),
+                    Map.entry(PENDING_FOLLOW_UP, Channels.base(() -> false)),
 
                     // 评估结果 — Append
                     Map.entry(ROUND_EVALUATIONS, Channels.appender(ArrayList::new)),
@@ -224,6 +228,11 @@ public class InterviewState extends AgentState {
 
     public int followUpCount() {
         return this.<Integer>value(FOLLOW_UP_COUNT).orElse(0);
+    }
+
+    /** 当前暂停等待的是否为追问回答。 */
+    public boolean pendingFollowUp() {
+        return this.<Boolean>value(PENDING_FOLLOW_UP).orElse(false);
     }
 
     // ===== Accessor：评估结果 =====
