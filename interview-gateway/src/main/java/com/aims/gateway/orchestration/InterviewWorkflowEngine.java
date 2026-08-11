@@ -7,6 +7,8 @@ import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.session.SessionStatus;
 import com.aims.gateway.ws.WebSocketStreamEmitter;
+import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
+import com.aims.infra.persistence.service.InterviewSessionStore;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +65,12 @@ public class InterviewWorkflowEngine {
     /** Phase 6：事件发布器，用于发布 CheckpointRestored 等事件。 */
     private final ApplicationEventPublisher eventPublisher;
 
+    /** FE.04：面试结束触发 Kafka 异步评估（评估/报告由 EvaluationConsumer/ReportConsumer 完成）。 */
+    private final EvaluationMessageProducer evaluationMessageProducer;
+
+    /** FE.04：连接锁管理，评估开始时释放（与旧链路 triggerEvaluation 语义一致）。 */
+    private final InterviewSessionStore sessionStore;
+
     /** Phase 5 灰度开关：true 时 Handler 委托 Engine，false 时走旧命令式路径。 */
     @Value("${interview.engine.enabled:false}")
     private boolean engineEnabled;
@@ -77,7 +85,9 @@ public class InterviewWorkflowEngine {
             com.aims.infra.persistence.service.InterviewSessionService sessionService,
             WebSocketStreamEmitter streamEmitter,
             GraphMetricsRegistry metrics,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            EvaluationMessageProducer evaluationMessageProducer,
+            InterviewSessionStore sessionStore) {
         this.graphFactory = graphFactory;
         this.checkpointSaver = checkpointSaver;
         this.statePersistenceService = statePersistenceService;
@@ -85,9 +95,11 @@ public class InterviewWorkflowEngine {
         this.streamEmitter = streamEmitter;
         this.metrics = metrics;
         this.eventPublisher = eventPublisher;
+        this.evaluationMessageProducer = evaluationMessageProducer;
+        this.sessionStore = sessionStore;
     }
 
-    /** 测试用：无 metrics 与事件发布器（保持与 Phase 5 已有测试兼容）。 */
+    /** 测试用：无 metrics/事件发布器/Producer/SessionStore（保持与已有测试兼容）。 */
     InterviewWorkflowEngine(
             InterviewGraphFactory graphFactory,
             RedisCheckpointSaver checkpointSaver,
@@ -100,6 +112,8 @@ public class InterviewWorkflowEngine {
                 statePersistenceService,
                 sessionService,
                 streamEmitter,
+                null,
+                null,
                 null,
                 null);
     }
@@ -180,9 +194,9 @@ public class InterviewWorkflowEngine {
                     sessionId,
                     newState.currentSeq(),
                     newState.qaHistory().size());
-            if (newState.sessionStatus() == SessionStatus.COMPLETED) {
-                sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
-                sessionService.markEnded(sessionId);
+            // 面试结束（达上限/FINISH/错误）→ 触发 Kafka 异步评估（FE.04）
+            if (isInterviewFinished(newState)) {
+                triggerEvaluationViaEngine(sessionId);
             }
         }
         incrementExecution("submitAnswer", "success");
@@ -217,8 +231,8 @@ public class InterviewWorkflowEngine {
             statePersistenceService.syncFromState(sessionId, finalState);
             updateRoundGauge(finalState);
         }
-        sessionService.updateStatus(sessionId, SessionStatus.COMPLETED);
-        sessionService.markEnded(sessionId);
+        // 转 EVALUATING + 发 Kafka，异步评估/报告（COMPLETED 由 ReportConsumer 设置，FE.04）
+        triggerEvaluationViaEngine(sessionId);
         incrementExecution("finishInterview", "success");
     }
 
@@ -257,6 +271,46 @@ public class InterviewWorkflowEngine {
     /** Engine 是否启用（Phase 5 灰度开关）。 */
     public boolean isEnabled() {
         return engineEnabled;
+    }
+
+    /**
+     * 面试是否已结束（镜像 {@code InterviewGraphFactory.routeAfterEndCheck} 的结束分支）。
+     *
+     * <p>达题数上限、FINISH 强制结束或节点错误（LAST_ERROR）任一命中即视为结束，触发 Kafka 评估。
+     */
+    private boolean isInterviewFinished(InterviewState state) {
+        return state.forceEnd()
+                || state.lastError() != null
+                || state.currentSeq() >= state.totalRounds();
+    }
+
+    /**
+     * 面试结束 → 转 EVALUATING + 释放连接锁 + 发 Kafka 评估请求（FE.04）。
+     *
+     * <p>评估/报告由 {@code EvaluationConsumer}/{@code ReportConsumer} 异步完成并落库，本方法同步返回。
+     * 状态原子转移保证只触发一次；测试构造下 producer 为 null 时仅转状态不发送。
+     */
+    private void triggerEvaluationViaEngine(Long sessionId) {
+        boolean transitioned =
+                sessionService.tryTransitionTo(
+                        sessionId,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        if (!transitioned) {
+            log.info("评估已触发，跳过重复请求 sessionId={}", sessionId);
+            return;
+        }
+        if (sessionStore != null) {
+            sessionStore.forceUnlock(sessionId);
+        }
+        sessionService.updateEvaluationStatus(sessionId, "PENDING");
+        if (evaluationMessageProducer != null) {
+            evaluationMessageProducer.sendEvaluationRequest(sessionId);
+        } else {
+            log.warn("evaluationMessageProducer 未注入，跳过 Kafka 发送 sessionId={}", sessionId);
+        }
+        incrementExecution("evaluation", "triggered");
     }
 
     /** Phase 6：CompiledGraph 是否已就绪（供健康检查）。 */

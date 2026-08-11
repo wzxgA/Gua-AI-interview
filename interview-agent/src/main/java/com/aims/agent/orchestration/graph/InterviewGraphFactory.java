@@ -33,25 +33,28 @@ import org.springframework.stereotype.Component;
 /**
  * 面试流程 StateGraph 工厂。
  *
- * <p>构建完整面试流程的有向图，包含 9 个节点（plan→ask→answer→followUpDecision→…→report）， 2
+ * <p>构建完整面试流程的有向图，包含 7 个节点（plan→ask→answer→followUpDecision→summary→endCheck），2
  * 条条件边（追问决策路由、结束判断循环路由），所有业务节点通过 {@link FaultTolerantNode} 包装。
+ *
+ * <p>评估（evaluate）与报告（report）已移至 Kafka 链路（面试结束后由 {@code EvaluationConsumer}/{@code ReportConsumer} 从
+ * DB 统一评估并落库），故不注册在图内。
  *
  * <h2>图拓扑</h2>
  *
  * <pre>
  *   START → plan → ask → answer → followUpDecision
  *                      ↑      ├─ followUp → answer（追问回环，interruptBefore(ANSWER) 暂停等待追问回答）
- *                      │      └─ evaluate → summary → endCheck
+ *                      │      └─ summary → endCheck
  *                      │                        ├─ ask (循环回提问)
  *                      └────────────────────────┘
- *                                                report → END
+ *                      endCheck ──（达上限/FINISH/错误）──> END
  * </pre>
  *
  * <h2>条件边路由</h2>
  *
  * <ul>
- *   <li>followUpDecision → followUp（shouldFollowUp 且未达上限）| evaluate（否则）
- *   <li>endCheck → report（达上限或有错误）| ask（循环）
+ *   <li>followUpDecision → followUp（shouldFollowUp 且未达上限）| summary（否则）
+ *   <li>endCheck → END（达上限、forceEnd 或 lastError）| ask（循环）
  * </ul>
  *
  * @since 1.1.0
@@ -143,10 +146,9 @@ public class InterviewGraphFactory {
         graph.addNode(NodeNames.ANSWER, async(wrap(answerNode, 1, 0)));
         graph.addNode(NodeNames.FOLLOW_UP_DECISION, async(wrap(followUpDecisionNode, 3, 500)));
         graph.addNode(NodeNames.FOLLOW_UP, async(wrap(followUpNode, 2, 2000)));
-        graph.addNode(NodeNames.EVALUATE, async(wrap(evaluateNode, 2, 3000)));
         graph.addNode(NodeNames.SUMMARY, async(wrap(summaryNode, 2, 1000)));
         graph.addNode(NodeNames.END_CHECK, async(wrap(endCheckNode, 1, 0)));
-        graph.addNode(NodeNames.REPORT, async(wrap(reportNode, 2, 5000)));
+        // 评估（evaluate）与报告（report）已移至 Kafka 链路（FE.04），不再注册图内
 
         // 2. 固定边
         graph.addEdge(START, NodeNames.PLAN);
@@ -156,9 +158,8 @@ public class InterviewGraphFactory {
         // 追问回环：followUp 生成追问问题后回到 ANSWER 等待候选人回答
         // （interruptBefore(ANSWER) 为节点级中断，ask→answer 与 followUp→answer 两条入边均会暂停）
         graph.addEdge(NodeNames.FOLLOW_UP, NodeNames.ANSWER);
-        graph.addEdge(NodeNames.EVALUATE, NodeNames.SUMMARY);
         graph.addEdge(NodeNames.SUMMARY, NodeNames.END_CHECK);
-        graph.addEdge(NodeNames.REPORT, END);
+        // 结束路径：endCheck 条件路由到 END（评估/报告由 Kafka 异步完成）
 
         // 3. 条件边: 追问决策
         EdgeAction<InterviewState> followUpRouter = this::routeAfterFollowUpDecision;
@@ -167,16 +168,14 @@ public class InterviewGraphFactory {
                 AsyncEdgeAction.edge_async(followUpRouter),
                 Map.of(
                         NodeNames.FOLLOW_UP, NodeNames.FOLLOW_UP,
-                        NodeNames.EVALUATE, NodeNames.EVALUATE));
+                        NodeNames.SUMMARY, NodeNames.SUMMARY));
 
         // 4. 条件边: 结束判断
         EdgeAction<InterviewState> endCheckRouter = this::routeAfterEndCheck;
         graph.addConditionalEdges(
                 NodeNames.END_CHECK,
                 AsyncEdgeAction.edge_async(endCheckRouter),
-                Map.of(
-                        NodeNames.REPORT, NodeNames.REPORT,
-                        NodeNames.ASK, NodeNames.ASK));
+                Map.of(END, END, NodeNames.ASK, NodeNames.ASK));
 
         return graph;
     }
@@ -237,9 +236,9 @@ public class InterviewGraphFactory {
      * <p>路由规则：
      *
      * <ol>
-     *   <li>lastError 非空 → EVALUATE（错误时跳过追问，直接评估）
+     *   <li>lastError 非空 → SUMMARY（错误时跳过追问，走摘要）
      *   <li>decision 非空且 shouldFollowUp 且 followUpCount &lt; 3 → FOLLOW_UP
-     *   <li>否则 → EVALUATE
+     *   <li>否则 → SUMMARY
      * </ol>
      *
      * @param state 当前状态
@@ -247,7 +246,7 @@ public class InterviewGraphFactory {
      */
     String routeAfterFollowUpDecision(InterviewState state) throws Exception {
         if (state.lastError() != null) {
-            return NodeNames.EVALUATE;
+            return NodeNames.SUMMARY;
         }
         FollowUpDecision decision = state.followUpDecision();
         if (decision != null
@@ -255,7 +254,7 @@ public class InterviewGraphFactory {
                 && state.followUpCount() < MAX_FOLLOW_UPS_PER_QUESTION) {
             return NodeNames.FOLLOW_UP;
         }
-        return NodeNames.EVALUATE;
+        return NodeNames.SUMMARY;
     }
 
     /**
@@ -264,9 +263,9 @@ public class InterviewGraphFactory {
      * <p>路由规则：
      *
      * <ol>
-     *   <li>lastError 非空 → REPORT（错误时终止，生成报告）
-     *   <li>forceEnd=true → REPORT（外部 FINISH 强制结束）
-     *   <li>currentSeq &gt;= totalRounds → REPORT（面试结束）
+     *   <li>lastError 非空 → END（错误终止，评估/报告由 Kafka 链路完成）
+     *   <li>forceEnd=true → END（外部 FINISH 强制结束）
+     *   <li>currentSeq &gt;= totalRounds → END（面试结束）
      *   <li>否则 → ASK（循环回提问）
      * </ol>
      *
@@ -275,13 +274,13 @@ public class InterviewGraphFactory {
      */
     String routeAfterEndCheck(InterviewState state) throws Exception {
         if (state.lastError() != null) {
-            return NodeNames.REPORT;
+            return END;
         }
         if (state.forceEnd()) {
-            return NodeNames.REPORT;
+            return END;
         }
         if (state.currentSeq() >= state.totalRounds()) {
-            return NodeNames.REPORT;
+            return END;
         }
         return NodeNames.ASK;
     }

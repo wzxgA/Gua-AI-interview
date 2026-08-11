@@ -18,6 +18,11 @@ public class EvaluationConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(EvaluationConsumer.class);
 
+    /** FE.04：评估失败重试次数与基础退避间隔（ms），重试耗尽才置 FAILED。 */
+    private static final int MAX_ATTEMPTS = 3;
+
+    private static final long BASE_DELAY_MS = 500;
+
     private final EvaluationService evaluationService;
     private final InterviewSessionService sessionService;
     private final EvaluationMessageProducer messageProducer;
@@ -36,26 +41,46 @@ public class EvaluationConsumer {
 
     @KafkaListener(topics = InfraConfig.TOPIC_EVALUATION_REQUESTED, groupId = "aims-evaluation")
     public void handleEvaluationRequest(String message) {
+        EvaluationRequestMessage req;
         try {
-            EvaluationRequestMessage req =
-                    objectMapper.readValue(message, EvaluationRequestMessage.class);
-            Long sessionId = req.sessionId();
-            log.info("收到评估请求消息 sessionId={}", sessionId);
-
-            evaluationService.evaluateSession(sessionId);
-
-            // 评估完成，发送报告请求
-            messageProducer.sendReportRequest(sessionId);
+            req = objectMapper.readValue(message, EvaluationRequestMessage.class);
         } catch (Exception e) {
-            log.error("评估消费失败 message={}", message, e);
+            log.error("评估请求消息解析失败 message={}", message, e);
+            return; // 消息格式错误不可重试
+        }
+        Long sessionId = req.sessionId();
+
+        Exception last = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                EvaluationRequestMessage req =
-                        objectMapper.readValue(message, EvaluationRequestMessage.class);
-                sessionService.updateStatus(req.sessionId(), SessionStatus.FAILED);
-                sessionService.updateEvaluationStatus(req.sessionId(), "FAILED");
-            } catch (Exception ex) {
-                log.error("更新会话状态为 FAILED 失败", ex);
+                log.info("收到评估请求消息 sessionId={} attempt={}/{}", sessionId, attempt, MAX_ATTEMPTS);
+                evaluationService.evaluateSession(sessionId);
+                // 评估完成，发送报告请求
+                messageProducer.sendReportRequest(sessionId);
+                return;
+            } catch (Exception e) {
+                last = e;
+                if (attempt < MAX_ATTEMPTS) {
+                    try {
+                        Thread.sleep(BASE_DELAY_MS * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
             }
+        }
+        // 重试耗尽：置 FAILED 后正常返回（不抛），保证 offset 提交、避免 Kafka 无限重投
+        log.error("评估消费失败，重试耗尽置 FAILED sessionId={}", sessionId, last);
+        markFailed(sessionId);
+    }
+
+    private void markFailed(Long sessionId) {
+        try {
+            sessionService.updateStatus(sessionId, SessionStatus.FAILED);
+            sessionService.updateEvaluationStatus(sessionId, "FAILED");
+        } catch (Exception ex) {
+            log.error("更新会话状态为 FAILED 失败 sessionId={}", sessionId, ex);
         }
     }
 }

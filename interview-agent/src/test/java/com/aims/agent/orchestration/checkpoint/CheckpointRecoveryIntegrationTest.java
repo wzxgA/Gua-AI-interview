@@ -102,8 +102,8 @@ class CheckpointRecoveryIntegrationTest {
     }
 
     @Test
-    @DisplayName("evaluate 后中断→恢复：currentSeq>=totalRounds 应路由到 report")
-    void recover_afterEvaluate_continuesToReport() throws Exception {
+    @DisplayName("达上限中断→恢复：currentSeq>=totalRounds 应满足结束条件（路由到 END 触发评估）")
+    void recover_afterEvaluate_continuesToEnd() throws Exception {
         Map<String, Object> state =
                 Map.of(
                         InterviewState.SESSION_ID,
@@ -117,8 +117,8 @@ class CheckpointRecoveryIntegrationTest {
         Checkpoint loaded = saveAndReload(state, "evaluate");
 
         InterviewState restored = new InterviewState(loaded.getState());
-        // routeAfterEndCheck 判定：currentSeq >= totalRounds → REPORT
-        assertTrue(restored.currentSeq() >= restored.totalRounds(), "应满足结束条件路由到 report");
+        // routeAfterEndCheck 判定：currentSeq >= totalRounds → END（FE.04：评估/报告由 Kafka 链路完成）
+        assertTrue(restored.currentSeq() >= restored.totalRounds(), "应满足结束条件路由到 END");
     }
 
     @Test
@@ -153,8 +153,8 @@ class CheckpointRecoveryIntegrationTest {
     }
 
     @Test
-    @DisplayName("checkpoint 含 LAST_ERROR → 应路由到 report（错误终止）")
-    void recover_withErrorInState_routesToReport() throws Exception {
+    @DisplayName("checkpoint 含 LAST_ERROR → 应满足错误终止条件（路由到 END）")
+    void recover_withErrorInState_routesToEnd() throws Exception {
         Map<String, Object> state =
                 Map.of(
                         InterviewState.SESSION_ID,
@@ -170,8 +170,8 @@ class CheckpointRecoveryIntegrationTest {
         Checkpoint loaded = saveAndReload(state, "evaluate");
 
         InterviewState restored = new InterviewState(loaded.getState());
-        // routeAfterEndCheck 判定：lastError 非空 → REPORT
-        assertNotNull(restored.lastError(), "错误状态应被恢复并路由到 report");
+        // routeAfterEndCheck 判定：lastError 非空 → END（FE.04：评估已答轮次由 Kafka 链路完成）
+        assertNotNull(restored.lastError(), "错误状态应被恢复并路由到 END");
     }
 
     private InterviewPlan samplePlan() {

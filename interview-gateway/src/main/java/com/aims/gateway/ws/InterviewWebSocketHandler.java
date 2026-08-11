@@ -584,13 +584,14 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     /**
      * Phase 5：通过 Engine 结束面试。
      *
-     * <p>设置 FORCE_END=true → 执行到 END（生成报告）。流式 chunk 由 WebSocketStreamEmitter 推送。
+     * <p>设置 FORCE_END=true → 图执行到 END → Engine 触发 Kafka 异步评估（FE.04），本方法同步返回后推送 EVALUATING 状态，
+     * 评估/报告完成后前端经 2s 轮询感知 COMPLETED。
      */
     private void handleFinishViaEngine(WebSocketSession session, Long sessionId) {
         try {
             engine.finishInterview(sessionId);
-            send(session, WsOutbound.status(sessionId, SessionStatus.COMPLETED.name()));
-            log.info("面试已结束（Engine）sessionId={}", sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            log.info("面试已结束，进入评估（Engine）sessionId={}", sessionId);
         } catch (Exception e) {
             log.error("Engine 结束面试失败 sessionId={}", sessionId, e);
             send(

@@ -3,16 +3,23 @@ package com.aims.gateway.orchestration;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.aims.agent.orchestration.checkpoint.RedisCheckpointSaver;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
+import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.session.SessionStatus;
 import com.aims.gateway.ws.WebSocketStreamEmitter;
+import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.service.InterviewSessionService;
+import com.aims.infra.persistence.service.InterviewSessionStore;
+import java.util.Map;
 import java.util.Optional;
+import org.bsc.langgraph4j.CompiledGraph;
+import org.bsc.langgraph4j.checkpoint.Checkpoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -98,5 +105,49 @@ class InterviewWorkflowEngineTest {
         when(checkpointSaver.get(any())).thenReturn(Optional.empty());
         assertThrows(IllegalStateException.class, () -> engine.finishInterview(500L));
         verify(sessionService, never()).markEnded(any());
+    }
+
+    @Test
+    @DisplayName("finishInterview 结束后触发 Kafka 评估（转 EVALUATING + forceUnlock + 发消息，FE.04）")
+    void finishInterview_triggersEvaluationViaKafka() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        InterviewSessionStore sessionStore = mock(InterviewSessionStore.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+        ReflectionTestUtils.setField(engine, "sessionStore", sessionStore);
+
+        // checkpoint 存在 + noInterrupt graph mock
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("c1")
+                        .nodeId("ask")
+                        .nextNodeId("__end__")
+                        .state(Map.of(InterviewState.SESSION_ID, 600L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        // tryTransitionTo 返回 true，使 triggerEvaluationViaEngine 走完整触发路径
+        when(sessionService.tryTransitionTo(
+                        600L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED))
+                .thenReturn(true);
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> noInterrupt = mock(CompiledGraph.class);
+        when(graphFactory.compile(any())).thenReturn(noInterrupt);
+
+        engine.finishInterview(600L);
+
+        // 触发评估：状态转移 + 释放连接锁 + 置 PENDING + 发 Kafka；不再直接置 COMPLETED
+        verify(sessionService)
+                .tryTransitionTo(
+                        600L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        verify(sessionStore).forceUnlock(600L);
+        verify(sessionService).updateEvaluationStatus(600L, "PENDING");
+        verify(producer).sendEvaluationRequest(600L);
+        verify(sessionService, never()).updateStatus(600L, SessionStatus.COMPLETED);
+        verify(sessionService, never()).markEnded(600L);
     }
 }

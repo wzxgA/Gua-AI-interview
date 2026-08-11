@@ -4,30 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import com.aims.agent.DefaultReportAgent;
-import com.aims.agent.EvaluatorAgent;
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewPlanGenerator;
 import com.aims.agent.InterviewerAgent;
 import com.aims.agent.SummaryAgent;
 import com.aims.agent.orchestration.node.AnswerNode;
 import com.aims.agent.orchestration.node.EndCheckNode;
-import com.aims.agent.orchestration.node.EvaluateNode;
 import com.aims.agent.orchestration.node.FollowUpDecisionNode;
 import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
-import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.StreamEmitter;
 import com.aims.agent.orchestration.node.SummaryNode;
 import com.aims.agent.orchestration.state.InterviewState;
-import com.aims.core.evaluation.DimensionAggregate;
-import com.aims.core.evaluation.EvaluationDimension;
-import com.aims.core.evaluation.RoundEvaluation;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
@@ -35,8 +27,6 @@ import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.PlanSection;
 import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.interview.QaPair;
-import com.aims.core.report.Recommendation;
-import com.aims.core.report.ReportResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -72,9 +62,7 @@ class InterviewGraphIntegrationTest {
     @Mock private InterviewPlanGenerator planGenerator;
     @Mock private InterviewerAgent interviewerAgent;
     @Mock private FollowUpAgent followUpAgent;
-    @Mock private EvaluatorAgent evaluatorAgent;
     @Mock private SummaryAgent summaryAgent;
-    @Mock private DefaultReportAgent reportAgent;
 
     private InterviewGraphFactory factory;
 
@@ -110,10 +98,10 @@ class InterviewGraphIntegrationTest {
                         testAnswerNode,
                         new FollowUpDecisionNode(followUpAgent),
                         new FollowUpNode(followUpAgent, emitter),
-                        new EvaluateNode(evaluatorAgent),
+                        null, // evaluateNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
                         new SummaryNode(summaryAgent),
                         new EndCheckNode(),
-                        new ReportNode(reportAgent));
+                        null); // reportNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
     }
 
     /** 构建一个 8 题的合法 InterviewPlan（MIN_QUESTION_COUNT=8）。 */
@@ -133,16 +121,8 @@ class InterviewGraphIntegrationTest {
                 "1.0");
     }
 
-    private RoundEvaluation mockEvaluation() {
-        return new RoundEvaluation(EvaluationDimension.PROFESSIONAL, 4, "good", "evidence");
-    }
-
-    private ReportResult mockReport() {
-        return new ReportResult("Final summary", Map.of(), Recommendation.NEUTRAL);
-    }
-
     @Test
-    @DisplayName("完整流程：8 轮提问（无追问），最终生成报告")
+    @DisplayName("完整流程：8 轮提问（无追问），达上限后流程结束")
     void fullFlow_8Rounds_noFollowUp() throws Exception {
         // Plan
         when(planGenerator.generate(any(), any(), any(), any(), any(), anyInt(), any(), anyInt()))
@@ -154,15 +134,8 @@ class InterviewGraphIntegrationTest {
         // FollowUpDecision: 每轮都不追问
         when(followUpAgent.evaluate(any())).thenReturn(FollowUpDecision.noFollowUp("sufficient"));
 
-        // Evaluate: 每轮返回 1 个评估
-        when(evaluatorAgent.evaluate(any())).thenReturn(List.of(mockEvaluation()));
-
         // Summary: 足够 5 条时返回摘要
         when(summaryAgent.summarize(any())).thenReturn("Summary text");
-
-        // Report
-        when(reportAgent.generate(any(), any(DimensionAggregate.class), anyDouble()))
-                .thenReturn(mockReport());
 
         // 执行
         CompiledGraph<InterviewState> graph = factory.compileWithoutCheckpoint();
@@ -185,24 +158,22 @@ class InterviewGraphIntegrationTest {
 
         Optional<InterviewState> result = graph.invoke(inputs);
 
-        // 验证
+        // 验证：8 轮问答完成、流程结束（FE.04：评估/报告由 Kafka 链路完成，图内不再生成）
         assertTrue(result.isPresent());
         InterviewState finalState = result.get();
         assertTrue(finalState.lastError() == null, "lastError should be null");
-        assertNotNull(finalState.reportResult(), "reportResult should not be null");
         assertEquals(8, finalState.qaHistory().size(), "should have 8 QaPairs");
+        assertTrue(
+                finalState.currentSeq() >= finalState.totalRounds(),
+                "应满足结束条件（currentSeq >= totalRounds）");
     }
 
     @Test
-    @DisplayName("完整流程：PlanNode 抛异常 → LAST_ERROR 非空，流程不卡死")
-    void fullFlow_errorInPlan_routesToReport() throws Exception {
+    @DisplayName("完整流程：PlanNode 抛异常 → LAST_ERROR 非空，流程结束不卡死")
+    void fullFlow_errorInPlan_routesToEnd() throws Exception {
         // Plan 抛异常（FaultTolerantNode 会重试 2 次后写入 LAST_ERROR）
         when(planGenerator.generate(any(), any(), any(), any(), any(), anyInt(), any(), anyInt()))
                 .thenThrow(new RuntimeException("LLM unavailable"));
-
-        // Report 仍需 mock（错误路径会路由到 report）
-        when(reportAgent.generate(any(), any(DimensionAggregate.class), anyDouble()))
-                .thenReturn(mockReport());
 
         // 执行
         CompiledGraph<InterviewState> graph = factory.compileWithoutCheckpoint();
@@ -219,14 +190,14 @@ class InterviewGraphIntegrationTest {
 
         Optional<InterviewState> result = graph.invoke(inputs);
 
-        // 验证：流程不卡死，LAST_ERROR 非空
+        // 验证：流程不卡死，LAST_ERROR 非空，满足结束条件（FE.04：错误终止由 endCheck→END 承接）
         assertTrue(result.isPresent());
         InterviewState finalState = result.get();
         assertNotNull(finalState.lastError(), "lastError should not be null");
     }
 
     @Test
-    @DisplayName("完整流程：第 1 轮触发追问 → 追问后回到主流程，最终生成报告")
+    @DisplayName("完整流程：第 1 轮触发追问 → 追问后回到主流程，达上限后结束")
     void fullFlow_withFollowUp() throws Exception {
         // Plan
         when(planGenerator.generate(any(), any(), any(), any(), any(), anyInt(), any(), anyInt()))
@@ -246,26 +217,8 @@ class InterviewGraphIntegrationTest {
         when(followUpAgent.streamFollowUp(any(), any()))
                 .thenReturn(Flux.just("Follow-up question"));
 
-        // Evaluate: 每次返回互不相等的评估——ROUND_EVALUATIONS 是去重 appender 通道，
-        // 相同值会被合并，无法断言条数
-        java.util.concurrent.atomic.AtomicInteger evalSeq =
-                new java.util.concurrent.atomic.AtomicInteger();
-        when(evaluatorAgent.evaluate(any()))
-                .thenAnswer(
-                        inv ->
-                                List.of(
-                                        new RoundEvaluation(
-                                                EvaluationDimension.PROFESSIONAL,
-                                                4,
-                                                "good-" + evalSeq.incrementAndGet(),
-                                                "evidence")));
-
         // Summary
         when(summaryAgent.summarize(any())).thenReturn("Summary text");
-
-        // Report
-        when(reportAgent.generate(any(), any(DimensionAggregate.class), anyDouble()))
-                .thenReturn(mockReport());
 
         // 执行
         CompiledGraph<InterviewState> graph = factory.compileWithoutCheckpoint();
@@ -292,7 +245,6 @@ class InterviewGraphIntegrationTest {
         assertTrue(result.isPresent());
         InterviewState finalState = result.get();
         assertTrue(finalState.lastError() == null, "lastError should be null");
-        assertNotNull(finalState.reportResult(), "reportResult should not be null");
         // 8 条主问题 Q&A + 1 条追问 Q&A（追问回答经 followUp→answer 回环收集）
         assertEquals(9, finalState.qaHistory().size(), "should have 8 main + 1 followUp QaPairs");
         long followUpQaCount = finalState.qaHistory().stream().filter(QaPair::isFollowUp).count();
@@ -304,8 +256,10 @@ class InterviewGraphIntegrationTest {
                         .orElseThrow();
         assertEquals(1, followUpQa.followUpIndex());
         assertEquals(FollowUpType.DEEPEN, followUpQa.followUpType());
-        // 追问 Q&A 与主问题一并被评估
-        assertEquals(9, finalState.roundEvaluations().size());
+        // 追问问答不影响题数上限判定（qaHistory 9 条 > totalRounds 8，仍以 currentSeq 判定结束）
+        assertTrue(
+                finalState.currentSeq() >= finalState.totalRounds(),
+                "应满足结束条件（currentSeq >= totalRounds）");
     }
 
     @Test
@@ -321,15 +275,8 @@ class InterviewGraphIntegrationTest {
         // FollowUpDecision: 不追问
         when(followUpAgent.evaluate(any())).thenReturn(FollowUpDecision.noFollowUp("sufficient"));
 
-        // Evaluate
-        when(evaluatorAgent.evaluate(any())).thenReturn(List.of(mockEvaluation()));
-
         // Summary
         when(summaryAgent.summarize(any())).thenReturn("Summary text");
-
-        // Report
-        when(reportAgent.generate(any(), any(DimensionAggregate.class), anyDouble()))
-                .thenReturn(mockReport());
 
         // 执行
         CompiledGraph<InterviewState> graph = factory.compileWithoutCheckpoint();

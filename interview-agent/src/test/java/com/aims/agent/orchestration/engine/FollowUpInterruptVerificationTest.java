@@ -7,8 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import com.aims.agent.DefaultReportAgent;
-import com.aims.agent.EvaluatorAgent;
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewPlanGenerator;
 import com.aims.agent.InterviewerAgent;
@@ -18,16 +16,13 @@ import com.aims.agent.orchestration.checkpoint.RedisCheckpointSaver;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
 import com.aims.agent.orchestration.node.AnswerNode;
 import com.aims.agent.orchestration.node.EndCheckNode;
-import com.aims.agent.orchestration.node.EvaluateNode;
 import com.aims.agent.orchestration.node.FollowUpDecisionNode;
 import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
-import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.StreamEmitter;
 import com.aims.agent.orchestration.node.SummaryNode;
 import com.aims.agent.orchestration.state.InterviewState;
-import com.aims.core.evaluation.RoundEvaluation;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
@@ -87,9 +82,7 @@ class FollowUpInterruptVerificationTest {
     @Mock private InterviewPlanGenerator planGenerator;
     @Mock private InterviewerAgent interviewerAgent;
     @Mock private FollowUpAgent followUpAgent;
-    @Mock private EvaluatorAgent evaluatorAgent;
     @Mock private SummaryAgent summaryAgent;
-    @Mock private DefaultReportAgent reportAgent;
 
     private InterviewGraphFactory factory;
     private RedisCheckpointSaver saver;
@@ -127,10 +120,10 @@ class FollowUpInterruptVerificationTest {
                         new AnswerNode(),
                         new FollowUpDecisionNode(followUpAgent),
                         new FollowUpNode(followUpAgent, emitter),
-                        new EvaluateNode(evaluatorAgent),
+                        null, // evaluateNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
                         new SummaryNode(summaryAgent),
                         new EndCheckNode(),
-                        new ReportNode(reportAgent));
+                        null); // reportNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
         saver =
                 new RedisCheckpointSaver(
                         redisTemplate, new CheckpointSerializer(), Duration.ofHours(24), true);
@@ -177,7 +170,7 @@ class FollowUpInterruptVerificationTest {
                 .thenReturn(FollowUpDecision.of(FollowUpType.DEEPEN, "追问理由", "深挖"))
                 .thenReturn(FollowUpDecision.noFollowUp("充分"));
         when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("追问问题"));
-        when(evaluatorAgent.evaluate(any())).thenReturn(List.of(mockEvaluation()));
+        // evaluatorAgent/reportAgent 不打桩：评估/报告已移至 Kafka 链路（FE.04），图内不再调用
         // summaryAgent.summarize 不打桩：QA 不足 5 条时 SummaryNode 跳过（Mockito 严格模式禁止无用桩）
 
         CompiledGraph<InterviewState> graph = factory.compileWithInterruptBeforeAnswer(saver);
@@ -199,7 +192,7 @@ class FollowUpInterruptVerificationTest {
         assertEquals(1, pausedAtFollowUp.followUpCount(), "本题追问计数应为 1");
         assertEquals(1, pausedAtFollowUp.qaHistory().size(), "仅主问题 Q&A 已入库");
 
-        // 3. 提交追问回答：answer(追问 QaPair) → decision(放行) → evaluate → summary → endCheck → ask(Q2) → 暂停
+        // 3. 提交追问回答：answer(追问 QaPair) → decision(放行) → summary → endCheck → ask(Q2) → 暂停
         Optional<InterviewState> afterFollowUpAnswer =
                 graph.invoke(
                         GraphInput.resume(Map.of(InterviewState.CURRENT_ANSWER, "追问回答")), config);
@@ -222,10 +215,5 @@ class FollowUpInterruptVerificationTest {
         assertEquals(1, followUpQa.followUpIndex());
         assertEquals(FollowUpType.DEEPEN, followUpQa.followUpType());
         assertEquals(1, followUpQa.seq(), "追问 Q&A 的 seq 应沿用主问题 seq");
-    }
-
-    private RoundEvaluation mockEvaluation() {
-        return new RoundEvaluation(
-                com.aims.core.evaluation.EvaluationDimension.PROFESSIONAL, 4, "good", "evidence");
     }
 }

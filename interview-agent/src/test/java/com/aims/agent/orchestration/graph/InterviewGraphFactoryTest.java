@@ -68,24 +68,24 @@ class InterviewGraphFactoryTest {
         }
 
         @Test
-        @DisplayName("shouldFollowUp=false → EVALUATE")
+        @DisplayName("shouldFollowUp=false → SUMMARY")
         void noFollowUp() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
                             .with(FollowUpDecision.noFollowUp("sufficient"))
                             .build();
-            assertEquals(NodeNames.EVALUATE, factory.routeAfterFollowUpDecision(state));
+            assertEquals(NodeNames.SUMMARY, factory.routeAfterFollowUpDecision(state));
         }
 
         @Test
-        @DisplayName("decision=null → EVALUATE")
+        @DisplayName("decision=null → SUMMARY")
         void nullDecision() throws Exception {
             InterviewState state = TestStateBuilder.forTesting().build();
-            assertEquals(NodeNames.EVALUATE, factory.routeAfterFollowUpDecision(state));
+            assertEquals(NodeNames.SUMMARY, factory.routeAfterFollowUpDecision(state));
         }
 
         @Test
-        @DisplayName("lastError 非空 → EVALUATE（错误优先跳过追问）")
+        @DisplayName("lastError 非空 → SUMMARY（错误优先跳过追问）")
         void hasError() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
@@ -93,22 +93,22 @@ class InterviewGraphFactoryTest {
                             .withFollowUpCount(0)
                             .withLastError("LLM timeout")
                             .build();
-            assertEquals(NodeNames.EVALUATE, factory.routeAfterFollowUpDecision(state));
+            assertEquals(NodeNames.SUMMARY, factory.routeAfterFollowUpDecision(state));
         }
 
         @Test
-        @DisplayName("followUpCount >= 3 → EVALUATE（追问上限保护）")
+        @DisplayName("followUpCount >= 3 → SUMMARY（追问上限保护）")
         void followUpCountExceedsLimit() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
                             .with(FollowUpDecision.of(FollowUpType.DEEPEN, "topic", "reason"))
                             .withFollowUpCount(3)
                             .build();
-            assertEquals(NodeNames.EVALUATE, factory.routeAfterFollowUpDecision(state));
+            assertEquals(NodeNames.SUMMARY, factory.routeAfterFollowUpDecision(state));
         }
 
         @Test
-        @DisplayName("错误覆盖决策：lastError + shouldFollowUp=true → EVALUATE")
+        @DisplayName("错误覆盖决策：lastError + shouldFollowUp=true → SUMMARY")
         void errorOverridesDecision() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
@@ -116,7 +116,7 @@ class InterviewGraphFactoryTest {
                             .withFollowUpCount(0)
                             .withLastError("error")
                             .build();
-            assertEquals(NodeNames.EVALUATE, factory.routeAfterFollowUpDecision(state));
+            assertEquals(NodeNames.SUMMARY, factory.routeAfterFollowUpDecision(state));
         }
     }
 
@@ -127,11 +127,11 @@ class InterviewGraphFactoryTest {
     class EndCheckRouter {
 
         @Test
-        @DisplayName("currentSeq >= totalRounds → REPORT")
+        @DisplayName("currentSeq >= totalRounds → END")
         void shouldEnd() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting().withCurrentSeq(3).withTotalRounds(3).build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
 
         @Test
@@ -143,7 +143,7 @@ class InterviewGraphFactoryTest {
         }
 
         @Test
-        @DisplayName("lastError 非空 → REPORT（错误终止）")
+        @DisplayName("lastError 非空 → END（错误终止）")
         void hasError() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
@@ -151,35 +151,35 @@ class InterviewGraphFactoryTest {
                             .withTotalRounds(3)
                             .withLastError("error")
                             .build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
 
         @Test
-        @DisplayName("currentSeq == totalRounds 精确匹配 → REPORT")
+        @DisplayName("currentSeq == totalRounds 精确匹配 → END")
         void exactMatch() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting().withCurrentSeq(5).withTotalRounds(5).build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
 
         @Test
-        @DisplayName("currentSeq > totalRounds 溢出 → REPORT")
+        @DisplayName("currentSeq > totalRounds 溢出 → END")
         void overflow() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting().withCurrentSeq(6).withTotalRounds(5).build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
 
         @Test
-        @DisplayName("totalRounds=0 边界 → REPORT")
+        @DisplayName("totalRounds=0 边界 → END")
         void zeroRounds() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting().withCurrentSeq(0).withTotalRounds(0).build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
 
         @Test
-        @DisplayName("forceEnd=true → REPORT（即使 currentSeq < totalRounds）")
+        @DisplayName("forceEnd=true → END（即使 currentSeq < totalRounds）")
         void forceEndOverrides() throws Exception {
             InterviewState state =
                     TestStateBuilder.forTesting()
@@ -187,7 +187,7 @@ class InterviewGraphFactoryTest {
                             .withTotalRounds(3)
                             .withForceEnd(true)
                             .build();
-            assertEquals(NodeNames.REPORT, factory.routeAfterEndCheck(state));
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
         }
     }
 
