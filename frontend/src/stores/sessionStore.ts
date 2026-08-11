@@ -18,7 +18,7 @@ interface SessionStore {
   setStatus: (status: SessionStatus) => void;
   startQuestion: (roundId: number | undefined, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   appendChunk: (text: string) => void;
-  finalizeQuestion: () => void;
+  finalizeQuestion: (roundId?: number) => void;
   addAnswer: (text: string, roundId?: number) => void;
   addQuestion: (roundId: number | undefined, seq: number | undefined, text: string, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   setAudio: (roundId: number, audioUrl: string, durationMs?: number) => void;
@@ -107,14 +107,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       };
     }),
 
-  finalizeQuestion: () =>
+  finalizeQuestion: (roundId?: number) =>
     set((state) => {
       const messages = [...state.messages];
       const last = messages[messages.length - 1];
       if (last && last.role === 'question' && last.streaming) {
-        messages[messages.length - 1] = { ...last, streaming: false };
+        // END 携带 roundId 时绑定到气泡（Engine 预落库回传；旧链路亦有）
+        messages[messages.length - 1] =
+          roundId != null
+            ? { ...last, roundId, streaming: false }
+            : { ...last, streaming: false };
       }
-      return { messages, isStreaming: false };
+      return {
+        messages,
+        isStreaming: false,
+        // 问题结束并绑定 roundId 后，回答应关联该轮次；否则本地回答 roundId=undefined，
+        // 与历史恢复 addAnswer(r.id) 去重键不一致 → 同一回答重复显示
+        currentRoundId: roundId ?? state.currentRoundId,
+      };
     }),
 
   addAnswer: (text, roundId) =>

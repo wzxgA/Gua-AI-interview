@@ -47,7 +47,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
           break;
 
         case 'QUESTION_END':
-          store.finalizeQuestion();
+          store.finalizeQuestion(msg.roundId);
           invalidateRounds();
           break;
 
