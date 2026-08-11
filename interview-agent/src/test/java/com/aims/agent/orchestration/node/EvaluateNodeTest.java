@@ -5,8 +5,10 @@ import static org.mockito.Mockito.*;
 
 import com.aims.agent.EvaluatorAgent;
 import com.aims.agent.orchestration.state.InterviewState;
+import com.aims.core.evaluation.EvaluationContext;
 import com.aims.core.evaluation.EvaluationDimension;
 import com.aims.core.evaluation.RoundEvaluation;
+import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.QaPair;
 import java.util.List;
 import java.util.Map;
@@ -97,5 +99,28 @@ class EvaluateNodeTest {
         List<Long> ids = (List<Long>) result.get(InterviewState.EVALUATED_ROUND_IDS);
         assertTrue(evals.isEmpty());
         assertTrue(ids.isEmpty());
+    }
+
+    @Test
+    @DisplayName("追问评估上下文携带 parentSeq=主问题seq、followUpIndex")
+    void followUp_context_carriesParentSeq() throws Exception {
+        var state =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.SESSION_ID,
+                                1L,
+                                InterviewState.QA_HISTORY,
+                                List.of(new QaPair(3, "追问问题", "追问回答", 1, FollowUpType.DEEPEN))));
+        when(evaluatorAgent.evaluate(any())).thenReturn(fiveEvals());
+
+        node.apply(state);
+
+        org.mockito.ArgumentCaptor<EvaluationContext> captor =
+                org.mockito.ArgumentCaptor.forClass(EvaluationContext.class);
+        verify(evaluatorAgent, times(1)).evaluate(captor.capture());
+        EvaluationContext ctx = captor.getValue();
+        assertEquals(3, ctx.seq());
+        assertEquals(3, ctx.parentSeq());
+        assertEquals(1, ctx.followUpIndex());
     }
 }

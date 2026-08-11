@@ -73,13 +73,16 @@ class QuestionNodeTest {
     }
 
     @Test
-    @DisplayName("换题时重置追问上下文：FOLLOW_UP_COUNT=0、PENDING_FOLLOW_UP=false")
+    @DisplayName("换题时重置追问上下文：COUNT/PENDING/INDEX/TYPE/PARENT_SEQ 全部清零")
     void streamQuestion_resetsFollowUpContext() throws Exception {
         Map<String, Object> data = new java.util.HashMap<>();
         data.put(InterviewState.SESSION_ID, 1L);
         data.put(InterviewState.CURRENT_SEQ, 2);
         data.put(InterviewState.FOLLOW_UP_COUNT, 3);
         data.put(InterviewState.PENDING_FOLLOW_UP, true);
+        data.put(InterviewState.FOLLOW_UP_INDEX, 3);
+        data.put(InterviewState.FOLLOW_UP_TYPE, com.aims.core.interview.FollowUpType.DEEPEN);
+        data.put(InterviewState.PARENT_SEQ, 2);
         var state = new InterviewState(data);
         when(interviewerAgent.streamQuestion(any())).thenReturn(Flux.just("问题"));
 
@@ -87,6 +90,11 @@ class QuestionNodeTest {
 
         assertEquals(0, result.get(InterviewState.FOLLOW_UP_COUNT));
         assertEquals(false, result.get(InterviewState.PENDING_FOLLOW_UP));
+        assertEquals(null, result.get(InterviewState.FOLLOW_UP_INDEX));
+        assertEquals(
+                com.aims.core.interview.FollowUpType.NONE,
+                result.get(InterviewState.FOLLOW_UP_TYPE));
+        assertEquals(null, result.get(InterviewState.PARENT_SEQ));
     }
 
     @Test

@@ -98,9 +98,12 @@ public class QuestionNode extends AbstractNode<InterviewState> {
         updates.put(InterviewState.CURRENT_SEQ, nextSeq);
         updates.put(InterviewState.QUESTIONS_ASKED, question);
         updates.put(InterviewState.CURRENT_ANSWER, "");
-        // 换题时重置追问上下文：计数严格按题，追问暂停标记清零
+        // 换题时重置追问上下文：计数、暂停标记、序号、类型、父序号全部清零（否则跨题残留导致追问序号跳号）
         updates.put(InterviewState.FOLLOW_UP_COUNT, 0);
         updates.put(InterviewState.PENDING_FOLLOW_UP, false);
+        updates.put(InterviewState.FOLLOW_UP_INDEX, null);
+        updates.put(InterviewState.FOLLOW_UP_TYPE, com.aims.core.interview.FollowUpType.NONE);
+        updates.put(InterviewState.PARENT_SEQ, null);
         return updates;
     }
 }

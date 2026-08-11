@@ -43,13 +43,17 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
             long key = evalKey(qa);
             if (evaluated.contains(key)) continue;
 
+            // 追问的 QaPair.seq 存的是主问题 seq（AnswerNode 用 currentSeq 构造）：
+            // parentSeq 补传 qa.seq()、followUpIndex 补传 qa.followUpIndex()，评估 prompt 才能显示
+            // Q{parentSeq}.{followUpIndex}
+            Integer followUpIndex = qa.followUpIndex();
             EvaluationContext ctx =
                     new EvaluationContext(
                             state.sessionId(),
                             null,
                             qa.seq(),
-                            null,
-                            null,
+                            followUpIndex != null ? qa.seq() : null,
+                            followUpIndex,
                             qa.question(),
                             qa.answer(),
                             state.positionTitle(),

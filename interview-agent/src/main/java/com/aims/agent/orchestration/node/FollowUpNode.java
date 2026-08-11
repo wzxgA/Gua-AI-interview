@@ -44,8 +44,9 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
         FollowUpContext ctx = buildContext(state);
         Long sessionId = state.sessionId();
 
-        Integer currentIndex = state.followUpIndex();
-        int newIndex = currentIndex == null ? 1 : currentIndex + 1;
+        // 按题编号：FOLLOW_UP_COUNT 每题由 QuestionNode 重置为 0，+1 即本题第几次追问。
+        // 不可用 followUpIndex+1——该字段跨题残留（QuestionNode 换题未重置），会导致后续题追问序号跳号。
+        int newIndex = state.followUpCount() + 1;
 
         log.debug(
                 "流式生成追问 sessionId={} seq={} followUpIndex={}",

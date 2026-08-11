@@ -42,6 +42,16 @@ class FollowUpNodeTest {
         return new InterviewState(data);
     }
 
+    /** 指定 FOLLOW_UP_COUNT 的状态（追问序号按 count+1 计算）。 */
+    private InterviewState stateWithDecisionAndCount(FollowUpDecision decision, int followUpCount) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(InterviewState.SESSION_ID, 1L);
+        data.put(InterviewState.CURRENT_SEQ, 3);
+        data.put(InterviewState.FOLLOW_UP_DECISION, decision);
+        data.put(InterviewState.FOLLOW_UP_COUNT, followUpCount);
+        return new InterviewState(data);
+    }
+
     @Test
     @DisplayName("流式生成追问：chunk 推送 + 完整文本写入 State")
     void streamFollowUp_emitsChunks_andAccumulatesFullText() throws Exception {
@@ -87,21 +97,42 @@ class FollowUpNodeTest {
     }
 
     @Test
-    @DisplayName("FOLLOW_UP_INDEX 递增：null → 1，已有值 +1")
-    void followUpIndex_incremented() throws Exception {
+    @DisplayName("FOLLOW_UP_INDEX 按 FOLLOW_UP_COUNT 编号：count=0 → 1，count=2 → 3")
+    void followUpIndex_basedOnCount() throws Exception {
         var decision = FollowUpDecision.of(FollowUpType.DEEPEN, "追问", "需要深挖");
 
-        // null → 1
-        var state1 = stateWithDecision(decision, null);
+        // count=0 → index=1
+        var state1 = stateWithDecisionAndCount(decision, 0);
         when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("问题"));
         Map<String, Object> result1 = node.apply(state1);
         assertEquals(1, result1.get(InterviewState.FOLLOW_UP_INDEX));
 
-        // 2 → 3
-        var state2 = stateWithDecision(decision, 2);
+        // count=2 → index=3
+        var state2 = stateWithDecisionAndCount(decision, 2);
         when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("问题"));
         Map<String, Object> result2 = node.apply(state2);
         assertEquals(3, result2.get(InterviewState.FOLLOW_UP_INDEX));
+    }
+
+    @Test
+    @DisplayName("回归：换题后 FOLLOW_UP_INDEX 残留不影响新题首次追问（count=0 → index=1）")
+    void followUpIndex_ignoresResidualIndex_acrossQuestions() throws Exception {
+        // 模拟上一题追问后残留 FOLLOW_UP_INDEX=2，但本题 FOLLOW_UP_COUNT 已被 QuestionNode 重置为 0
+        Map<String, Object> data = new HashMap<>();
+        data.put(InterviewState.SESSION_ID, 1L);
+        data.put(InterviewState.CURRENT_SEQ, 5);
+        data.put(InterviewState.FOLLOW_UP_INDEX, 2);
+        data.put(InterviewState.FOLLOW_UP_COUNT, 0);
+        data.put(
+                InterviewState.FOLLOW_UP_DECISION,
+                FollowUpDecision.of(FollowUpType.DEEPEN, "追问", "深挖"));
+        var state = new InterviewState(data);
+        when(followUpAgent.streamFollowUp(any(), any())).thenReturn(Flux.just("问题"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals(1, result.get(InterviewState.FOLLOW_UP_INDEX));
+        assertEquals(1, result.get(InterviewState.FOLLOW_UP_COUNT));
     }
 
     @Test
