@@ -21,8 +21,9 @@ import org.springframework.web.socket.WebSocketSession;
  *   <li>单例 Bean，注入 {@link WebSocketSessionManager} 和 {@link ObjectMapper}
  *   <li>使用 ThreadLocal 绑定当前 sessionId（由 {@code InterviewWorkflowEngine} 在 graph.invoke 前后
  *       bind/unbind）
- *   <li>{@code emit(chunk)} 从 ThreadLocal 取 sessionId → 从 SessionManager 取 session → 发
+ *   <li>{@code emit(chunk)} 从 ThreadLocal 取 sessionId -> 从 SessionManager 取 session -> 发
  *       QUESTION_CHUNK
+ *   <li>{@code emitStart(seq)} 发送 QUESTION_START，{@code emitEnd(fullQuestion)} 发送 QUESTION_END
  *   <li>未绑定或 session 不存在时静默丢弃（等价 NOOP），保证 Node 执行不因 WS 断开而失败
  * </ul>
  *
@@ -62,6 +63,19 @@ public class WebSocketStreamEmitter implements StreamEmitter {
     }
 
     @Override
+    public void emitStart(int seq) {
+        Long sessionId = currentSessionId.get();
+        if (sessionId == null) {
+            return;
+        }
+        WebSocketSession session = sessionManager.getSession(sessionId);
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        send(session, WsOutbound.questionStart(sessionId, null, seq));
+    }
+
+    @Override
     public void emit(String chunk) {
         Long sessionId = currentSessionId.get();
         if (sessionId == null) {
@@ -75,6 +89,19 @@ public class WebSocketStreamEmitter implements StreamEmitter {
         }
         // roundId 在 chunk 阶段尚未创建，传 null；前端按 sessionId+seq 累积 chunk
         send(session, WsOutbound.questionChunk(sessionId, null, chunk));
+    }
+
+    @Override
+    public void emitEnd(String fullQuestion) {
+        Long sessionId = currentSessionId.get();
+        if (sessionId == null) {
+            return;
+        }
+        WebSocketSession session = sessionManager.getSession(sessionId);
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        send(session, WsOutbound.questionEnd(sessionId, null, null, fullQuestion));
     }
 
     private void send(WebSocketSession session, WsOutbound outbound) {

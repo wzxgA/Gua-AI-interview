@@ -86,4 +86,17 @@ class PlanNodeTest {
         assertTrue(result.containsKey(InterviewState.INTERVIEW_PLAN));
         assertTrue(result.containsKey(InterviewState.TOTAL_ROUNDS));
     }
+
+    @Test
+    @DisplayName("State 中已有计划时跳过生成，不调用 planGenerator")
+    void skip_generation_when_plan_exists() throws Exception {
+        var existingPlan = mockPlan(5);
+        var state = new InterviewState(Map.of(InterviewState.INTERVIEW_PLAN, existingPlan));
+
+        Map<String, Object> result = node.apply(state);
+
+        verifyNoInteractions(planGenerator);
+        assertSame(existingPlan, result.get(InterviewState.INTERVIEW_PLAN));
+        assertEquals(5, result.get(InterviewState.TOTAL_ROUNDS));
+    }
 }

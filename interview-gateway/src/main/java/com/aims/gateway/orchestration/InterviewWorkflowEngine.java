@@ -135,7 +135,12 @@ public class InterviewWorkflowEngine {
                             ? pausedState.currentQuestion().length()
                             : 0);
         }
-        sessionService.updateStatus(sessionId, SessionStatus.IN_PROGRESS);
+        // 幂等转移：REST /start 可能已将状态改为 IN_PROGRESS，tryTransitionTo 不会重复转移
+        sessionService.tryTransitionTo(
+                sessionId,
+                SessionStatus.IN_PROGRESS,
+                SessionStatus.PLANNING,
+                SessionStatus.PLANNING);
         incrementExecution("startInterview", "success");
     }
 

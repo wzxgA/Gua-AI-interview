@@ -26,7 +26,7 @@ interview:
     ttl-hours: 24
     history-enabled: true
   engine:
-    enabled: false  # LangGraph4j 灰度开关：false=旧命令式Handler，true=Engine编排
+    enabled: true  # LangGraph4j 灰度开关：false=旧命令式Handler，true=Engine编排
 
 logging:
   level:

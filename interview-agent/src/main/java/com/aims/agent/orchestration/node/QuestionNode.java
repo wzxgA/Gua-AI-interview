@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * 问题生成节点：调用 {@link InterviewerAgent#streamQuestion} 流式生成面试问题。
  *
- * <p>数据流：读 State 元数据 → 构建 InterviewContext → 流式调用 → emit chunks + 累积完整文本 → 写 CURRENT_QUESTION +
+ * <p>数据流：读 State 元数据 -> 构建 InterviewContext -> 流式调用 -> emit chunks + 累积完整文本 -> 写 CURRENT_QUESTION +
  * CURRENT_SEQ + QUESTIONS_ASKED + CURRENT_ANSWER
  *
  * <p>流式适配：通过 {@link StreamEmitter} 推送 chunk 到 WebSocket，同时用 StringBuilder 累积完整文本。
@@ -58,6 +58,9 @@ public class QuestionNode extends AbstractNode<InterviewState> {
 
         log.debug("流式生成问题 sessionId={} seq={}", state.sessionId(), nextSeq);
 
+        // 通知前端问题开始
+        streamEmitter.emitStart(nextSeq);
+
         // 流式：emit chunks + 累积完整文本
         StringBuilder full = new StringBuilder();
         interviewerAgent
@@ -70,6 +73,10 @@ public class QuestionNode extends AbstractNode<InterviewState> {
                 .blockLast();
 
         String question = full.toString().trim();
+
+        // 通知前端问题结束
+        streamEmitter.emitEnd(question);
+
         log.info(
                 "问题生成完成 sessionId={} seq={} len={}", state.sessionId(), nextSeq, question.length());
 

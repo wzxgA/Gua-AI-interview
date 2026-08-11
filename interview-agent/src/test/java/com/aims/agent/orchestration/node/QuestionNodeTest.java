@@ -37,7 +37,9 @@ class QuestionNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
+        verify(streamEmitter).emitStart(1);
         verify(streamEmitter, times(4)).emit(anyString());
+        verify(streamEmitter).emitEnd("What is Spring Boot?");
         assertEquals("What is Spring Boot?", result.get(InterviewState.CURRENT_QUESTION));
     }
 

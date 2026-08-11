@@ -41,18 +41,18 @@ class InterviewPlanTest {
     }
 
     @Test
-    void rejectLessThan8Questions() {
+    void rejectLessThanMinQuestions() {
         org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalArgumentException.class,
                 () ->
                         new InterviewPlan(
                                 "张三",
                                 "Java 后端",
-                                List.of(section("基础", 7)),
-                                questions(7),
+                                List.of(section("基础", 0)),
+                                questions(0),
                                 60,
                                 "1.0"),
-                "应拒绝少于 8 题");
+                "应拒绝少于 1 题");
     }
 
     @Test

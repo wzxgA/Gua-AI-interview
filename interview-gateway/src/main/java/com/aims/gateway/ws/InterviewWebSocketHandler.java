@@ -191,7 +191,17 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         if (rounds.isEmpty()) {
             // 首次进入面试间，生成首题
             log.info("首次进入面试间，自动生成首题 sessionId={}", sessionId);
-            generateAndSendQuestion(session, sessionId);
+            if (engine.isEnabled()) {
+                // Engine 路径：Graph 执行 plan → ask → interruptBefore(ANSWER) 暂停 → 创建 checkpoint
+                try {
+                    engine.startInterview(sessionId);
+                } catch (Exception e) {
+                    log.error("Engine 启动面试失败 sessionId={}", sessionId, e);
+                    send(session, WsOutbound.error(ErrorCode.INTERNAL_ERROR.getCode(), "面试启动失败"));
+                }
+            } else {
+                generateAndSendQuestion(session, sessionId);
+            }
             return;
         }
 

@@ -29,6 +29,19 @@ public class PlanNode extends AbstractNode<InterviewState> {
 
     @Override
     public Map<String, Object> apply(InterviewState state) throws Exception {
+        InterviewPlan existingPlan = state.interviewPlan();
+        if (existingPlan != null) {
+            log.info(
+                    "面试计划已存在，跳过生成 sessionId={} questions={}",
+                    state.sessionId(),
+                    existingPlan.questions().size());
+            return Map.of(
+                    InterviewState.INTERVIEW_PLAN,
+                    existingPlan,
+                    InterviewState.TOTAL_ROUNDS,
+                    existingPlan.questions().size());
+        }
+
         log.debug("生成面试计划 sessionId={}", state.sessionId());
 
         InterviewPlan plan =
