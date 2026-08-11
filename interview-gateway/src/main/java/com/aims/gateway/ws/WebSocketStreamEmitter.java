@@ -19,15 +19,14 @@ import org.springframework.web.socket.WebSocketSession;
  *
  * <ul>
  *   <li>单例 Bean，注入 {@link WebSocketSessionManager} 和 {@link ObjectMapper}
- *   <li>使用 ThreadLocal 绑定当前 sessionId（由 {@code InterviewWorkflowEngine} 在 graph.invoke 前后
- *       bind/unbind）
- *   <li>{@code emit(chunk)} 从 ThreadLocal 取 sessionId -> 从 SessionManager 取 session -> 发
- *       QUESTION_CHUNK
- *   <li>{@code emitStart(seq)} 发送 QUESTION_START，{@code emitEnd(fullQuestion)} 发送 QUESTION_END
- *   <li>未绑定或 session 不存在时静默丢弃（等价 NOOP），保证 Node 执行不因 WS 断开而失败
+ *   <li>sessionId 由调用方显式传入（Node 从 State 取值并经 Reactor Context 跨线程携带），不依赖 ThreadLocal
+ *   <li>{@code emit(sessionId, chunk)} 从 SessionManager 取 session -> 发 QUESTION_CHUNK
+ *   <li>{@code emitStart(sessionId, seq)} 发送 QUESTION_START，{@code emitEnd(sessionId,
+ *       fullQuestion)} 发送 QUESTION_END
+ *   <li>sessionId 为空或 session 不存在/已关闭时静默丢弃（等价 NOOP），保证 Node 执行不因 WS 断开而失败
  * </ul>
  *
- * <p>线程安全：{@code blockLast()} 同步阻塞，emit 在调用线程执行，ThreadLocal 可靠。
+ * <p>线程安全：chunk 可能从 reactor-netty 事件循环线程发出，{@code send} 对 session 加锁保证同一会话的消息原子发送。
  *
  * @since 1.1.0 Phase 5
  */
@@ -39,52 +38,26 @@ public class WebSocketStreamEmitter implements StreamEmitter {
     private final WebSocketSessionManager sessionManager;
     private final ObjectMapper objectMapper;
 
-    /** 当前线程绑定的 sessionId，由 Engine 在 graph.invoke 前 set，invoke 后 remove。 */
-    private final ThreadLocal<Long> currentSessionId = new ThreadLocal<>();
-
     public WebSocketStreamEmitter(
             WebSocketSessionManager sessionManager, ObjectMapper objectMapper) {
         this.sessionManager = sessionManager;
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * 绑定当前线程的 sessionId。由 {@code InterviewWorkflowEngine} 在 graph.invoke 前调用。
-     *
-     * @param sessionId 面试 sessionId
-     */
-    public void bindSession(Long sessionId) {
-        currentSessionId.set(sessionId);
-    }
-
-    /** 解绑当前线程的 sessionId。由 Engine 在 graph.invoke 后（finally 块）调用。 */
-    public void unbindSession() {
-        currentSessionId.remove();
-    }
-
     @Override
-    public void emitStart(int seq) {
-        Long sessionId = currentSessionId.get();
-        if (sessionId == null) {
-            return;
-        }
-        WebSocketSession session = sessionManager.getSession(sessionId);
-        if (session == null || !session.isOpen()) {
+    public void emitStart(Long sessionId, int seq) {
+        WebSocketSession session = resolve(sessionId);
+        if (session == null) {
             return;
         }
         send(session, WsOutbound.questionStart(sessionId, null, seq));
     }
 
     @Override
-    public void emit(String chunk) {
-        Long sessionId = currentSessionId.get();
-        if (sessionId == null) {
-            // 未绑定（如单元测试直接调 Node），静默丢弃
-            return;
-        }
-        WebSocketSession session = sessionManager.getSession(sessionId);
-        if (session == null || !session.isOpen()) {
-            // 客户端断开，静默丢弃，避免 Node 执行失败
+    public void emit(Long sessionId, String chunk) {
+        WebSocketSession session = resolve(sessionId);
+        if (session == null) {
+            // sessionId 为空（如单元测试直接调 Node）或客户端断开，静默丢弃，避免 Node 执行失败
             return;
         }
         // roundId 在 chunk 阶段尚未创建，传 null；前端按 sessionId+seq 累积 chunk
@@ -92,26 +65,36 @@ public class WebSocketStreamEmitter implements StreamEmitter {
     }
 
     @Override
-    public void emitEnd(String fullQuestion) {
-        Long sessionId = currentSessionId.get();
-        if (sessionId == null) {
-            return;
-        }
-        WebSocketSession session = sessionManager.getSession(sessionId);
-        if (session == null || !session.isOpen()) {
+    public void emitEnd(Long sessionId, String fullQuestion) {
+        WebSocketSession session = resolve(sessionId);
+        if (session == null) {
             return;
         }
         send(session, WsOutbound.questionEnd(sessionId, null, null, fullQuestion));
     }
 
+    /** sessionId 为空或会话不存在/已关闭时返回 null（静默丢弃，不中断节点执行）。 */
+    private WebSocketSession resolve(Long sessionId) {
+        if (sessionId == null) {
+            return null;
+        }
+        WebSocketSession session = sessionManager.getSession(sessionId);
+        if (session == null || !session.isOpen()) {
+            return null;
+        }
+        return session;
+    }
+
     private void send(WebSocketSession session, WsOutbound outbound) {
-        try {
-            String json = objectMapper.writeValueAsString(outbound);
-            session.sendMessage(new TextMessage(json));
-        } catch (JsonProcessingException e) {
-            log.warn("WsOutbound 序列化失败 type={}", outbound.type(), e);
-        } catch (IOException e) {
-            log.warn("WebSocket 发送失败 sessionId={}", currentSessionId.get(), e);
+        synchronized (session) {
+            try {
+                String json = objectMapper.writeValueAsString(outbound);
+                session.sendMessage(new TextMessage(json));
+            } catch (JsonProcessingException e) {
+                log.warn("WsOutbound 序列化失败 type={}", outbound.type(), e);
+            } catch (IOException e) {
+                log.warn("WebSocket 发送失败 sessionId={}", outbound.sessionId(), e);
+            }
         }
     }
 }

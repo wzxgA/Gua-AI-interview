@@ -114,13 +114,8 @@ public class InterviewWorkflowEngine {
         InterviewState initial = statePersistenceService.buildInitialState(sessionId);
         RunnableConfig config = newConfig(sessionId);
 
-        // 绑定 sessionId 到 StreamEmitter，让 Node 的 emit chunk 能推到 WS
-        streamEmitter.bindSession(sessionId);
-        try {
-            compiledGraph.invoke(initial.data(), config);
-        } finally {
-            streamEmitter.unbindSession();
-        }
+        // sessionId 由各 Node 从 State 读取并经 Reactor Context 传播到流式 chunk，无需线程绑定
+        compiledGraph.invoke(initial.data(), config);
 
         // Graph 暂停后，从 checkpoint 加载最新 state，同步到 DB
         InterviewState pausedState = loadStateFromCheckpoint(config);
@@ -169,12 +164,7 @@ public class InterviewWorkflowEngine {
         Map<String, Object> inputs = new java.util.HashMap<>(pausedState.data());
         inputs.put(InterviewState.CURRENT_ANSWER, answer);
 
-        streamEmitter.bindSession(sessionId);
-        try {
-            compiledGraph.invoke(inputs, config);
-        } finally {
-            streamEmitter.unbindSession();
-        }
+        compiledGraph.invoke(inputs, config);
 
         InterviewState newState = loadStateFromCheckpoint(config);
         if (newState != null) {
@@ -217,12 +207,7 @@ public class InterviewWorkflowEngine {
 
         // 用无 interrupt 的 graph 执行到 END
         CompiledGraph<InterviewState> noInterrupt = graphFactory.compile(checkpointSaver);
-        streamEmitter.bindSession(sessionId);
-        try {
-            noInterrupt.invoke(inputs, config);
-        } finally {
-            streamEmitter.unbindSession();
-        }
+        noInterrupt.invoke(inputs, config);
 
         InterviewState finalState = loadStateFromCheckpoint(config);
         if (finalState != null) {

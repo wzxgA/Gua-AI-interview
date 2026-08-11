@@ -50,7 +50,7 @@ class FollowUpNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        verify(streamEmitter, times(3)).emit(anyString());
+        verify(streamEmitter, times(3)).emit(eq(1L), anyString());
         assertEquals("能否详细说明", result.get(InterviewState.CURRENT_QUESTION));
     }
 

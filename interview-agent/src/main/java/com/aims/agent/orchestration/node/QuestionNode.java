@@ -56,29 +56,42 @@ public class QuestionNode extends AbstractNode<InterviewState> {
                         state.persona(),
                         state.runningSummary());
 
-        log.debug("流式生成问题 sessionId={} seq={}", state.sessionId(), nextSeq);
+        Long sessionId = state.sessionId();
+
+        log.debug("流式生成问题 sessionId={} seq={}", sessionId, nextSeq);
 
         // 通知前端问题开始
-        streamEmitter.emitStart(nextSeq);
+        streamEmitter.emitStart(sessionId, nextSeq);
 
         // 流式：emit chunks + 累积完整文本
+        // sessionId 经 Reactor Context 传播：chunk 在 reactor-netty 线程发出，ThreadLocal 不可用，
+        // contextWrite 写入的 sessionId 由 transformDeferredContextual 在订阅时读取（跨线程安全）。
         StringBuilder full = new StringBuilder();
         interviewerAgent
                 .streamQuestion(ctx)
-                .doOnNext(
-                        chunk -> {
-                            streamEmitter.emit(chunk);
-                            full.append(chunk);
+                .transformDeferredContextual(
+                        (flux, ctxView) -> {
+                            Long sid =
+                                    ctxView.getOrDefault(StreamEmitter.SESSION_CONTEXT_KEY, null);
+                            return flux.doOnNext(
+                                    chunk -> {
+                                        streamEmitter.emit(sid, chunk);
+                                        full.append(chunk);
+                                    });
                         })
+                .contextWrite(
+                        context ->
+                                sessionId != null
+                                        ? context.put(StreamEmitter.SESSION_CONTEXT_KEY, sessionId)
+                                        : context)
                 .blockLast();
 
         String question = full.toString().trim();
 
         // 通知前端问题结束
-        streamEmitter.emitEnd(question);
+        streamEmitter.emitEnd(sessionId, question);
 
-        log.info(
-                "问题生成完成 sessionId={} seq={} len={}", state.sessionId(), nextSeq, question.length());
+        log.info("问题生成完成 sessionId={} seq={} len={}", sessionId, nextSeq, question.length());
 
         Map<String, Object> updates = new HashMap<>();
         updates.put(InterviewState.CURRENT_QUESTION, question);

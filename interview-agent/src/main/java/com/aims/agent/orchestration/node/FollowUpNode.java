@@ -42,17 +42,30 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
         }
 
         FollowUpContext ctx = buildContext(state);
+        Long sessionId = state.sessionId();
 
-        log.debug("流式生成追问 sessionId={} seq={}", state.sessionId(), state.currentSeq());
+        log.debug("流式生成追问 sessionId={} seq={}", sessionId, state.currentSeq());
 
+        // 流式：emit chunks + 累积完整文本
+        // sessionId 经 Reactor Context 传播：chunk 在 reactor-netty 线程发出，ThreadLocal 不可用。
         StringBuilder full = new StringBuilder();
         followUpAgent
                 .streamFollowUp(ctx, decision)
-                .doOnNext(
-                        chunk -> {
-                            streamEmitter.emit(chunk);
-                            full.append(chunk);
+                .transformDeferredContextual(
+                        (flux, ctxView) -> {
+                            Long sid =
+                                    ctxView.getOrDefault(StreamEmitter.SESSION_CONTEXT_KEY, null);
+                            return flux.doOnNext(
+                                    chunk -> {
+                                        streamEmitter.emit(sid, chunk);
+                                        full.append(chunk);
+                                    });
                         })
+                .contextWrite(
+                        context ->
+                                sessionId != null
+                                        ? context.put(StreamEmitter.SESSION_CONTEXT_KEY, sessionId)
+                                        : context)
                 .blockLast();
 
         String question = full.toString().trim();
