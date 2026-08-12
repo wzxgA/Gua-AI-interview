@@ -126,14 +126,35 @@ public class InterviewWorkflowEngine {
      * Redis，syncFromState 把 question 同步到 DB。
      *
      * @param sessionId 面试 sessionId
+     * @return true=本次新启动（已推送首题流式）；false=已有 checkpoint（复用，未推流，需 Handler 补发，P4）
      * @throws Exception Graph 执行异常
      */
-    public void startInterview(Long sessionId) throws Exception {
+    public boolean startInterview(Long sessionId) throws Exception {
         log.info("Engine 启动面试 sessionId={}", sessionId);
         incrementExecution("startInterview", "invoked");
 
-        InterviewState initial = statePersistenceService.buildInitialState(sessionId);
         RunnableConfig config = newConfig(sessionId);
+        // P4 幂等：若已有 checkpoint（首次 start 执行到 ask 后 syncFromState 失败的遗留），直接复用，不重跑。
+        // 否则 invoke(initial.data()) 合并 checkpoint 后从 START 重跑，QuestionNode.nextSeq=currentSeq+1 跳过当前题（跳题）
+        InterviewState existing = loadStateFromCheckpoint(config);
+        if (existing != null) {
+            log.warn(
+                    "startInterview 已有 checkpoint，跳过重跑（P4 幂等）sessionId={} seq={}",
+                    sessionId,
+                    existing.currentSeq());
+            // 补偿上次失败的落库（syncFromState 按 seq/followUpIndex 幂等，不重复创建）
+            statePersistenceService.syncFromState(sessionId, existing);
+            updateRoundGauge(existing);
+            sessionService.tryTransitionTo(
+                    sessionId,
+                    SessionStatus.IN_PROGRESS,
+                    SessionStatus.PLANNING,
+                    SessionStatus.PLANNING);
+            incrementExecution("startInterview", "success");
+            return false;
+        }
+
+        InterviewState initial = statePersistenceService.buildInitialState(sessionId);
 
         // sessionId 由各 Node 从 State 读取并经 Reactor Context 传播到流式 chunk，无需线程绑定
         compiledGraph.invoke(initial.data(), config);
@@ -158,6 +179,23 @@ public class InterviewWorkflowEngine {
                 SessionStatus.PLANNING,
                 SessionStatus.PLANNING);
         incrementExecution("startInterview", "success");
+        return true;
+    }
+
+    /**
+     * 读取 checkpoint 当前暂停态（P4：供 Handler 在 startInterview 复用已有 checkpoint 时补发待答题）。
+     *
+     * @param sessionId 面试 sessionId
+     * @return 暂停态 state；无 checkpoint 或读取失败返回 empty
+     */
+    public Optional<InterviewState> getPendingState(Long sessionId) {
+        try {
+            RunnableConfig config = newConfig(sessionId);
+            return Optional.ofNullable(loadStateFromCheckpoint(config));
+        } catch (Exception e) {
+            log.warn("读取 checkpoint 暂停态失败 sessionId={}", sessionId, e);
+            return Optional.empty();
+        }
     }
 
     /**

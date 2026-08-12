@@ -3,6 +3,7 @@ package com.aims.gateway.orchestration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -354,5 +355,76 @@ class InterviewWorkflowEngineTest {
         // 释放失败仅告警（releaseCheckpoint try-catch），评估流程不受影响
         verify(sessionService).updateEvaluationStatus(920L, "PENDING");
         verify(producer).sendEvaluationRequest(920L);
+    }
+
+    // ==================== FE.08 P4：startInterview 幂等 ====================
+
+    @Test
+    @DisplayName("startInterview 无 checkpoint：invoke 启动 + 返回 true")
+    void startInterview_noCheckpoint_invokesAndReturnsTrue() throws Exception {
+        // 第一次 get（start 开头幂等检查）-> empty；invoke 后第二次 get -> 暂停态 cp
+        Checkpoint paused =
+                Checkpoint.builder()
+                        .id("p4-0")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 1000L, InterviewState.CURRENT_SEQ, 1))
+                        .build();
+        when(checkpointSaver.get(any()))
+                .thenReturn(Optional.empty(), Optional.of(paused));
+        InterviewState initial =
+                new InterviewState(Map.of(InterviewState.SESSION_ID, 1000L));
+        when(statePersistenceService.buildInitialState(1000L)).thenReturn(initial);
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> g = mock(CompiledGraph.class);
+        ReflectionTestUtils.setField(engine, "compiledGraph", g);
+
+        boolean result = engine.startInterview(1000L);
+
+        assertTrue(result);
+        verify(g).invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
+        verify(statePersistenceService).syncFromState(eq(1000L), any());
+    }
+
+    @Test
+    @DisplayName("startInterview 已有 checkpoint：不重跑 + 补偿落库 + 返回 false（P4 幂等）")
+    void startInterview_existingCheckpoint_skipsInvokeAndReturnsFalse() throws Exception {
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p4-1")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 1010L, InterviewState.CURRENT_SEQ, 1))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> g = mock(CompiledGraph.class);
+        ReflectionTestUtils.setField(engine, "compiledGraph", g);
+
+        boolean result = engine.startInterview(1010L);
+
+        assertFalse(result);
+        // 幂等复用：不重跑 invoke，只补偿落库
+        verify(g, never())
+                .invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
+        verify(statePersistenceService).syncFromState(eq(1010L), any());
+    }
+
+    @Test
+    @DisplayName("getPendingState 返回 checkpoint 暂停态 state")
+    void getPendingState_returnsCheckpointState() throws Exception {
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p4-2")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 1020L, InterviewState.CURRENT_SEQ, 2))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+
+        Optional<InterviewState> state = engine.getPendingState(1020L);
+
+        assertTrue(state.isPresent());
+        assertEquals(2, state.get().currentSeq());
     }
 }

@@ -3,6 +3,7 @@ package com.aims.gateway.ws;
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewContext;
 import com.aims.agent.InterviewerAgent;
+import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.interview.FollowUpContext;
@@ -194,7 +195,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             if (engine.isEnabled()) {
                 // Engine 路径：Graph 执行 plan → ask → interruptBefore(ANSWER) 暂停 → 创建 checkpoint
                 try {
-                    engine.startInterview(sessionId);
+                    boolean freshStart = engine.startInterview(sessionId);
+                    if (!freshStart) {
+                        // P4：已有 checkpoint（start 中途失败后的重试/重连）-> 从 checkpoint 补发当前待答题
+                        engine.getPendingState(sessionId)
+                                .ifPresent(state -> replayFromState(session, sessionId, state));
+                    }
                 } catch (Exception e) {
                     log.error("Engine 启动面试失败 sessionId={}", sessionId, e);
                     send(session, WsOutbound.error(ErrorCode.INTERNAL_ERROR.getCode(), "面试启动失败"));
@@ -314,6 +320,37 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         send(
                 session,
                 WsOutbound.questionEnd(sessionId, lastRound.getId(), lastRound.getSeq(), null));
+    }
+
+    /**
+     * 从 checkpoint state 补发当前待答题（P4：rounds 为空但 checkpoint 已有时用）。
+     *
+     * <p>不落库——轮次由 {@code syncFromState} 补偿落库（幂等），避免与 {@code streamEmitter.emitEnd} 预落库重复创建。
+     */
+    private void replayFromState(
+            WebSocketSession session, Long sessionId, InterviewState state) {
+        String question = state.currentQuestion();
+        if (question == null || question.isBlank()) {
+            log.warn("checkpoint 无当前问题，跳过补发 sessionId={}", sessionId);
+            return;
+        }
+        log.info("从 checkpoint 补发当前题 sessionId={} seq={}", sessionId, state.currentSeq());
+        // 追问补发：携带 parentSeq + followUpIndex + followUpType
+        if (state.pendingFollowUp() && state.parentSeq() != null && state.followUpIndex() != null) {
+            send(
+                    session,
+                    WsOutbound.questionStart(
+                            sessionId,
+                            null,
+                            null,
+                            state.followUpType() != null ? state.followUpType().name() : null,
+                            state.parentSeq(),
+                            state.followUpIndex()));
+        } else {
+            send(session, WsOutbound.questionStart(sessionId, null, state.currentSeq()));
+        }
+        send(session, WsOutbound.questionChunk(sessionId, null, question));
+        send(session, WsOutbound.questionEnd(sessionId, null, state.currentSeq(), null));
     }
 
     @Override

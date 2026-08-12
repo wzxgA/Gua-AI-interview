@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewerAgent;
+import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.session.SessionStatus;
@@ -30,7 +31,9 @@ import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -269,5 +272,51 @@ class InterviewWebSocketHandlerTest {
                         .filter(Objects::nonNull)
                         .anyMatch(n -> type.equals(n.get("type").asText()));
         assertTrue(found, "期望发送 " + type + " 消息");
+    }
+
+    // ==================== FE.08 P4：startInterview 幂等补发 ====================
+
+    @Test
+    @DisplayName("首题：rounds 空 + Engine + checkpoint 存在 -> startInterview 返回 false，补发当前题")
+    void start_roundsEmpty_engineCheckpointExists_replaysFromState() throws Exception {
+        stubConnection();
+        when(roundService.listBySession(32L)).thenReturn(List.of()); // rounds 空
+        when(engine.isEnabled()).thenReturn(true);
+        when(engine.startInterview(32L)).thenReturn(false);
+        // checkpoint 暂停态：题1 未回答
+        InterviewState pending =
+                new InterviewState(
+                        Map.of(
+                                InterviewState.SESSION_ID,
+                                32L,
+                                InterviewState.CURRENT_SEQ,
+                                1,
+                                InterviewState.CURRENT_QUESTION,
+                                "请介绍你的项目经历",
+                                InterviewState.CURRENT_ANSWER,
+                                ""));
+        when(engine.getPendingState(32L)).thenReturn(Optional.of(pending));
+
+        handler.afterConnectionEstablished(session);
+
+        verify(engine).startInterview(32L);
+        verify(engine).getPendingState(32L);
+        assertSentType("QUESTION_START");
+        assertSentType("QUESTION_END");
+    }
+
+    @Test
+    @DisplayName("首题：rounds 空 + Engine + checkpoint 不存在 -> startInterview 返回 true，不补发")
+    void start_roundsEmpty_engineNoCheckpoint_noReplay() throws Exception {
+        stubConnection();
+        when(roundService.listBySession(32L)).thenReturn(List.of());
+        when(engine.isEnabled()).thenReturn(true);
+        when(engine.startInterview(32L)).thenReturn(true);
+
+        handler.afterConnectionEstablished(session);
+
+        verify(engine).startInterview(32L);
+        // start 返回 true（已推流）-> 不再调 getPendingState 补发
+        verify(engine, never()).getPendingState(anyLong());
     }
 }
