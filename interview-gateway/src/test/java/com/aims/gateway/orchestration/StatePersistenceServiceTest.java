@@ -142,6 +142,30 @@ class StatePersistenceServiceTest {
     }
 
     @Test
+    @DisplayName("buildInitialState planJson 非法 JSON 抛 IllegalStateException（P5 防御）")
+    void buildInitialState_invalidPlanJson_throws() {
+        InterviewSessionEntity entity = mockSessionEntity(1L);
+        entity.setPlanJson("not-a-json{{");
+        when(sessionService.getById(1L)).thenReturn(entity);
+        when(resumeService.getById(10L)).thenReturn(mockResume());
+        when(positionService.getById(20L)).thenReturn(mockPosition());
+
+        assertThrows(IllegalStateException.class, () -> service.buildInitialState(1L));
+    }
+
+    @Test
+    @DisplayName("buildInitialState planJson 为 null 抛 IllegalStateException（P5 防御）")
+    void buildInitialState_nullPlanJson_throws() {
+        InterviewSessionEntity entity = mockSessionEntity(1L);
+        entity.setPlanJson(null);
+        when(sessionService.getById(1L)).thenReturn(entity);
+        when(resumeService.getById(10L)).thenReturn(mockResume());
+        when(positionService.getById(20L)).thenReturn(mockPosition());
+
+        assertThrows(IllegalStateException.class, () -> service.buildInitialState(1L));
+    }
+
+    @Test
     @DisplayName("syncFromState 新问题创建轮次")
     void syncFromState_newQuestion_createsRound() {
         InterviewState state =

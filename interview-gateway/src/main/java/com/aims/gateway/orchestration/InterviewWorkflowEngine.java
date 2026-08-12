@@ -135,7 +135,8 @@ public class InterviewWorkflowEngine {
 
         RunnableConfig config = newConfig(sessionId);
         // P4 幂等：若已有 checkpoint（首次 start 执行到 ask 后 syncFromState 失败的遗留），直接复用，不重跑。
-        // 否则 invoke(initial.data()) 合并 checkpoint 后从 START 重跑，QuestionNode.nextSeq=currentSeq+1 跳过当前题（跳题）
+        // 否则 invoke(initial.data()) 合并 checkpoint 后从 START 重跑，QuestionNode.nextSeq=currentSeq+1
+        // 跳过当前题（跳题）
         InterviewState existing = loadStateFromCheckpoint(config);
         if (existing != null) {
             log.warn(

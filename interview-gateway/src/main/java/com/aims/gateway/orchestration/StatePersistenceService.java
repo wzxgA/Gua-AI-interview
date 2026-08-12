@@ -83,6 +83,15 @@ public class StatePersistenceService {
         ResumeEntity resume = resumeService.getById(entity.getCandidateId());
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
+        // P5 防御：plan 缺失/解析失败 -> 启动即失败，不进入 0 题评估（totalRounds=0 时 endCheck 恒真）
+        if (plan == null || plan.questions() == null || plan.questions().isEmpty()) {
+            log.error(
+                    "面试计划缺失或解析失败，拒绝启动 sessionId={} planJsonLen={}",
+                    sessionId,
+                    entity.getPlanJson() != null ? entity.getPlanJson().length() : 0);
+            throw new IllegalStateException("面试计划缺失或解析失败，无法启动面试: sessionId=" + sessionId);
+        }
+        int totalRounds = plan.questions().size();
 
         Map<String, Object> data = new HashMap<>();
         data.put(InterviewState.SESSION_ID, entity.getId());
@@ -91,15 +100,14 @@ public class StatePersistenceService {
         data.put(InterviewState.JD_TEXT, position != null ? position.getJdText() : "");
         data.put(InterviewState.RESUME_SUMMARY, buildResumeSummary(resume));
         data.put(InterviewState.PERSONA, InterviewerPersona.fromString(entity.getPersona()));
-        data.put(InterviewState.TOTAL_ROUNDS, getTotalRounds(plan));
+        data.put(InterviewState.TOTAL_ROUNDS, totalRounds);
         data.put(InterviewState.CURRENT_SEQ, 0);
         data.put(InterviewState.QA_HISTORY, new ArrayList<QaPair>());
         data.put(InterviewState.FOLLOW_UP_COUNT, 0);
         data.put(InterviewState.ROUND_EVALUATIONS, new ArrayList<>());
         data.put(InterviewState.SESSION_STATUS, SessionStatus.IN_PROGRESS);
-        if (plan != null) {
-            data.put(InterviewState.INTERVIEW_PLAN, plan);
-        }
+        data.put(InterviewState.INTERVIEW_PLAN, plan);
+        log.info("构建初始状态 sessionId={} totalRounds={}", sessionId, totalRounds);
         return new InterviewState(data);
     }
 

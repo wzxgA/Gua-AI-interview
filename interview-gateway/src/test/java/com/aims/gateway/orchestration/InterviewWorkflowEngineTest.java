@@ -308,7 +308,8 @@ class InterviewWorkflowEngineTest {
                         eq(SessionStatus.PAUSED)))
                 .thenReturn(false);
 
-        // resumeInterview FINISHED 分支：checkpoint END -> isInterviewFinished true -> triggerEvaluationViaEngine
+        // resumeInterview FINISHED 分支：checkpoint END -> isInterviewFinished true ->
+        // triggerEvaluationViaEngine
         Checkpoint cp =
                 Checkpoint.builder()
                         .id("p3-2")
@@ -368,12 +369,15 @@ class InterviewWorkflowEngineTest {
                         .id("p4-0")
                         .nodeId("ask")
                         .nextNodeId("answer")
-                        .state(Map.of(InterviewState.SESSION_ID, 1000L, InterviewState.CURRENT_SEQ, 1))
+                        .state(
+                                Map.of(
+                                        InterviewState.SESSION_ID,
+                                        1000L,
+                                        InterviewState.CURRENT_SEQ,
+                                        1))
                         .build();
-        when(checkpointSaver.get(any()))
-                .thenReturn(Optional.empty(), Optional.of(paused));
-        InterviewState initial =
-                new InterviewState(Map.of(InterviewState.SESSION_ID, 1000L));
+        when(checkpointSaver.get(any())).thenReturn(Optional.empty(), Optional.of(paused));
+        InterviewState initial = new InterviewState(Map.of(InterviewState.SESSION_ID, 1000L));
         when(statePersistenceService.buildInitialState(1000L)).thenReturn(initial);
         @SuppressWarnings("unchecked")
         CompiledGraph<InterviewState> g = mock(CompiledGraph.class);
@@ -394,7 +398,12 @@ class InterviewWorkflowEngineTest {
                         .id("p4-1")
                         .nodeId("ask")
                         .nextNodeId("answer")
-                        .state(Map.of(InterviewState.SESSION_ID, 1010L, InterviewState.CURRENT_SEQ, 1))
+                        .state(
+                                Map.of(
+                                        InterviewState.SESSION_ID,
+                                        1010L,
+                                        InterviewState.CURRENT_SEQ,
+                                        1))
                         .build();
         when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
         @SuppressWarnings("unchecked")
@@ -405,8 +414,7 @@ class InterviewWorkflowEngineTest {
 
         assertFalse(result);
         // 幂等复用：不重跑 invoke，只补偿落库
-        verify(g, never())
-                .invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
+        verify(g, never()).invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
         verify(statePersistenceService).syncFromState(eq(1010L), any());
     }
 
@@ -418,7 +426,12 @@ class InterviewWorkflowEngineTest {
                         .id("p4-2")
                         .nodeId("ask")
                         .nextNodeId("answer")
-                        .state(Map.of(InterviewState.SESSION_ID, 1020L, InterviewState.CURRENT_SEQ, 2))
+                        .state(
+                                Map.of(
+                                        InterviewState.SESSION_ID,
+                                        1020L,
+                                        InterviewState.CURRENT_SEQ,
+                                        2))
                         .build();
         when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
 

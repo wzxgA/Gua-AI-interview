@@ -327,8 +327,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
      *
      * <p>不落库——轮次由 {@code syncFromState} 补偿落库（幂等），避免与 {@code streamEmitter.emitEnd} 预落库重复创建。
      */
-    private void replayFromState(
-            WebSocketSession session, Long sessionId, InterviewState state) {
+    private void replayFromState(WebSocketSession session, Long sessionId, InterviewState state) {
         String question = state.currentQuestion();
         if (question == null || question.isBlank()) {
             log.warn("checkpoint 无当前问题，跳过补发 sessionId={}", sessionId);

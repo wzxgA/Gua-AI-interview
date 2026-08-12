@@ -279,6 +279,15 @@ public class InterviewGraphFactory {
         if (state.forceEnd()) {
             return END;
         }
+        // P5 防御：totalRounds<=0 视为配置错误（正常面试至少 1 题），打日志后走 END，
+        // 避免 checkpoint 恢复/残留 state 下 currentSeq>=totalRounds 恒真导致 0 题评估
+        if (state.totalRounds() <= 0) {
+            log.error(
+                    "totalRounds<=0 异常，按配置错误终止 sessionId={} seq={}",
+                    state.sessionId(),
+                    state.currentSeq());
+            return END;
+        }
         if (state.currentSeq() >= state.totalRounds()) {
             return END;
         }
