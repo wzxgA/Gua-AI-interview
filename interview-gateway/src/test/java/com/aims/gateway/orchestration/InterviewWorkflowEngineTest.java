@@ -3,6 +3,7 @@ package com.aims.gateway.orchestration;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -120,7 +121,7 @@ class InterviewWorkflowEngineTest {
                 Checkpoint.builder()
                         .id("c1")
                         .nodeId("ask")
-                        .nextNodeId("__end__")
+                        .nextNodeId("__END__")
                         .state(Map.of(InterviewState.SESSION_ID, 600L))
                         .build();
         when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
@@ -149,5 +150,31 @@ class InterviewWorkflowEngineTest {
         verify(producer).sendEvaluationRequest(600L);
         verify(sessionService, never()).updateStatus(600L, SessionStatus.COMPLETED);
         verify(sessionService, never()).markEnded(600L);
+    }
+
+    @Test
+    @DisplayName("submitAnswer 后图未到 END（nextNodeId=answer 暂停态）：不触发评估（回归：Q 已生成不算结束）")
+    void submitAnswer_notFinished_doesNotTriggerEvaluation() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+
+        // 暂停态 checkpoint（interruptBefore(ANSWER) 时 nextNodeId=answer）
+        Checkpoint paused =
+                Checkpoint.builder()
+                        .id("c2")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 700L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(paused));
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> g = mock(CompiledGraph.class);
+        ReflectionTestUtils.setField(engine, "compiledGraph", g);
+
+        engine.submitAnswer(700L, "answer text");
+
+        // 图未结束 → 不触发评估
+        verify(producer, never()).sendEvaluationRequest(anyLong());
+        verify(sessionService, never()).updateEvaluationStatus(700L, "PENDING");
     }
 }

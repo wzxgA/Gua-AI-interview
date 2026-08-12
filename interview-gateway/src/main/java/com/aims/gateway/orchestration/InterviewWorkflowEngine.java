@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.bsc.langgraph4j.CompiledGraph;
+import org.bsc.langgraph4j.GraphDefinition;
 import org.bsc.langgraph4j.GraphInput;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.checkpoint.Checkpoint;
@@ -194,8 +195,8 @@ public class InterviewWorkflowEngine {
                     sessionId,
                     newState.currentSeq(),
                     newState.qaHistory().size());
-            // 面试结束（达上限/FINISH/错误）→ 触发 Kafka 异步评估（FE.04）
-            if (isInterviewFinished(newState)) {
+            // 面试结束（图走到 END，而非"下一题已生成"）→ 触发 Kafka 异步评估（FE.04）
+            if (isInterviewFinished(sessionId)) {
                 triggerEvaluationViaEngine(sessionId);
             }
         }
@@ -274,14 +275,20 @@ public class InterviewWorkflowEngine {
     }
 
     /**
-     * 面试是否已结束（镜像 {@code InterviewGraphFactory.routeAfterEndCheck} 的结束分支）。
+     * 面试是否已结束：checkpoint 的 nextNodeId 为 END（图真正走到 END）。
      *
-     * <p>达题数上限、FINISH 强制结束或节点错误（LAST_ERROR）任一命中即视为结束，触发 Kafka 评估。
+     * <p>不能用 {@code currentSeq >= totalRounds} 判定——QuestionNode 生成下一题时会把 CURRENT_SEQ 提前递增 （endCheck
+     * 路由用旧值判定 ASK 正确，但 resume 返回后 Engine 读到的 currentSeq 已是新题序号）， 导致"最后一题已生成、尚未回答"时误判结束并提前触发评估。
      */
-    private boolean isInterviewFinished(InterviewState state) {
-        return state.forceEnd()
-                || state.lastError() != null
-                || state.currentSeq() >= state.totalRounds();
+    private boolean isInterviewFinished(Long sessionId) {
+        RunnableConfig config = newConfig(sessionId);
+        try {
+            Optional<Checkpoint> cp = checkpointSaver.get(config);
+            return cp.map(c -> GraphDefinition.END.equals(c.getNextNodeId())).orElse(false);
+        } catch (Exception e) {
+            log.warn("检查 checkpoint 结束状态失败 sessionId={}", sessionId, e);
+            return false;
+        }
     }
 
     /**
