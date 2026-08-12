@@ -16,6 +16,7 @@ import com.aims.agent.orchestration.checkpoint.RedisCheckpointSaver;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.session.SessionStatus;
+import com.aims.gateway.ws.WebSocketSessionManager;
 import com.aims.gateway.ws.WebSocketStreamEmitter;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.service.InterviewSessionService;
@@ -439,5 +440,73 @@ class InterviewWorkflowEngineTest {
 
         assertTrue(state.isPresent());
         assertEquals(2, state.get().currentSeq());
+    }
+
+    // ==================== FE.10 P6：断线竞态（评估触发前在线检查） ====================
+
+    @Test
+    @DisplayName("会话在线：resumeInterview 已 END 触发评估（P6 不阻断在线路径）")
+    void resumeInterview_finished_online_triggersEvaluation() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        InterviewSessionStore sessionStore = mock(InterviewSessionStore.class);
+        WebSocketSessionManager sessionManager = mock(WebSocketSessionManager.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+        ReflectionTestUtils.setField(engine, "sessionStore", sessionStore);
+        ReflectionTestUtils.setField(engine, "sessionManager", sessionManager);
+
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p6-1")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 1100L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        when(sessionManager.hasActiveSession(1100L)).thenReturn(true);
+        when(sessionService.tryTransitionTo(
+                        1100L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED))
+                .thenReturn(true);
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(1100L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.FINISHED, result);
+        // 在线：评估正常触发
+        verify(sessionStore).forceUnlock(1100L);
+        verify(sessionService).updateEvaluationStatus(1100L, "PENDING");
+        verify(producer).sendEvaluationRequest(1100L);
+    }
+
+    @Test
+    @DisplayName("会话已断开：resumeInterview 已 END 不触发评估，保持暂停（P6 断线优先）")
+    void resumeInterview_finished_offline_skipsEvaluation() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        WebSocketSessionManager sessionManager = mock(WebSocketSessionManager.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+        ReflectionTestUtils.setField(engine, "sessionManager", sessionManager);
+
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p6-2")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 1110L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        when(sessionManager.hasActiveSession(1110L)).thenReturn(false);
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(1110L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.FINISHED, result);
+        // 离线：不触发评估（不转状态、不 forceUnlock、不发 Kafka），保持 PAUSED 待重连
+        verify(sessionService, never())
+                .tryTransitionTo(
+                        eq(1110L),
+                        eq(SessionStatus.EVALUATING),
+                        eq(SessionStatus.IN_PROGRESS),
+                        eq(SessionStatus.PAUSED));
+        verify(producer, never()).sendEvaluationRequest(anyLong());
     }
 }

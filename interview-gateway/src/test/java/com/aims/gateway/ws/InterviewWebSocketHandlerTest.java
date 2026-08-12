@@ -319,4 +319,60 @@ class InterviewWebSocketHandlerTest {
         // start 返回 true（已推流）-> 不再调 getPendingState 补发
         verify(engine, never()).getPendingState(anyLong());
     }
+
+    // ==================== FE.10 P6：断线竞态（afterConnectionClosed 原子转移） ====================
+
+    @Test
+    @DisplayName("连接关闭：状态 IN_PROGRESS -> 原子转移 PAUSED")
+    void connectionClosed_inProgress_atomicTransitionToPaused() throws Exception {
+        stubClosedSession();
+        // 不 mock sessionService.getById（原子转移不再读状态，直接 tryTransitionTo）
+        when(sessionService.tryTransitionTo(
+                        32L,
+                        SessionStatus.PAUSED,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.IN_PROGRESS))
+                .thenReturn(true);
+
+        handler.afterConnectionClosed(session, org.springframework.web.socket.CloseStatus.NORMAL);
+
+        verify(sessionService)
+                .tryTransitionTo(
+                        32L,
+                        SessionStatus.PAUSED,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.IN_PROGRESS);
+        // 不再用 getById + updateStatus 旧逻辑
+        verify(sessionService, never()).updateStatus(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("连接关闭：状态已 EVALUATING -> 原子转移不覆盖（终态保护）")
+    void connectionClosed_evaluating_notOverridden() throws Exception {
+        stubClosedSession();
+        when(sessionService.tryTransitionTo(
+                        32L,
+                        SessionStatus.PAUSED,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.IN_PROGRESS))
+                .thenReturn(false); // EVALUATING 不匹配 IN_PROGRESS，转移失败不覆盖
+
+        handler.afterConnectionClosed(session, org.springframework.web.socket.CloseStatus.NORMAL);
+
+        // tryTransitionTo 被调用但返回 false（EVALUATING 不被覆盖为 PAUSED）
+        verify(sessionService)
+                .tryTransitionTo(
+                        32L,
+                        SessionStatus.PAUSED,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.IN_PROGRESS);
+    }
+
+    /** 连接关闭公共桩：attributes 含 sessionId/connectionId。 */
+    private void stubClosedSession() {
+        java.util.Map<String, Object> attrs = new java.util.HashMap<>();
+        attrs.put("sessionId", 32L);
+        attrs.put("connectionId", "conn-1");
+        when(session.getAttributes()).thenReturn(attrs);
+    }
 }

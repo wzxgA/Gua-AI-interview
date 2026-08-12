@@ -6,6 +6,7 @@ import com.aims.agent.orchestration.observability.GraphExecutionEvent;
 import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.session.SessionStatus;
+import com.aims.gateway.ws.WebSocketSessionManager;
 import com.aims.gateway.ws.WebSocketStreamEmitter;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
 import com.aims.infra.persistence.service.InterviewSessionStore;
@@ -72,6 +73,9 @@ public class InterviewWorkflowEngine {
     /** FE.04：连接锁管理，评估开始时释放（与旧链路 triggerEvaluation 语义一致）。 */
     private final InterviewSessionStore sessionStore;
 
+    /** FE.10 P6：WS 会话管理，评估触发前检查会话是否仍在线（断线竞态防御）。 */
+    private final WebSocketSessionManager sessionManager;
+
     /** Phase 5 灰度开关：true 时 Handler 委托 Engine，false 时走旧命令式路径。 */
     @Value("${interview.engine.enabled:false}")
     private boolean engineEnabled;
@@ -88,7 +92,8 @@ public class InterviewWorkflowEngine {
             GraphMetricsRegistry metrics,
             ApplicationEventPublisher eventPublisher,
             EvaluationMessageProducer evaluationMessageProducer,
-            InterviewSessionStore sessionStore) {
+            InterviewSessionStore sessionStore,
+            WebSocketSessionManager sessionManager) {
         this.graphFactory = graphFactory;
         this.checkpointSaver = checkpointSaver;
         this.statePersistenceService = statePersistenceService;
@@ -98,9 +103,10 @@ public class InterviewWorkflowEngine {
         this.eventPublisher = eventPublisher;
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.sessionStore = sessionStore;
+        this.sessionManager = sessionManager;
     }
 
-    /** 测试用：无 metrics/事件发布器/Producer/SessionStore（保持与已有测试兼容）。 */
+    /** 测试用：无 metrics/事件发布器/Producer/SessionStore/SessionManager（保持与已有测试兼容）。 */
     InterviewWorkflowEngine(
             InterviewGraphFactory graphFactory,
             RedisCheckpointSaver checkpointSaver,
@@ -113,6 +119,7 @@ public class InterviewWorkflowEngine {
                 statePersistenceService,
                 sessionService,
                 streamEmitter,
+                null,
                 null,
                 null,
                 null,
@@ -396,6 +403,12 @@ public class InterviewWorkflowEngine {
      * 状态原子转移保证只触发一次；测试构造下 producer 为 null 时仅转状态不发送。
      */
     private void triggerEvaluationViaEngine(Long sessionId) {
+        // FE.10 P6 竞态防御：resume 完成后若会话已断开（无活跃 WS 连接），不触发评估，
+        // 保持 PAUSED 由重连时 resumeInterview 恢复，避免断线动作被评估覆盖
+        if (sessionManager != null && !sessionManager.hasActiveSession(sessionId)) {
+            log.info("会话已断开，跳过评估触发，保持暂停待重连恢复 sessionId={}", sessionId);
+            return;
+        }
         boolean transitioned =
                 sessionService.tryTransitionTo(
                         sessionId,

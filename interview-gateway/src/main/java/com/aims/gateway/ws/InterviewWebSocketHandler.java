@@ -428,13 +428,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 status);
 
         // 如果状态为 IN_PROGRESS 则转为 PAUSED
+        // FE.10 P6：用原子转移（仅 IN_PROGRESS -> PAUSED），不覆盖已存在的 EVALUATING 等终态
+        // （断线发生在面试已结束、评估已触发之后时不回退状态）
         try {
-            InterviewSessionEntity entity = sessionService.getById(sessionId);
-            SessionStatus current = SessionStatus.valueOf(entity.getStatus());
-            if (current == SessionStatus.IN_PROGRESS) {
-                sessionService.updateStatus(sessionId, SessionStatus.PAUSED);
-                log.info("连接断开，会话自动暂停 sessionId={}", sessionId);
-            }
+            sessionService.tryTransitionTo(
+                    sessionId, SessionStatus.PAUSED, SessionStatus.IN_PROGRESS, SessionStatus.IN_PROGRESS);
+            log.info("连接断开，会话自动暂停（原子转移） sessionId={}", sessionId);
         } catch (Exception e) {
             log.warn("连接关闭后状态处理失败 sessionId={}", sessionId, e);
         }
