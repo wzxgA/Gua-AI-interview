@@ -2,7 +2,11 @@ package com.aims.gateway.ws;
 
 import com.aims.agent.orchestration.node.StreamEmitter;
 import com.aims.core.interview.FollowUpType;
+import com.aims.core.interview.InterviewerPersona;
+import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.service.InterviewRoundService;
+import com.aims.infra.persistence.service.InterviewSessionService;
+import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -10,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -45,6 +50,12 @@ public class WebSocketStreamEmitter implements StreamEmitter {
     /** 预落库服务：emitEnd/emitFollowUpEnd 时创建轮次拿到 DB 主键，随 QUESTION_END 推送真实 roundId。 */
     private final InterviewRoundService roundService;
 
+    /** FE.11 P8：TTS 服务（未启用时 getIfAvailable 返回 null，天然降级）。 */
+    private final ObjectProvider<TtsService> ttsServiceProvider;
+
+    /** FE.11 P8：会话服务，异步线程内解析 persona。 */
+    private final InterviewSessionService sessionService;
+
     /**
      * 按 sessionId 缓存 start 上下文（emitStart/emitFollowUpStart 写入，emitEnd/emitFollowUpEnd 读取并清除）。 同一
      * session 有连接锁保证串行，ConcurrentHashMap 仅为跨线程安全双保险。
@@ -58,10 +69,14 @@ public class WebSocketStreamEmitter implements StreamEmitter {
     public WebSocketStreamEmitter(
             WebSocketSessionManager sessionManager,
             ObjectMapper objectMapper,
-            InterviewRoundService roundService) {
+            InterviewRoundService roundService,
+            ObjectProvider<TtsService> ttsServiceProvider,
+            InterviewSessionService sessionService) {
         this.sessionManager = sessionManager;
         this.objectMapper = objectMapper;
         this.roundService = roundService;
+        this.ttsServiceProvider = ttsServiceProvider;
+        this.sessionService = sessionService;
     }
 
     @Override
@@ -110,6 +125,11 @@ public class WebSocketStreamEmitter implements StreamEmitter {
                 session,
                 WsOutbound.questionEnd(
                         sessionId, roundId, ctx != null ? ctx.seq() : null, fullQuestion));
+
+        // FE.11 P8：拿到 roundId 后异步触发 TTS（roundId 为 null 的降级分支跳过）
+        if (roundId != null) {
+            triggerTts(sessionId, roundId, fullQuestion);
+        }
     }
 
     @Override
@@ -167,6 +187,11 @@ public class WebSocketStreamEmitter implements StreamEmitter {
             }
         }
         send(session, WsOutbound.questionEnd(sessionId, roundId, null, fullQuestion));
+
+        // FE.11 P8：拿到 roundId 后异步触发 TTS（roundId 为 null 的降级分支跳过）
+        if (roundId != null) {
+            triggerTts(sessionId, roundId, fullQuestion);
+        }
     }
 
     /** sessionId 为空或会话不存在/已关闭时返回 null（静默丢弃，不中断节点执行）。 */
@@ -179,6 +204,47 @@ public class WebSocketStreamEmitter implements StreamEmitter {
             return null;
         }
         return session;
+    }
+
+    /** FE.11 P8：异步触发 TTS 语音合成。TTS 未启用或合成失败时静默降级。 */
+    private void triggerTts(Long sessionId, Long roundId, String text) {
+        TtsService ttsService = ttsServiceProvider.getIfAvailable();
+        if (ttsService == null) {
+            return;
+        }
+        Thread.startVirtualThread(
+                () -> {
+                    try {
+                        TtsService.TtsResult result =
+                                ttsService.synthesize(text, resolvePersona(sessionId));
+                        if (result == null) {
+                            return;
+                        }
+                        roundService.updateAudio(roundId, result.audioUrl(), result.durationMs());
+                        WebSocketSession session = resolve(sessionId);
+                        if (session != null) {
+                            send(
+                                    session,
+                                    WsOutbound.audioReady(
+                                            sessionId,
+                                            roundId,
+                                            result.audioUrl(),
+                                            result.durationMs()));
+                        }
+                    } catch (Exception e) {
+                        log.warn("TTS 异步合成失败 sessionId={} roundId={}", sessionId, roundId, e);
+                    }
+                });
+    }
+
+    /** FE.11 P8：异步线程内解析 persona，失败回退 FRIENDLY（静默降级）。 */
+    private InterviewerPersona resolvePersona(Long sessionId) {
+        try {
+            InterviewSessionEntity entity = sessionService.getById(sessionId);
+            return InterviewerPersona.fromString(entity.getPersona());
+        } catch (Exception e) {
+            return InterviewerPersona.FRIENDLY;
+        }
     }
 
     private void send(WebSocketSession session, WsOutbound outbound) {

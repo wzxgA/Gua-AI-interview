@@ -432,7 +432,10 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         // （断线发生在面试已结束、评估已触发之后时不回退状态）
         try {
             sessionService.tryTransitionTo(
-                    sessionId, SessionStatus.PAUSED, SessionStatus.IN_PROGRESS, SessionStatus.IN_PROGRESS);
+                    sessionId,
+                    SessionStatus.PAUSED,
+                    SessionStatus.IN_PROGRESS,
+                    SessionStatus.IN_PROGRESS);
             log.info("连接断开，会话自动暂停（原子转移） sessionId={}", sessionId);
         } catch (Exception e) {
             log.warn("连接关闭后状态处理失败 sessionId={}", sessionId, e);
