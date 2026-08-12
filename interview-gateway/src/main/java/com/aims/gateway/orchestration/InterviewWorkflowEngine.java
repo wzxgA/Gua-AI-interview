@@ -258,12 +258,7 @@ public class InterviewWorkflowEngine {
     public void cancelInterview(Long sessionId) throws Exception {
         log.info("Engine 取消面试 sessionId={}", sessionId);
         incrementExecution("cancelInterview", "invoked");
-        RunnableConfig config = newConfig(sessionId);
-        try {
-            checkpointSaver.release(config);
-        } catch (Exception e) {
-            log.warn("释放 checkpoint 失败 sessionId={}", sessionId, e);
-        }
+        releaseCheckpoint(sessionId);
         sessionService.updateStatus(sessionId, SessionStatus.CANCELLED);
         sessionService.markEnded(sessionId);
         incrementExecution("cancelInterview", "success");
@@ -381,6 +376,8 @@ public class InterviewWorkflowEngine {
         } else {
             log.warn("evaluationMessageProducer 未注入，跳过 Kafka 发送 sessionId={}", sessionId);
         }
+        // P3：首次触发评估即会话结束，checkpoint 不再需要，释放避免 Redis 残留
+        releaseCheckpoint(sessionId);
         incrementExecution("evaluation", "triggered");
     }
 
@@ -401,6 +398,21 @@ public class InterviewWorkflowEngine {
     }
 
     // ─── 内部方法 ───
+
+    /**
+     * 释放 Redis checkpoint（P3，容错：释放失败仅告警，不影响业务状态转移）。
+     *
+     * <p>面试结束（图走到 END 并触发评估）与取消面试后调用，避免 Redis 残留。
+     */
+    private void releaseCheckpoint(Long sessionId) {
+        RunnableConfig config = newConfig(sessionId);
+        try {
+            checkpointSaver.release(config);
+            log.info("已释放 checkpoint sessionId={}", sessionId);
+        } catch (Exception e) {
+            log.warn("释放 checkpoint 失败 sessionId={}", sessionId, e);
+        }
+    }
 
     private RunnableConfig newConfig(Long sessionId) {
         return RunnableConfig.builder().threadId(sessionId.toString()).build();

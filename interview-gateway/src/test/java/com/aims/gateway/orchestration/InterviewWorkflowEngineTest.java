@@ -264,4 +264,95 @@ class InterviewWorkflowEngineTest {
         verify(g).invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
         verify(statePersistenceService).syncFromState(eq(820L), any());
     }
+
+    // ==================== FE.07 P3：面试结束后释放 checkpoint ====================
+
+    @Test
+    @DisplayName("finishInterview 触发评估后释放 checkpoint（P3）")
+    void triggerEvaluation_releasesCheckpoint() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p3-1")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 900L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        when(sessionService.tryTransitionTo(
+                        900L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED))
+                .thenReturn(true);
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> noInterrupt = mock(CompiledGraph.class);
+        when(graphFactory.compile(any())).thenReturn(noInterrupt);
+
+        engine.finishInterview(900L);
+
+        // 首次触发评估 -> 释放 checkpoint
+        verify(checkpointSaver).release(any());
+    }
+
+    @Test
+    @DisplayName("评估重复触发（状态已转移）不重复释放 checkpoint（P3 幂等）")
+    void triggerEvaluation_duplicate_doesNotReleaseAgain() throws Exception {
+        when(sessionService.tryTransitionTo(
+                        anyLong(),
+                        eq(SessionStatus.EVALUATING),
+                        eq(SessionStatus.IN_PROGRESS),
+                        eq(SessionStatus.PAUSED)))
+                .thenReturn(false);
+
+        // resumeInterview FINISHED 分支：checkpoint END -> isInterviewFinished true -> triggerEvaluationViaEngine
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p3-2")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 910L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(910L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.FINISHED, result);
+        // 状态未成功转移（已 EVALUATING）-> 不释放
+        verify(checkpointSaver, never()).release(any());
+    }
+
+    @Test
+    @DisplayName("释放 checkpoint 失败时评估流程不受影响（P3 容错）")
+    void triggerEvaluation_releaseFails_stillEvaluates() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("p3-3")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 920L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        when(checkpointSaver.release(any())).thenThrow(new RuntimeException("redis down"));
+        when(sessionService.tryTransitionTo(
+                        920L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED))
+                .thenReturn(true);
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> noInterrupt = mock(CompiledGraph.class);
+        when(graphFactory.compile(any())).thenReturn(noInterrupt);
+
+        engine.finishInterview(920L);
+
+        // 释放失败仅告警（releaseCheckpoint try-catch），评估流程不受影响
+        verify(sessionService).updateEvaluationStatus(920L, "PENDING");
+        verify(producer).sendEvaluationRequest(920L);
+    }
 }
