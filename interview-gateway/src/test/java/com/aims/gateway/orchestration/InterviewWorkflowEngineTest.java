@@ -1,9 +1,11 @@
 package com.aims.gateway.orchestration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -176,5 +179,89 @@ class InterviewWorkflowEngineTest {
         // 图未结束 → 不触发评估
         verify(producer, never()).sendEvaluationRequest(anyLong());
         verify(sessionService, never()).updateEvaluationStatus(700L, "PENDING");
+    }
+
+    @Test
+    @DisplayName("resumeInterview checkpoint 暂停态：返回 RESUMED，不触发评估（FE.06 P2）")
+    void resumeInterview_paused_returnsResumed() throws Exception {
+        Checkpoint paused =
+                Checkpoint.builder()
+                        .id("c3")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 800L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(paused));
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(800L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.RESUMED, result);
+        // 暂停态不触发评估、不同步 DB（补发由 Handler 负责）
+        verify(sessionService, never()).updateEvaluationStatus(anyLong(), any());
+        verify(statePersistenceService, never()).syncFromState(any(), any());
+    }
+
+    @Test
+    @DisplayName("resumeInterview checkpoint 已 END：触发评估（FE.06 P2）")
+    void resumeInterview_finished_triggersEvaluation() throws Exception {
+        EvaluationMessageProducer producer = mock(EvaluationMessageProducer.class);
+        InterviewSessionStore sessionStore = mock(InterviewSessionStore.class);
+        ReflectionTestUtils.setField(engine, "evaluationMessageProducer", producer);
+        ReflectionTestUtils.setField(engine, "sessionStore", sessionStore);
+
+        Checkpoint cp =
+                Checkpoint.builder()
+                        .id("c4")
+                        .nodeId("endCheck")
+                        .nextNodeId("__END__")
+                        .state(Map.of(InterviewState.SESSION_ID, 810L))
+                        .build();
+        // loadStateFromCheckpoint + isInterviewFinished 各 get 一次（返回同一 cp）
+        when(checkpointSaver.get(any())).thenReturn(Optional.of(cp));
+        when(sessionService.tryTransitionTo(
+                        810L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED))
+                .thenReturn(true);
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(810L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.FINISHED, result);
+        verify(sessionService)
+                .tryTransitionTo(
+                        810L,
+                        SessionStatus.EVALUATING,
+                        SessionStatus.IN_PROGRESS,
+                        SessionStatus.PAUSED);
+        verify(sessionStore).forceUnlock(810L);
+        verify(sessionService).updateEvaluationStatus(810L, "PENDING");
+        verify(producer).sendEvaluationRequest(810L);
+    }
+
+    @Test
+    @DisplayName("resumeInterview checkpoint 不存在：rebuildFromDb 重建 + invoke 重跑（FE.06 P2）")
+    void resumeInterview_noCheckpoint_rebuildsFromDb() throws Exception {
+        // 第一次 get（loadStateFromCheckpoint）-> empty；invoke 后第二次 get -> 暂停态 cp
+        Checkpoint rebuilt =
+                Checkpoint.builder()
+                        .id("c5")
+                        .nodeId("ask")
+                        .nextNodeId("answer")
+                        .state(Map.of(InterviewState.SESSION_ID, 820L))
+                        .build();
+        when(checkpointSaver.get(any())).thenReturn(Optional.empty(), Optional.of(rebuilt));
+        InterviewState rebuiltState = new InterviewState(Map.of(InterviewState.SESSION_ID, 820L));
+        when(statePersistenceService.rebuildFromDb(820L)).thenReturn(rebuiltState);
+        @SuppressWarnings("unchecked")
+        CompiledGraph<InterviewState> g = mock(CompiledGraph.class);
+        ReflectionTestUtils.setField(engine, "compiledGraph", g);
+
+        InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(820L);
+
+        assertEquals(InterviewWorkflowEngine.ResumeResult.REBUILT_FROM_DB, result);
+        verify(statePersistenceService).rebuildFromDb(820L);
+        verify(g).invoke(ArgumentMatchers.<Map<String, Object>>any(), any());
+        verify(statePersistenceService).syncFromState(eq(820L), any());
     }
 }

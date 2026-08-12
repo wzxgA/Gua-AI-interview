@@ -274,6 +274,70 @@ public class InterviewWorkflowEngine {
         return engineEnabled;
     }
 
+    /** 重连恢复结果，供 Handler 决定后续动作（FE.06 P2）。 */
+    public enum ResumeResult {
+        /** 从 DB 重建了 state（checkpoint 不存在时的容错）。 */
+        REBUILT_FROM_DB,
+        /** 面试已结束，已触发评估。 */
+        FINISHED,
+        /** 正常恢复，暂停在 ANSWER 前，需补发当前问题。 */
+        RESUMED
+    }
+
+    /**
+     * 重连恢复（FE.06 P2）：从 checkpoint 加载状态，决定补发当前题、触发评估或从 DB 重建。
+     *
+     * <p>Engine 启用时，Handler 断线重连（DB rounds 非空）统一委托本方法，以 checkpoint 为唯一进度来源， 避免旧链路 命令式生成导致 DB 与
+     * checkpoint 脱节。三种情况：
+     *
+     * <ul>
+     *   <li>checkpoint 不存在（Redis 过期/清理/start 执行一半失败）-&gt; 降级 {@link
+     *       StatePersistenceService#rebuildFromDb} 重建 state，invoke 重跑写入新 checkpoint
+     *   <li>checkpoint 存在且 nextNodeId == END -&gt; 面试已结束，触发评估（幂等）
+     *   <li>checkpoint 存在且暂停在 ANSWER 前 -&gt; 正常恢复，由 Handler 从 DB 补发当前待答题
+     * </ul>
+     *
+     * @param sessionId 面试 sessionId
+     * @return 恢复结果（Handler 据此决定后续动作）
+     * @throws Exception Graph 执行异常
+     */
+    public ResumeResult resumeInterview(Long sessionId) throws Exception {
+        log.info("Engine 重连恢复 sessionId={}", sessionId);
+        incrementExecution("resumeInterview", "invoked");
+
+        RunnableConfig config = newConfig(sessionId);
+        InterviewState state = loadStateFromCheckpoint(config);
+
+        // 1. checkpoint 不存在 -> 从 DB 重建并重跑 Graph 写入新 checkpoint（容错）
+        if (state == null) {
+            log.warn("重连时 checkpoint 不存在，从 DB 重建 sessionId={}", sessionId);
+            state = statePersistenceService.rebuildFromDb(sessionId);
+            // 用重建 state 作为 GraphArgs 从 START 执行：PLAN 幂等跳过（plan 已存在）、ASK 生成下一题，
+            // interruptBefore(ANSWER) 暂停后写入新 checkpoint（syncFromState 按 seq/followUpIndex 幂等落库）
+            compiledGraph.invoke(state.data(), config);
+            InterviewState resumedState = loadStateFromCheckpoint(config);
+            if (resumedState != null) {
+                statePersistenceService.syncFromState(sessionId, resumedState);
+                updateRoundGauge(resumedState);
+            }
+            incrementExecution("resumeInterview", "success");
+            return ResumeResult.REBUILT_FROM_DB;
+        }
+
+        // 2. 面试已结束（checkpoint nextNodeId == END）-> 触发评估（tryTransitionTo 保证幂等）
+        if (isInterviewFinished(sessionId)) {
+            log.info("重连时发现面试已结束，触发评估 sessionId={}", sessionId);
+            triggerEvaluationViaEngine(sessionId);
+            incrementExecution("resumeInterview", "success");
+            return ResumeResult.FINISHED;
+        }
+
+        // 3. 正常暂停态 -> 由 Handler 从 DB 补发当前待答题
+        log.info("重连恢复，暂停在 ANSWER 前 sessionId={} seq={}", sessionId, state.currentSeq());
+        incrementExecution("resumeInterview", "success");
+        return ResumeResult.RESUMED;
+    }
+
     /**
      * 面试是否已结束：checkpoint 的 nextNodeId 为 END（图真正走到 END）。
      *

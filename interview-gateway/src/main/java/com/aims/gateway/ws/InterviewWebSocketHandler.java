@@ -205,6 +205,31 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // Engine 路径：重连统一委托 Engine 从 checkpoint 恢复（FE.06 P2），
+        // 避免旧链路命令式生成新题/触发评估与 checkpoint 脱节
+        if (engine.isEnabled()) {
+            try {
+                InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(sessionId);
+                switch (result) {
+                    case FINISHED -> {
+                        // Engine 已触发评估，推送 EVALUATING 状态
+                        log.info("重连时面试已结束，进入评估 sessionId={}", sessionId);
+                        send(
+                                session,
+                                WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                    }
+                    case RESUMED, REBUILT_FROM_DB -> {
+                        // 补发当前待答题（DB 由 syncFromState 预落库，保证有数据可补发）
+                        replayCurrentQuestion(session, sessionId, rounds);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Engine 重连恢复失败 sessionId={}", sessionId, e);
+                send(session, WsOutbound.error(ErrorCode.INTERNAL_ERROR.getCode(), "重连恢复失败"));
+            }
+            return;
+        }
+
         // 检查最后一条轮次是否已回答
         InterviewRoundEntity lastRound = rounds.get(rounds.size() - 1);
         boolean hasUnansweredQuestion =
@@ -255,6 +280,40 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                     session,
                     WsOutbound.questionEnd(sessionId, lastRound.getId(), lastRound.getSeq(), null));
         }
+    }
+
+    /**
+     * 补发当前待答题（断线重连恢复）：从 DB 读取最后一条轮次，按主问题/追问格式重放 WS 消息。
+     *
+     * <p>Engine 路径与旧链路补发共用。DB 轮次由 {@code syncFromState} 预落库（CURRENT_QUESTION 非空且 CURRENT_ANSWER
+     * 为空时预创建），保证重连时有数据可补发。
+     */
+    private void replayCurrentQuestion(
+            WebSocketSession session, Long sessionId, List<InterviewRoundEntity> rounds) {
+        InterviewRoundEntity lastRound = rounds.get(rounds.size() - 1);
+        log.info("重连补发当前问题 sessionId={} roundId={}", sessionId, lastRound.getId());
+        // 追问补发：携带 parentSeq + followUpIndex
+        if (lastRound.getParentSeq() != null) {
+            send(
+                    session,
+                    WsOutbound.questionStart(
+                            sessionId,
+                            lastRound.getId(),
+                            null,
+                            lastRound.getFollowUpType(),
+                            lastRound.getParentSeq(),
+                            lastRound.getFollowUpIndex()));
+        } else {
+            send(
+                    session,
+                    WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+        }
+        send(
+                session,
+                WsOutbound.questionChunk(sessionId, lastRound.getId(), lastRound.getQuestion()));
+        send(
+                session,
+                WsOutbound.questionEnd(sessionId, lastRound.getId(), lastRound.getSeq(), null));
     }
 
     @Override
