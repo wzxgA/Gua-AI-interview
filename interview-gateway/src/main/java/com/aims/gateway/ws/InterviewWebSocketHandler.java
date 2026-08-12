@@ -374,13 +374,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
     private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
-        // Phase 5：Engine 启用时委托 Engine，否则走旧命令式路径
-        if (engine.isEnabled()) {
-            handleAnswerViaEngine(session, sessionId, text);
-            return;
-        }
-
-        // 校验状态
+        // 状态校验：两链路统一要求 IN_PROGRESS 才允许提交回答（Engine 路径此前缺该校验，P1）
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
         if (current != SessionStatus.IN_PROGRESS) {
@@ -389,6 +383,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                     WsOutbound.error(
                             ErrorCode.SESSION_STATUS_CONFLICT.getCode(),
                             "会话状态不允许 ANSWER，当前: " + current));
+            return;
+        }
+
+        // Phase 5：Engine 启用时委托 Engine，否则走旧命令式路径
+        if (engine.isEnabled()) {
+            handleAnswerViaEngine(session, sessionId, text);
             return;
         }
 
