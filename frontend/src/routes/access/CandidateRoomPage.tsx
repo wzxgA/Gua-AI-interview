@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
 import { StatusBadge } from '@/components/ui/status-dot';
@@ -29,8 +30,10 @@ export function CandidateRoomPage() {
 
   const { data: guestSession } = useGuestSession(sessionId);
   const { data: rounds } = useGuestRounds(sessionId);
+  const queryClient = useQueryClient();
   const session = useInterviewSession({ sessionId, token: guestToken ?? undefined });
   const setSession = useSessionStore((s) => s.setSession);
+  const setStatus = useSessionStore((s) => s.setStatus);
   const resetStore = useSessionStore((s) => s.reset);
   const addQuestion = useSessionStore((s) => s.addQuestion);
   const addAnswer = useSessionStore((s) => s.addAnswer);
@@ -79,7 +82,11 @@ export function CandidateRoomPage() {
   const handleResume = () => {
     if (!sessionId) return;
     resumeGuestSession(sessionId)
-      .then(() => toast.success('面试已恢复'))
+      .then(() => {
+        toast.success('面试已恢复');
+        setStatus('IN_PROGRESS');
+        queryClient.invalidateQueries({ queryKey: ['guest', 'session', sessionId] });
+      })
       .catch((err: Error) => toast.error(err.message || '恢复失败'));
   };
 
@@ -109,7 +116,6 @@ export function CandidateRoomPage() {
           onCancel={() => session.cancelInterview()}
           onResume={handleResume}
           onViewReport={() => navigate(`/i/${accessToken}/report`)}
-          onEnterRoom={() => navigate(`/i/${accessToken}/room`)}
         />
       </GlassCard>
 
