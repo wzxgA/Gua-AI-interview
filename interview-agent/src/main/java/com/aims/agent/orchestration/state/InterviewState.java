@@ -11,6 +11,7 @@ import com.aims.core.session.SessionStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.Channel;
 import org.bsc.langgraph4j.state.Channels;
@@ -71,6 +72,10 @@ public class InterviewState extends AgentState {
     // ===== Key 常量：摘要与报告（Replace）=====
     public static final String RUNNING_SUMMARY = "runningSummary";
     public static final String LAST_SUMMARIZED_SEQ = "lastSummarizedSeq";
+
+    /** FE.14 P10：已摘要的 qaHistory 下标（追问与主问题共用 seq，seq 无法精确推进，改按下标）。 */
+    public static final String LAST_SUMMARIZED_INDEX = "lastSummarizedIndex";
+
     public static final String REPORT_RESULT = "reportResult";
 
     // ===== Key 常量：错误与重试（Replace）=====
@@ -126,6 +131,8 @@ public class InterviewState extends AgentState {
                     // 摘要与报告 — Replace
                     Map.entry(RUNNING_SUMMARY, Channels.base((old, v) -> v)),
                     Map.entry(LAST_SUMMARIZED_SEQ, Channels.base(() -> 0)),
+                    // FE.14 P10：-1 表示未摘要任何（下标从 0 起，0 已表示第一条被摘要）
+                    Map.entry(LAST_SUMMARIZED_INDEX, Channels.base(() -> -1)),
                     Map.entry(REPORT_RESULT, Channels.base((old, v) -> v)),
 
                     // 错误与重试 — Replace
@@ -253,6 +260,18 @@ public class InterviewState extends AgentState {
 
     public int lastSummarizedSeq() {
         return this.<Integer>value(LAST_SUMMARIZED_SEQ).orElse(0);
+    }
+
+    /**
+     * 已摘要的 qaHistory 下标（FE.14 P10）：优先读新字段 {@link #LAST_SUMMARIZED_INDEX}； 缺失时回退旧 {@link
+     * #LAST_SUMMARIZED_SEQ}（无追问时"已摘要到 seq N"≈ 下标 N-1）； 均缺失默认 -1（未摘要任何，全部纳入）。
+     */
+    public int lastSummarizedIndex() {
+        Optional<Integer> index = this.value(LAST_SUMMARIZED_INDEX);
+        if (index.isPresent()) {
+            return index.get();
+        }
+        return this.<Integer>value(LAST_SUMMARIZED_SEQ).map(seq -> seq - 1).orElse(-1);
     }
 
     public ReportResult reportResult() {

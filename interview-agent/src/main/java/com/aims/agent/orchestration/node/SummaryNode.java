@@ -6,6 +6,7 @@ import com.aims.core.interview.QaPair;
 import com.aims.core.interview.SummaryContext;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.springframework.stereotype.Component;
 
 /**
@@ -34,10 +35,13 @@ public class SummaryNode extends AbstractNode<InterviewState> {
 
     @Override
     public Map<String, Object> apply(InterviewState state) throws Exception {
-        List<QaPair> toSummarize =
-                state.qaHistory().stream()
-                        .filter(qa -> qa.seq() > state.lastSummarizedSeq())
-                        .toList();
+        // FE.14 P10：改按下标推进。追问与主问题共用 seq，`seq > lastSummarizedSeq` 会把
+        // 摘要边界后到达的同 seq 追问永久漏掉；按下标过滤天然不重不漏。
+        List<QaPair> history = state.qaHistory();
+        int lastIndex = state.lastSummarizedIndex();
+        List<Integer> toSummarizeIndexes =
+                IntStream.range(0, history.size()).filter(i -> i > lastIndex).boxed().toList();
+        List<QaPair> toSummarize = toSummarizeIndexes.stream().map(history::get).toList();
 
         if (toSummarize.size() < SUMMARY_THRESHOLD) {
             log.debug("摘要未达阈值 sessionId={} 待摘要={}", state.sessionId(), toSummarize.size());
@@ -55,12 +59,17 @@ public class SummaryNode extends AbstractNode<InterviewState> {
         log.debug("生成摘要 sessionId={} 待摘要={}", state.sessionId(), toSummarize.size());
 
         String newSummary = summaryAgent.summarize(ctx);
-        int newLastSeq = toSummarize.get(toSummarize.size() - 1).seq();
+        int newLastIndex = toSummarizeIndexes.get(toSummarizeIndexes.size() - 1);
 
-        log.info("摘要完成 sessionId={} lastSummarizedSeq={}", state.sessionId(), newLastSeq);
+        log.info("摘要完成 sessionId={} lastSummarizedIndex={}", state.sessionId(), newLastIndex);
 
         return Map.of(
-                InterviewState.RUNNING_SUMMARY, newSummary,
-                InterviewState.LAST_SUMMARIZED_SEQ, newLastSeq);
+                InterviewState.RUNNING_SUMMARY,
+                newSummary,
+                InterviewState.LAST_SUMMARIZED_INDEX,
+                newLastIndex,
+                // 兼容保留：seq 语义供下游/日志提示（最后一项 seq）
+                InterviewState.LAST_SUMMARIZED_SEQ,
+                toSummarize.get(toSummarize.size() - 1).seq());
     }
 }
