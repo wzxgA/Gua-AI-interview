@@ -68,6 +68,16 @@ export function useGuestSession(sessionId: number | null) {
     queryKey: ['guest', 'session', sessionId],
     queryFn: () => getGuestSession(sessionId!),
     enabled: sessionId != null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'EVALUATING' || status === 'REPORTING') {
+        return 2000;
+      }
+      if (status === 'IN_PROGRESS' || status === 'PAUSED') {
+        return 5000;
+      }
+      return false;
+    },
   });
 }
 

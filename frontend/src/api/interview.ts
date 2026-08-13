@@ -34,6 +34,9 @@ export function useInterview(id: number | undefined) {
       if (status === 'PLANNING' || status === 'EVALUATING' || status === 'REPORTING') {
         return 2000;
       }
+      if (status === 'IN_PROGRESS' || status === 'PAUSED') {
+        return 5000;
+      }
       return false;
     },
   });
