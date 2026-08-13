@@ -384,7 +384,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                                 ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
                                 "面试计划请通过 REST /start 接口生成，WebSocket 不再支持 START 消息"));
             } else if (inbound.isType("ANSWER")) {
-                handleAnswer(session, sessionId, inbound.text());
+                handleAnswer(session, sessionId, inbound.text(), inbound.roundId());
             } else if (inbound.isType("HEARTBEAT")) {
                 handleHeartbeat(session, sessionId);
             } else if (inbound.isType("PAUSE")) {
@@ -470,7 +470,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
-    private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
+    private void handleAnswer(WebSocketSession session, Long sessionId, String text, Long roundId) {
         // 状态校验：两链路统一要求 IN_PROGRESS 才允许提交回答（Engine 路径此前缺该校验，P1）
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
@@ -485,7 +485,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // Phase 5：Engine 启用时委托 Engine，否则走旧命令式路径
         if (engine.isEnabled()) {
-            handleAnswerViaEngine(session, sessionId, text);
+            handleAnswerViaEngine(session, sessionId, text, roundId);
             return;
         }
 
@@ -650,7 +650,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
      * <p>Graph 在 interruptBefore(ANSWER) 暂停时，Engine.submitAnswer 注入 answer → resume → 执行到下一个 ASK 或
      * END。流式 chunk 由 WebSocketStreamEmitter 自动推送。
      */
-    private void handleAnswerViaEngine(WebSocketSession session, Long sessionId, String text) {
+    private void handleAnswerViaEngine(
+            WebSocketSession session, Long sessionId, String text, Long roundId) {
         if (text == null || text.isBlank()) {
             send(
                     session,
@@ -665,6 +666,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                             "回答内容超过 " + MAX_ANSWER_LENGTH + " 字符"));
             return;
         }
+        // FE.12 P7 幂等兜底：连点提交时同一 roundId 已被第一次消费落库（syncFromState 幂等写回答），
+        // 按 roundId 已答即拒绝，避免第二次回答错配到新题。roundId 为 null（旧客户端）时跳过校验。
+        if (roundId != null && isRoundAnswered(sessionId, roundId)) {
+            log.warn("重复提交回答被拒绝 sessionId={} roundId={}", sessionId, roundId);
+            send(session, WsOutbound.error(ErrorCode.SESSION_ROUND_CONFLICT.getCode(), "请勿重复提交回答"));
+            return;
+        }
         try {
             engine.submitAnswer(sessionId, text);
             log.info("回答已提交（Engine）sessionId={}", sessionId);
@@ -676,6 +684,15 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                             ErrorCode.INTERNAL_ERROR.getCode(),
                             "Engine 处理回答失败: " + e.getMessage()));
         }
+    }
+
+    /** FE.12 P7：按 roundId 查询轮次是否已回答（轮次不存在视为未回答，放行不误伤）。 */
+    private boolean isRoundAnswered(Long sessionId, Long roundId) {
+        return roundService.listBySession(sessionId).stream()
+                .filter(r -> roundId.equals(r.getId()))
+                .findFirst()
+                .map(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
+                .orElse(false);
     }
 
     /**

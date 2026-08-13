@@ -173,6 +173,50 @@ class InterviewWebSocketHandlerTest {
         verify(engine, never()).submitAnswer(any(), any());
     }
 
+    // ==================== FE.12 P7：连点提交 roundId 幂等校验 ====================
+
+    @Test
+    @DisplayName("连点提交：roundId 轮次已答 -> 拒绝（SESSION_ROUND_CONFLICT），不委托 Engine")
+    void answer_duplicateRoundId_rejected() throws Exception {
+        setStatus(SessionStatus.IN_PROGRESS);
+        when(engine.isEnabled()).thenReturn(true);
+        when(roundService.listBySession(32L)).thenReturn(List.of(answeredRound(101L, 1, "已回答")));
+
+        handler.handleTextMessage(
+                session,
+                new TextMessage("{\"type\":\"ANSWER\",\"text\":\"再答一次\",\"roundId\":101}"));
+
+        verify(engine, never()).submitAnswer(any(), any());
+        ObjectNode err = lastSent();
+        assertEquals(ErrorCode.SESSION_ROUND_CONFLICT.getCode(), err.get("code").asInt());
+    }
+
+    @Test
+    @DisplayName("首次提交：roundId 轮次未答 -> 放行委托 Engine")
+    void answer_firstSubmitRoundId_ok() throws Exception {
+        setStatus(SessionStatus.IN_PROGRESS);
+        when(engine.isEnabled()).thenReturn(true);
+        when(roundService.listBySession(32L)).thenReturn(List.of(unansweredRound(101L, 1)));
+
+        handler.handleTextMessage(
+                session, new TextMessage("{\"type\":\"ANSWER\",\"text\":\"回答\",\"roundId\":101}"));
+
+        verify(engine).submitAnswer(32L, "回答");
+    }
+
+    @Test
+    @DisplayName("旧客户端不传 roundId：跳过幂等校验，放行委托 Engine")
+    void answer_withoutRoundId_ok() throws Exception {
+        setStatus(SessionStatus.IN_PROGRESS);
+        when(engine.isEnabled()).thenReturn(true);
+        // roundId=null 时不查询轮次
+        handler.handleTextMessage(
+                session, new TextMessage("{\"type\":\"ANSWER\",\"text\":\"回答\"}"));
+
+        verify(roundService, never()).listBySession(anyLong());
+        verify(engine).submitAnswer(32L, "回答");
+    }
+
     // ==================== FE.06 P2：断线重连 Engine 路径 ====================
 
     @Test
@@ -252,6 +296,13 @@ class InterviewWebSocketHandlerTest {
         r.setId(roundId);
         r.setSeq(seq);
         r.setQuestion("请介绍下你的项目经历");
+        return r;
+    }
+
+    /** 已答轮次辅助：answer 已非空（FE.12 P7 幂等校验判据）。 */
+    private InterviewRoundEntity answeredRound(Long roundId, Integer seq, String answer) {
+        InterviewRoundEntity r = unansweredRound(roundId, seq);
+        r.setAnswer(answer);
         return r;
     }
 
