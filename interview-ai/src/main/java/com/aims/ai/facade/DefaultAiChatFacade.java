@@ -4,6 +4,7 @@ import com.aims.ai.advisor.AiAdvisorContext;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.ai.router.ModelRouter;
 import com.aims.ai.router.ModelTier;
+import com.aims.core.common.NodeContextHolder;
 import com.aims.core.common.exception.AiOutputParseException;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -98,20 +99,24 @@ public class DefaultAiChatFacade implements AiChatFacade {
                                 conversationMemory.addUser(conversationId, userPrompt, null));
     }
 
-    /** 构造请求并写入 Advisor 归因参数（tier/model），降级时 model 自动切换为 fallback 模型。 */
+    /** 构造请求并写入 Advisor 归因参数（tier/model/node），降级时 model 自动切换为 fallback 模型。 */
     private ChatClient.ChatClientRequestSpec newSpec(
             ChatClient client,
             ModelTier tier,
             String model,
             String systemPrompt,
             String userPrompt) {
+        String node = NodeContextHolder.current();
         return client.prompt()
                 .system(systemPrompt)
                 .user(userPrompt)
                 .advisors(
                         advisor ->
                                 advisor.param(AiAdvisorContext.TIER, tier.name())
-                                        .param(AiAdvisorContext.MODEL, model));
+                                        .param(AiAdvisorContext.MODEL, model)
+                                        .param(
+                                                AiAdvisorContext.NODE,
+                                                node != null ? node : "unknown"));
     }
 
     /** 判定异常是否为模型调用失败（网络/HTTP/限流等），而非输出解析失败。 */

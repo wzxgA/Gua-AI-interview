@@ -8,6 +8,7 @@ import org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfigur
 import org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * AIMS 启动应用（仅 gateway 模块允许存在启动类与 Web 层）。
@@ -23,6 +24,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
             OpenAiImageAutoConfiguration.class,
             OpenAiModerationAutoConfiguration.class
         })
+@EnableAsync
 public class Application {
 
     public static void main(String[] args) {

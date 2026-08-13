@@ -82,6 +82,13 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- embedded-redis：Engine 集成测试（无需 Docker） -->
+        <dependency>
+            <groupId>com.github.codemonstur</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>1.4.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -101,6 +108,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- LG.8 Phase 7 T11: JaCoCo 覆盖率（pluginManagement 中已配置 check 规则） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

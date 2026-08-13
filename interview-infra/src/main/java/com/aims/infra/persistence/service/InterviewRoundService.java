@@ -27,7 +27,7 @@ public interface InterviewRoundService {
     /** 更新轮次 TTS 音频信息。 */
     void updateAudio(Long roundId, String audioUrl, int durationMs);
 
-    /** 查询会话所有轮次，按 createdAt 排序。 */
+    /** 查询会话所有轮次，按业务顺序排序：主问题按 seq 升序，追问紧跟所属主问题后按 followUpIndex 升序（不依赖 createdAt，避免追问与后续主问题交错）。 */
     List<InterviewRoundEntity> listBySession(Long sessionId);
 
     /** 查询会话已回答的轮次数（不含追问）。 */

@@ -1,5 +1,6 @@
 package com.aims.core.report;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -10,8 +11,9 @@ import java.util.Map;
  * @param recommendation 录用建议
  */
 public record ReportResult(
-        String summary, Map<String, DimensionScore> dimensions, Recommendation recommendation) {
+        String summary, Map<String, DimensionScore> dimensions, Recommendation recommendation)
+        implements Serializable {
 
     /** 单维度评分聚合。 */
-    public record DimensionScore(double avgScore, int count) {}
+    public record DimensionScore(double avgScore, int count) implements Serializable {}
 }

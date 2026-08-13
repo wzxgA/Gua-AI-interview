@@ -1,5 +1,6 @@
 package com.aims.core.interview;
 
+import java.io.Serializable;
 import java.util.List;
 
 /** 面试计划中的一道题。 */
@@ -8,7 +9,8 @@ public record PlannedQuestion(
         String topic,
         String difficulty,
         List<String> followUpHints,
-        String evaluationFocus) {
+        String evaluationFocus)
+        implements Serializable {
 
     public PlannedQuestion {
         if (questionId == null || questionId.isBlank()) {

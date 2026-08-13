@@ -16,11 +16,11 @@ interface SessionStore {
   // Actions
   setSession: (sessionId: number, status: SessionStatus) => void;
   setStatus: (status: SessionStatus) => void;
-  startQuestion: (roundId: number, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
+  startQuestion: (roundId: number | undefined, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   appendChunk: (text: string) => void;
-  finalizeQuestion: () => void;
+  finalizeQuestion: (roundId?: number) => void;
   addAnswer: (text: string, roundId?: number) => void;
-  addQuestion: (roundId: number, seq: number | undefined, text: string, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
+  addQuestion: (roundId: number | undefined, seq: number | undefined, text: string, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   setAudio: (roundId: number, audioUrl: string, durationMs?: number) => void;
   hasRound: (roundId: number) => boolean;
   setConnected: (connected: boolean) => void;
@@ -55,11 +55,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   startQuestion: (roundId, seq, followUpType, parentSeq, followUpIndex) =>
     set((state) => {
-      if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
+      // 追问去重键：parentSeq + followUpIndex；主问题去重键：roundId 或 seq
+      const isFollowUp = parentSeq != null && followUpIndex != null;
+      if (
+        state.messages.some((m) => {
+          if (m.role !== 'question') return false;
+          if (isFollowUp) {
+            return m.parentSeq === parentSeq && m.followUpIndex === followUpIndex;
+          }
+          return m.roundId === roundId || m.seq === seq;
+        })
+      ) {
         return state;
       }
       return {
-        currentRoundId: roundId,
+        currentRoundId: roundId ?? null,
         currentQuestion: '',
         isStreaming: true,
         messages: [
@@ -97,14 +107,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       };
     }),
 
-  finalizeQuestion: () =>
+  finalizeQuestion: (roundId?: number) =>
     set((state) => {
       const messages = [...state.messages];
       const last = messages[messages.length - 1];
       if (last && last.role === 'question' && last.streaming) {
-        messages[messages.length - 1] = { ...last, streaming: false };
+        // END 携带 roundId 时绑定到气泡（Engine 预落库回传；旧链路亦有）
+        messages[messages.length - 1] =
+          roundId != null
+            ? { ...last, roundId, streaming: false }
+            : { ...last, streaming: false };
       }
-      return { messages, isStreaming: false };
+      return {
+        messages,
+        isStreaming: false,
+        // 问题结束并绑定 roundId 后，回答应关联该轮次；否则本地回答 roundId=undefined，
+        // 与历史恢复 addAnswer(r.id) 去重键不一致 → 同一回答重复显示
+        currentRoundId: roundId ?? state.currentRoundId,
+      };
     }),
 
   addAnswer: (text, roundId) =>
@@ -128,7 +148,17 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   addQuestion: (roundId, seq, text, followUpType, parentSeq, followUpIndex) =>
     set((state) => {
-      if (state.messages.some((m) => m.role === 'question' && m.roundId === roundId)) {
+      // 追问去重键：parentSeq + followUpIndex；主问题去重键：roundId 或 seq
+      const isFollowUp = parentSeq != null && followUpIndex != null;
+      if (
+        state.messages.some((m) => {
+          if (m.role !== 'question') return false;
+          if (isFollowUp) {
+            return m.parentSeq === parentSeq && m.followUpIndex === followUpIndex;
+          }
+          return m.roundId === roundId || m.seq === seq;
+        })
+      ) {
         return state;
       }
       return {

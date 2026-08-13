@@ -116,6 +116,10 @@ public final class InterviewPromptBuilder {
                     .append('\n');
         }
 
+        if (context.runningSummary() != null && !context.runningSummary().isBlank()) {
+            sb.append("【面试摘要（早期对话总结）】\n").append(context.runningSummary()).append("\n\n");
+        }
+
         var recentQuestions =
                 context.recentQuestions() == null
                         ? java.util.List.<String>of()

@@ -1,5 +1,6 @@
 package com.aims.core.interview;
 
+import java.io.Serializable;
 import java.util.List;
 
 /** 结构化面试计划。 */
@@ -9,8 +10,10 @@ public record InterviewPlan(
         List<PlanSection> sections,
         List<PlannedQuestion> questions,
         int estimatedMinutes,
-        String version) {
+        String version)
+        implements Serializable {
 
+    public static final int MIN_QUESTION_COUNT = 1;
     public static final int DEFAULT_QUESTION_COUNT = 10;
 
     public InterviewPlan {
@@ -24,6 +27,9 @@ public record InterviewPlan(
         questions = questions == null ? List.of() : List.copyOf(questions);
         if (questions.isEmpty()) {
             throw new IllegalArgumentException("面试计划题目不能为空");
+        }
+        if (questions.size() < MIN_QUESTION_COUNT || questions.size() > DEFAULT_QUESTION_COUNT) {
+            throw new IllegalArgumentException("面试题目数量必须在 1-10 题之间");
         }
         if (sections.isEmpty()) {
             throw new IllegalArgumentException("面试计划至少需要一个模块");

@@ -21,6 +21,13 @@ aims:
     secret-key: ${MINIO_ROOT_PASSWORD:aims12345}
     buckets: aims-resume,aims-audio,aims-report
 
+interview:
+  checkpoint:
+    ttl-hours: 24
+    history-enabled: true
+  engine:
+    enabled: true  # LangGraph4j 灰度开关：false=旧命令式Handler，true=Engine编排
+
 logging:
   level:
     com.aims: DEBUG

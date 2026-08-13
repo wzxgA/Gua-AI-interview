@@ -3,6 +3,7 @@ package com.aims.gateway.ws;
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewContext;
 import com.aims.agent.InterviewerAgent;
+import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.ai.memory.ConversationMemory;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.interview.FollowUpContext;
@@ -11,6 +12,7 @@ import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.session.SessionStatus;
+import com.aims.gateway.orchestration.InterviewWorkflowEngine;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
@@ -26,6 +28,7 @@ import com.aims.infra.persistence.service.ResumeService;
 import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -85,6 +88,10 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TtsService> ttsServiceProvider;
+    private final RollingSummaryService rollingSummaryService;
+    // Phase 5 新增：Engine 委托路径 + 会话管理
+    private final InterviewWorkflowEngine engine;
+    private final WebSocketSessionManager sessionManager;
 
     public InterviewWebSocketHandler(
             InterviewSessionService sessionService,
@@ -98,7 +105,10 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             ConversationMemory conversationMemory,
             EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper,
-            ObjectProvider<TtsService> ttsServiceProvider) {
+            ObjectProvider<TtsService> ttsServiceProvider,
+            RollingSummaryService rollingSummaryService,
+            InterviewWorkflowEngine engine,
+            WebSocketSessionManager sessionManager) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.sessionStore = sessionStore;
@@ -111,6 +121,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
         this.ttsServiceProvider = ttsServiceProvider;
+        this.rollingSummaryService = rollingSummaryService;
+        this.engine = engine;
+        this.sessionManager = sessionManager;
     }
 
     // ==================== 连接生命周期 ====================
@@ -150,6 +163,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         session.getAttributes().put(ATTR_SESSION_ID, sessionId);
         session.getAttributes().put(ATTR_CONNECTION_ID, connectionId);
 
+        // Phase 5：注册到 SessionManager，供 Engine 推送流式输出
+        sessionManager.register(sessionId, session);
+
         log.info("WebSocket 连接建立 sessionId={} connectionId={}", sessionId, connectionId);
         send(session, WsOutbound.sessionReady(sessionId, entity.getStatus()));
 
@@ -177,7 +193,47 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         if (rounds.isEmpty()) {
             // 首次进入面试间，生成首题
             log.info("首次进入面试间，自动生成首题 sessionId={}", sessionId);
-            generateAndSendQuestion(session, sessionId);
+            if (engine.isEnabled()) {
+                // Engine 路径：Graph 执行 plan → ask → interruptBefore(ANSWER) 暂停 → 创建 checkpoint
+                try {
+                    boolean freshStart = engine.startInterview(sessionId);
+                    if (!freshStart) {
+                        // P4：已有 checkpoint（start 中途失败后的重试/重连）-> 从 checkpoint 补发当前待答题
+                        engine.getPendingState(sessionId)
+                                .ifPresent(state -> replayFromState(session, sessionId, state));
+                    }
+                } catch (Exception e) {
+                    log.error("Engine 启动面试失败 sessionId={}", sessionId, e);
+                    send(session, WsOutbound.error(ErrorCode.INTERNAL_ERROR.getCode(), "面试启动失败"));
+                }
+            } else {
+                generateAndSendQuestion(session, sessionId);
+            }
+            return;
+        }
+
+        // Engine 路径：重连统一委托 Engine 从 checkpoint 恢复（FE.06 P2），
+        // 避免旧链路命令式生成新题/触发评估与 checkpoint 脱节
+        if (engine.isEnabled()) {
+            try {
+                InterviewWorkflowEngine.ResumeResult result = engine.resumeInterview(sessionId);
+                switch (result) {
+                    case FINISHED -> {
+                        // Engine 已触发评估，推送 EVALUATING 状态
+                        log.info("重连时面试已结束，进入评估 sessionId={}", sessionId);
+                        send(
+                                session,
+                                WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+                    }
+                    case RESUMED, REBUILT_FROM_DB -> {
+                        // 补发当前待答题（DB 由 syncFromState 预落库，保证有数据可补发）
+                        replayCurrentQuestion(session, sessionId, rounds);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Engine 重连恢复失败 sessionId={}", sessionId, e);
+                send(session, WsOutbound.error(ErrorCode.INTERNAL_ERROR.getCode(), "重连恢复失败"));
+            }
             return;
         }
 
@@ -233,6 +289,70 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * 补发当前待答题（断线重连恢复）：从 DB 读取最后一条轮次，按主问题/追问格式重放 WS 消息。
+     *
+     * <p>Engine 路径与旧链路补发共用。DB 轮次由 {@code syncFromState} 预落库（CURRENT_QUESTION 非空且 CURRENT_ANSWER
+     * 为空时预创建），保证重连时有数据可补发。
+     */
+    private void replayCurrentQuestion(
+            WebSocketSession session, Long sessionId, List<InterviewRoundEntity> rounds) {
+        InterviewRoundEntity lastRound = rounds.get(rounds.size() - 1);
+        log.info("重连补发当前问题 sessionId={} roundId={}", sessionId, lastRound.getId());
+        // 追问补发：携带 parentSeq + followUpIndex
+        if (lastRound.getParentSeq() != null) {
+            send(
+                    session,
+                    WsOutbound.questionStart(
+                            sessionId,
+                            lastRound.getId(),
+                            null,
+                            lastRound.getFollowUpType(),
+                            lastRound.getParentSeq(),
+                            lastRound.getFollowUpIndex()));
+        } else {
+            send(
+                    session,
+                    WsOutbound.questionStart(sessionId, lastRound.getId(), lastRound.getSeq()));
+        }
+        send(
+                session,
+                WsOutbound.questionChunk(sessionId, lastRound.getId(), lastRound.getQuestion()));
+        send(
+                session,
+                WsOutbound.questionEnd(sessionId, lastRound.getId(), lastRound.getSeq(), null));
+    }
+
+    /**
+     * 从 checkpoint state 补发当前待答题（P4：rounds 为空但 checkpoint 已有时用）。
+     *
+     * <p>不落库——轮次由 {@code syncFromState} 补偿落库（幂等），避免与 {@code streamEmitter.emitEnd} 预落库重复创建。
+     */
+    private void replayFromState(WebSocketSession session, Long sessionId, InterviewState state) {
+        String question = state.currentQuestion();
+        if (question == null || question.isBlank()) {
+            log.warn("checkpoint 无当前问题，跳过补发 sessionId={}", sessionId);
+            return;
+        }
+        log.info("从 checkpoint 补发当前题 sessionId={} seq={}", sessionId, state.currentSeq());
+        // 追问补发：携带 parentSeq + followUpIndex + followUpType
+        if (state.pendingFollowUp() && state.parentSeq() != null && state.followUpIndex() != null) {
+            send(
+                    session,
+                    WsOutbound.questionStart(
+                            sessionId,
+                            null,
+                            null,
+                            state.followUpType() != null ? state.followUpType().name() : null,
+                            state.parentSeq(),
+                            state.followUpIndex()));
+        } else {
+            send(session, WsOutbound.questionStart(sessionId, null, state.currentSeq()));
+        }
+        send(session, WsOutbound.questionChunk(sessionId, null, question));
+        send(session, WsOutbound.questionEnd(sessionId, null, state.currentSeq(), null));
+    }
+
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         Long sessionId = (Long) session.getAttributes().get(ATTR_SESSION_ID);
@@ -265,7 +385,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                                 ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
                                 "面试计划请通过 REST /start 接口生成，WebSocket 不再支持 START 消息"));
             } else if (inbound.isType("ANSWER")) {
-                handleAnswer(session, sessionId, inbound.text());
+                handleAnswer(session, sessionId, inbound.text(), inbound.roundId());
             } else if (inbound.isType("HEARTBEAT")) {
                 handleHeartbeat(session, sessionId);
             } else if (inbound.isType("PAUSE")) {
@@ -300,6 +420,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // 释放连接锁
         sessionStore.unlock(sessionId, connectionId);
+        // Phase 5：从 SessionManager 注销
+        sessionManager.unregister(sessionId);
         log.info(
                 "WebSocket 连接关闭 sessionId={} connectionId={} status={}",
                 sessionId,
@@ -307,16 +429,28 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 status);
 
         // 如果状态为 IN_PROGRESS 则转为 PAUSED
+        // FE.10 P6：用原子转移（仅 IN_PROGRESS -> PAUSED），不覆盖已存在的 EVALUATING 等终态
+        // （断线发生在面试已结束、评估已触发之后时不回退状态）
         try {
-            InterviewSessionEntity entity = sessionService.getById(sessionId);
-            SessionStatus current = SessionStatus.valueOf(entity.getStatus());
-            if (current == SessionStatus.IN_PROGRESS) {
-                sessionService.updateStatus(sessionId, SessionStatus.PAUSED);
-                log.info("连接断开，会话自动暂停 sessionId={}", sessionId);
-            }
+            sessionService.tryTransitionTo(
+                    sessionId,
+                    SessionStatus.PAUSED,
+                    SessionStatus.IN_PROGRESS,
+                    SessionStatus.IN_PROGRESS);
+            log.info("连接断开，会话自动暂停（原子转移） sessionId={}", sessionId);
         } catch (Exception e) {
             log.warn("连接关闭后状态处理失败 sessionId={}", sessionId, e);
         }
+    }
+
+    /**
+     * FE.16 A2：实例优雅停机前关闭本实例所有 WS 连接，让客户端立即重连（走 P2 断线恢复）， 而非等待 TCP 超时。关闭后各连接 {@link
+     * #afterConnectionClosed} 回调负责释放锁并转 PAUSED。
+     */
+    @PreDestroy
+    public void shutdown() {
+        log.info("实例停机，关闭本实例全部 WebSocket 连接");
+        sessionManager.closeAll(CloseStatus.SERVICE_RESTARTED);
     }
 
     // ==================== 消息处理 ====================
@@ -347,8 +481,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     /** ANSWER：接收回答，更新轮次，决定是否生成下一题或结束。 */
-    private void handleAnswer(WebSocketSession session, Long sessionId, String text) {
-        // 校验状态
+    private void handleAnswer(WebSocketSession session, Long sessionId, String text, Long roundId) {
+        // 状态校验：两链路统一要求 IN_PROGRESS 才允许提交回答（Engine 路径此前缺该校验，P1）
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
         if (current != SessionStatus.IN_PROGRESS) {
@@ -357,6 +491,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                     WsOutbound.error(
                             ErrorCode.SESSION_STATUS_CONFLICT.getCode(),
                             "会话状态不允许 ANSWER，当前: " + current));
+            return;
+        }
+
+        // Phase 5：Engine 启用时委托 Engine，否则走旧命令式路径
+        if (engine.isEnabled()) {
+            handleAnswerViaEngine(session, sessionId, text, roundId);
             return;
         }
 
@@ -399,6 +539,9 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         // 发送确认
         send(session, WsOutbound.answerAck(sessionId, currentRound.getId()));
         log.info("收到回答 sessionId={} roundId={}", sessionId, currentRound.getId());
+
+        // 异步触发滚动摘要生成（每 5 轮回答后触发，含追问轮次）
+        rollingSummaryService.triggerSummaryIfNeeded(sessionId);
 
         // 确定主问题 seq（追问取 parentSeq，主问题取 seq）
         int parentSeq =
@@ -452,6 +595,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** PAUSE：暂停会话。 */
     private void handlePause(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            engine.pauseInterview(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.PAUSED.name()));
+            log.info("会话暂停（Engine）sessionId={}", sessionId);
+            return;
+        }
         sessionService.updateStatus(sessionId, SessionStatus.PAUSED);
         send(session, WsOutbound.status(sessionId, SessionStatus.PAUSED.name()));
         log.info("会话暂停 sessionId={}", sessionId);
@@ -459,6 +609,11 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** FINISH：结束会话，触发评估流程。 */
     private void handleFinish(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            handleFinishViaEngine(session, sessionId);
+            return;
+        }
         InterviewSessionEntity entity = sessionService.getById(sessionId);
         SessionStatus current = SessionStatus.valueOf(entity.getStatus());
         if (current != SessionStatus.IN_PROGRESS) {
@@ -479,11 +634,97 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
     /** CANCEL：取消会话。 */
     private void handleCancel(WebSocketSession session, Long sessionId) {
+        // Phase 5：Engine 启用时委托
+        if (engine.isEnabled()) {
+            try {
+                engine.cancelInterview(sessionId);
+            } catch (Exception e) {
+                log.warn("Engine 取消面试失败 sessionId={}", sessionId, e);
+            }
+            sessionStore.forceUnlock(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
+            log.info("会话取消（Engine）sessionId={}", sessionId);
+            return;
+        }
         sessionService.updateStatus(sessionId, SessionStatus.CANCELLED);
         sessionService.markEnded(sessionId);
         sessionStore.forceUnlock(sessionId);
         send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
         log.info("会话取消 sessionId={}", sessionId);
+    }
+
+    // ==================== Phase 5 Engine 委托方法 ====================
+
+    /**
+     * Phase 5：通过 Engine 提交回答。
+     *
+     * <p>Graph 在 interruptBefore(ANSWER) 暂停时，Engine.submitAnswer 注入 answer → resume → 执行到下一个 ASK 或
+     * END。流式 chunk 由 WebSocketStreamEmitter 自动推送。
+     */
+    private void handleAnswerViaEngine(
+            WebSocketSession session, Long sessionId, String text, Long roundId) {
+        if (text == null || text.isBlank()) {
+            send(
+                    session,
+                    WsOutbound.error(ErrorCode.SESSION_MESSAGE_INVALID.getCode(), "回答内容不能为空"));
+            return;
+        }
+        if (text.length() > MAX_ANSWER_LENGTH) {
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
+                            "回答内容超过 " + MAX_ANSWER_LENGTH + " 字符"));
+            return;
+        }
+        // FE.12 P7 幂等兜底：连点提交时同一 roundId 已被第一次消费落库（syncFromState 幂等写回答），
+        // 按 roundId 已答即拒绝，避免第二次回答错配到新题。roundId 为 null（旧客户端）时跳过校验。
+        if (roundId != null && isRoundAnswered(sessionId, roundId)) {
+            log.warn("重复提交回答被拒绝 sessionId={} roundId={}", sessionId, roundId);
+            send(session, WsOutbound.error(ErrorCode.SESSION_ROUND_CONFLICT.getCode(), "请勿重复提交回答"));
+            return;
+        }
+        try {
+            engine.submitAnswer(sessionId, text);
+            log.info("回答已提交（Engine）sessionId={}", sessionId);
+        } catch (Exception e) {
+            log.error("Engine 提交回答失败 sessionId={}", sessionId, e);
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.INTERNAL_ERROR.getCode(),
+                            "Engine 处理回答失败: " + e.getMessage()));
+        }
+    }
+
+    /** FE.12 P7：按 roundId 查询轮次是否已回答（轮次不存在视为未回答，放行不误伤）。 */
+    private boolean isRoundAnswered(Long sessionId, Long roundId) {
+        return roundService.listBySession(sessionId).stream()
+                .filter(r -> roundId.equals(r.getId()))
+                .findFirst()
+                .map(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
+                .orElse(false);
+    }
+
+    /**
+     * Phase 5：通过 Engine 结束面试。
+     *
+     * <p>设置 FORCE_END=true → 图执行到 END → Engine 触发 Kafka 异步评估（FE.04），本方法同步返回后推送 EVALUATING 状态，
+     * 评估/报告完成后前端经 2s 轮询感知 COMPLETED。
+     */
+    private void handleFinishViaEngine(WebSocketSession session, Long sessionId) {
+        try {
+            engine.finishInterview(sessionId);
+            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            log.info("面试已结束，进入评估（Engine）sessionId={}", sessionId);
+        } catch (Exception e) {
+            log.error("Engine 结束面试失败 sessionId={}", sessionId, e);
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.INTERNAL_ERROR.getCode(),
+                            "Engine 结束面试失败: " + e.getMessage()));
+        }
     }
 
     // ==================== 核心业务方法 ====================
@@ -732,12 +973,22 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         .filter(r -> r.getAnswer() != null && !r.getAnswer().isBlank())
                         .toList();
 
-        // 提取最近的问答
-        int recentSize = Math.min(RECENT_HISTORY_LIMIT, answered.size());
-        List<InterviewRoundEntity> recent =
+        // 读取滚动摘要（异步生成，可能尚未就绪）
+        String runningSummary = rollingSummaryService.getRunningSummary(sessionId);
+        int lastSummarizedCount = rollingSummaryService.getLastSummarizedCount(sessionId);
+
+        // 提取最近的问答：排除已被摘要覆盖的早期轮次
+        List<InterviewRoundEntity> recent;
+        if (lastSummarizedCount >= answered.size()) {
+            recent = List.of();
+        } else {
+            recent = answered.subList(lastSummarizedCount, answered.size());
+        }
+        int recentSize = Math.min(RECENT_HISTORY_LIMIT, recent.size());
+        recent =
                 recentSize == 0
                         ? List.of()
-                        : answered.subList(answered.size() - recentSize, answered.size());
+                        : recent.subList(recent.size() - recentSize, recent.size());
         List<String> recentQuestions =
                 recent.stream().map(InterviewRoundEntity::getQuestion).toList();
         List<String> recentAnswers = recent.stream().map(InterviewRoundEntity::getAnswer).toList();
@@ -759,7 +1010,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 recentAnswers,
                 buildResumeSummary(resume),
                 ragQuestions,
-                InterviewerPersona.fromString(entity.getPersona()));
+                InterviewerPersona.fromString(entity.getPersona()),
+                runningSummary);
     }
 
     /** 从 WebSocket URI 路径中提取 sessionId。 */

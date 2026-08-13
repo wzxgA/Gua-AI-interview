@@ -33,8 +33,13 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
 
         case 'QUESTION_START':
           store.setConnected(true);
-          if (msg.roundId != null)
-            store.startQuestion(msg.roundId, msg.seq, msg.followUpType, msg.parentSeq, msg.followUpIndex);
+          store.startQuestion(
+            msg.roundId ?? undefined,
+            msg.seq,
+            msg.followUpType,
+            msg.parentSeq,
+            msg.followUpIndex,
+          );
           break;
 
         case 'QUESTION_CHUNK':
@@ -42,7 +47,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
           break;
 
         case 'QUESTION_END':
-          store.finalizeQuestion();
+          store.finalizeQuestion(msg.roundId);
           invalidateRounds();
           break;
 

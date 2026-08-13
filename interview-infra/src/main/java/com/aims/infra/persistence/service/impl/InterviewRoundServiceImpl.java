@@ -80,10 +80,15 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
 
     @Override
     public List<InterviewRoundEntity> listBySession(Long sessionId) {
+        // 复合排序：主问题按 seq，追问紧跟所属主问题后按 followUpIndex（不依赖 createdAt 避免交错）
+        // COALESCE(seq, parent_seq)：主问题用 seq，追问用 parentSeq
+        // seq IS NULL：主问题(NOT NULL=false)在前，追问(NULL=true)在后
         return roundMapper.selectList(
                 Wrappers.<InterviewRoundEntity>lambdaQuery()
                         .eq(InterviewRoundEntity::getSessionId, sessionId)
-                        .orderByAsc(InterviewRoundEntity::getCreatedAt));
+                        .last(
+                                "ORDER BY COALESCE(seq, parent_seq) ASC, seq IS NULL ASC,"
+                                        + " follow_up_index ASC"));
     }
 
     @Override
