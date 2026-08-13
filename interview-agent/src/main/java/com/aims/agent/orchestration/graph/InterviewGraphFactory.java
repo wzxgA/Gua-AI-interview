@@ -5,13 +5,11 @@ import static org.bsc.langgraph4j.StateGraph.START;
 
 import com.aims.agent.orchestration.node.AnswerNode;
 import com.aims.agent.orchestration.node.EndCheckNode;
-import com.aims.agent.orchestration.node.EvaluateNode;
 import com.aims.agent.orchestration.node.FaultTolerantNode;
 import com.aims.agent.orchestration.node.FollowUpDecisionNode;
 import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
-import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.SummaryNode;
 import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
@@ -72,10 +70,8 @@ public class InterviewGraphFactory {
     private final AnswerNode answerNode;
     private final FollowUpDecisionNode followUpDecisionNode;
     private final FollowUpNode followUpNode;
-    private final EvaluateNode evaluateNode;
     private final SummaryNode summaryNode;
     private final EndCheckNode endCheckNode;
-    private final ReportNode reportNode;
 
     /** Phase 6：注入用于 FaultTolerantNode 重试埋点；可为 null（测试场景）。 */
     private final GraphMetricsRegistry metricsRegistry;
@@ -86,20 +82,16 @@ public class InterviewGraphFactory {
             AnswerNode answerNode,
             FollowUpDecisionNode followUpDecisionNode,
             FollowUpNode followUpNode,
-            EvaluateNode evaluateNode,
             SummaryNode summaryNode,
-            EndCheckNode endCheckNode,
-            ReportNode reportNode) {
+            EndCheckNode endCheckNode) {
         this(
                 planNode,
                 questionNode,
                 answerNode,
                 followUpDecisionNode,
                 followUpNode,
-                evaluateNode,
                 summaryNode,
                 endCheckNode,
-                reportNode,
                 null);
     }
 
@@ -111,20 +103,16 @@ public class InterviewGraphFactory {
             AnswerNode answerNode,
             FollowUpDecisionNode followUpDecisionNode,
             FollowUpNode followUpNode,
-            EvaluateNode evaluateNode,
             SummaryNode summaryNode,
             EndCheckNode endCheckNode,
-            ReportNode reportNode,
             GraphMetricsRegistry metricsRegistry) {
         this.planNode = planNode;
         this.questionNode = questionNode;
         this.answerNode = answerNode;
         this.followUpDecisionNode = followUpDecisionNode;
         this.followUpNode = followUpNode;
-        this.evaluateNode = evaluateNode;
         this.summaryNode = summaryNode;
         this.endCheckNode = endCheckNode;
-        this.reportNode = reportNode;
         this.metricsRegistry = metricsRegistry;
     }
 

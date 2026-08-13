@@ -98,10 +98,8 @@ class InterviewGraphIntegrationTest {
                         testAnswerNode,
                         new FollowUpDecisionNode(followUpAgent),
                         new FollowUpNode(followUpAgent, emitter),
-                        null, // evaluateNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
                         new SummaryNode(summaryAgent),
-                        new EndCheckNode(),
-                        null); // reportNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
+                        new EndCheckNode());
     }
 
     /** 构建一个 8 题的合法 InterviewPlan（MIN_QUESTION_COUNT=8）。 */

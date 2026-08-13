@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.aims.agent.DefaultReportAgent;
-import com.aims.agent.EvaluatorAgent;
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.InterviewPlanGenerator;
 import com.aims.agent.InterviewerAgent;
@@ -15,12 +13,10 @@ import com.aims.agent.SummaryAgent;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
 import com.aims.agent.orchestration.node.AnswerNode;
 import com.aims.agent.orchestration.node.EndCheckNode;
-import com.aims.agent.orchestration.node.EvaluateNode;
 import com.aims.agent.orchestration.node.FollowUpDecisionNode;
 import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
-import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.StreamEmitter;
 import com.aims.agent.orchestration.node.SummaryNode;
 import com.aims.agent.orchestration.state.InterviewState;
@@ -58,9 +54,7 @@ class InterruptBeforeApiVerificationTest {
     @Mock private InterviewPlanGenerator planGenerator;
     @Mock private InterviewerAgent interviewerAgent;
     @Mock private FollowUpAgent followUpAgent;
-    @Mock private EvaluatorAgent evaluatorAgent;
     @Mock private SummaryAgent summaryAgent;
-    @Mock private DefaultReportAgent reportAgent;
 
     private InterviewGraphFactory factory;
 
@@ -82,10 +76,8 @@ class InterruptBeforeApiVerificationTest {
                         noOpAnswer,
                         new FollowUpDecisionNode(followUpAgent),
                         new FollowUpNode(followUpAgent, emitter),
-                        new EvaluateNode(evaluatorAgent),
                         new SummaryNode(summaryAgent),
-                        new EndCheckNode(),
-                        new ReportNode(reportAgent));
+                        new EndCheckNode());
     }
 
     private InterviewPlan mockPlan() {

@@ -120,10 +120,8 @@ class FollowUpInterruptVerificationTest {
                         new AnswerNode(),
                         new FollowUpDecisionNode(followUpAgent),
                         new FollowUpNode(followUpAgent, emitter),
-                        null, // evaluateNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
                         new SummaryNode(summaryAgent),
-                        new EndCheckNode(),
-                        null); // reportNode 已移至 Kafka 链路（FE.04），图内不注册，保留占位
+                        new EndCheckNode());
         saver =
                 new RedisCheckpointSaver(
                         redisTemplate, new CheckpointSerializer(), Duration.ofHours(24), true);

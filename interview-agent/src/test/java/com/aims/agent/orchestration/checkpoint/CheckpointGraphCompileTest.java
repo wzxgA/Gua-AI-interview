@@ -6,12 +6,10 @@ import static org.mockito.Mockito.mock;
 import com.aims.agent.orchestration.graph.InterviewGraphFactory;
 import com.aims.agent.orchestration.node.AnswerNode;
 import com.aims.agent.orchestration.node.EndCheckNode;
-import com.aims.agent.orchestration.node.EvaluateNode;
 import com.aims.agent.orchestration.node.FollowUpDecisionNode;
 import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
-import com.aims.agent.orchestration.node.ReportNode;
 import com.aims.agent.orchestration.node.SummaryNode;
 import java.time.Duration;
 import org.bsc.langgraph4j.CompiledGraph;
@@ -36,10 +34,8 @@ class CheckpointGraphCompileTest {
                         mock(AnswerNode.class),
                         mock(FollowUpDecisionNode.class),
                         mock(FollowUpNode.class),
-                        mock(EvaluateNode.class),
                         mock(SummaryNode.class),
-                        mock(EndCheckNode.class),
-                        mock(ReportNode.class));
+                        mock(EndCheckNode.class));
         RedisCheckpointSaver saver =
                 new RedisCheckpointSaver(
                         mock(StringRedisTemplate.class),
