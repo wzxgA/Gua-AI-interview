@@ -28,6 +28,7 @@ import com.aims.infra.persistence.service.ResumeService;
 import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -440,6 +441,16 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.warn("连接关闭后状态处理失败 sessionId={}", sessionId, e);
         }
+    }
+
+    /**
+     * FE.16 A2：实例优雅停机前关闭本实例所有 WS 连接，让客户端立即重连（走 P2 断线恢复）， 而非等待 TCP 超时。关闭后各连接 {@link
+     * #afterConnectionClosed} 回调负责释放锁并转 PAUSED。
+     */
+    @PreDestroy
+    public void shutdown() {
+        log.info("实例停机，关闭本实例全部 WebSocket 连接");
+        sessionManager.closeAll(CloseStatus.SERVICE_RESTARTED);
     }
 
     // ==================== 消息处理 ====================

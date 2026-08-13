@@ -92,10 +92,11 @@ class InterviewWebSocketHandlerTest {
                         rollingSummaryService,
                         engine,
                         sessionManager);
-        // handleTextMessage 第一步从 attributes 取 sessionId，所有测试都必经
+        // handleTextMessage 第一步从 attributes 取 sessionId，多数测试必经；
+        // shutdown 等测试不经过 handleTextMessage，用 lenient 避免 UnnecessaryStubbing
         java.util.Map<String, Object> attrs = new java.util.HashMap<>();
         attrs.put("sessionId", 32L);
-        when(session.getAttributes()).thenReturn(attrs);
+        lenient().when(session.getAttributes()).thenReturn(attrs);
         // send() 会检查 isOpen；状态拒绝/未知类型测试发错误消息，delegatesToEngine 不发，用 lenient
         lenient().when(session.isOpen()).thenReturn(true);
     }
@@ -171,6 +172,17 @@ class InterviewWebSocketHandlerTest {
     void unknownType_notDelegated() throws Exception {
         handler.handleTextMessage(session, new TextMessage("{\"type\":\"FOO\"}"));
         verify(engine, never()).submitAnswer(any(), any());
+    }
+
+    // ==================== FE.16 P12 A2：优雅停机断开 WS ====================
+
+    @Test
+    @DisplayName("优雅停机：shutdown 关闭本实例全部 WS 连接（SERVICE_RESTARTED）")
+    void shutdown_closesAllSessions() {
+        handler.shutdown();
+
+        verify(sessionManager)
+                .closeAll(org.springframework.web.socket.CloseStatus.SERVICE_RESTARTED);
     }
 
     // ==================== FE.12 P7：连点提交 roundId 幂等校验 ====================

@@ -1,8 +1,12 @@
 package com.aims.gateway.ws;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
 /**
@@ -25,6 +29,8 @@ import org.springframework.web.socket.WebSocketSession;
  */
 @Component
 public class WebSocketSessionManager {
+
+    private static final Logger log = LoggerFactory.getLogger(WebSocketSessionManager.class);
 
     private final ConcurrentMap<Long, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
@@ -74,5 +80,28 @@ public class WebSocketSessionManager {
      */
     public boolean hasActiveSession(Long sessionId) {
         return getSession(sessionId) != null;
+    }
+
+    /**
+     * FE.16 A2：关闭本实例所有活跃 WS 连接（实例优雅停机时调用）。
+     *
+     * <p>主动断开让客户端立即重连（走 P2 断线恢复），而非等待 TCP 超时（数秒~数十秒）。 连接关闭后由 {@code afterConnectionClosed}
+     * 回调释放连接锁并转 PAUSED，无需在此额外处理。
+     *
+     * @param status 关闭状态（如 SERVICE_RESTARTED）
+     */
+    public void closeAll(CloseStatus status) {
+        log.info("关闭本实例全部 WebSocket 连接 count={}", sessions.size());
+        sessions.forEach(
+                (sessionId, session) -> {
+                    if (session.isOpen()) {
+                        try {
+                            session.close(status);
+                        } catch (IOException e) {
+                            log.warn("优雅停机关闭会话失败 sessionId={}", sessionId, e);
+                        }
+                    }
+                });
+        sessions.clear();
     }
 }
