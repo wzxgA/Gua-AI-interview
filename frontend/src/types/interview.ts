@@ -35,6 +35,8 @@ export interface InterviewResponse {
   accessToken?: string | null;
   /** 访问密码明文（仅创建/重置时返回） */
   accessPassword?: string | null;
+  /** 入口模式：NONE=未生成链接，CANDIDATE_ONLY=仅候选端，DISABLED=已作废 */
+  accessMode?: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED';
 }
 
 /** 对齐 CreateInterviewRequest */
@@ -42,8 +44,6 @@ export interface CreateInterviewRequest {
   candidateId: number;
   positionId?: number | null;
   persona?: InterviewerPersona;
-  /** 候选人访问密码（可选，不传则系统生成） */
-  accessPassword?: string;
 }
 
 /** 对齐 InterviewPlan */

@@ -115,22 +115,15 @@ public class InterviewController {
         return Result.ok(mapped);
     }
 
-    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED；可选设置候选人访问密码，不传则系统生成")
+    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED（不自动生成候选人链接）")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
-        String rawPassword = req.accessPassword();
-        boolean systemGenerated = rawPassword == null || rawPassword.isBlank();
-        if (systemGenerated) {
-            rawPassword = generateAccessPassword();
-        }
         InterviewSessionEntity entity =
                 sessionService.create(req.candidateId(), req.positionId(), req.persona());
-        sessionService.updateAccessPassword(entity.getId(), passwordEncoder.encode(rawPassword));
-        InterviewSessionEntity updated = sessionService.getById(entity.getId());
-        return Result.ok(InterviewResponse.from(updated, rawPassword));
+        return Result.ok(InterviewResponse.from(entity));
     }
 
-    @Operation(summary = "获取候选人访问配置", description = "返回面试链接令牌、入口开关与是否设置密码")
+    @Operation(summary = "获取候选人访问配置", description = "返回面试链接令牌、入口开关、是否有密码与入口模式")
     @GetMapping("/{id}/access")
     public Result<InterviewAccessResponse> getAccess(@PathVariable Long id) {
         InterviewSessionEntity entity = sessionService.getById(id);
@@ -139,7 +132,32 @@ public class InterviewController {
                         entity.getAccessToken(),
                         entity.getAccessEnabled(),
                         entity.getAccessPassword() != null,
-                        null));
+                        null,
+                        entity.getAccessMode()));
+    }
+
+    @Operation(
+            summary = "生成候选人面试链接",
+            description = "生成访问令牌与密码，设为 CANDIDATE_ONLY 模式（仅 PLANNING/PAUSED 允许）")
+    @PostMapping("/{id}/access/generate")
+    public Result<InterviewAccessResponse> generateAccess(
+            @PathVariable Long id, @RequestBody(required = false) ResetAccessPasswordRequest req) {
+        InterviewSessionEntity entity = sessionService.getById(id);
+        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
+        if (current != SessionStatus.PLANNING && current != SessionStatus.PAUSED) {
+            throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT, "请先生成面试计划后再生成候选人面试链接");
+        }
+        String token = sessionService.ensureAccessToken(id);
+        String raw =
+                (req == null || req.password() == null || req.password().isBlank())
+                        ? generateAccessPassword()
+                        : req.password();
+        sessionService.updateAccessPassword(id, passwordEncoder.encode(raw));
+        sessionService.updateAccessMode(id, "CANDIDATE_ONLY");
+        InterviewSessionEntity updated = sessionService.getById(id);
+        return Result.ok(
+                new InterviewAccessResponse(
+                        updated.getAccessToken(), true, true, raw, "CANDIDATE_ONLY"));
     }
 
     @Operation(summary = "设置/重置候选人访问密码", description = "重新生成候选人访问密码（bcrypt 存储），返回新密码明文")
@@ -154,17 +172,25 @@ public class InterviewController {
         InterviewSessionEntity entity = sessionService.getById(id);
         return Result.ok(
                 new InterviewAccessResponse(
-                        entity.getAccessToken(), entity.getAccessEnabled(), true, raw));
+                        entity.getAccessToken(),
+                        entity.getAccessEnabled(),
+                        true,
+                        raw,
+                        entity.getAccessMode()));
     }
 
-    @Operation(summary = "作废候选人入口", description = "关闭候选人链接访问权限，不影响管理端操作")
+    @Operation(summary = "作废候选人入口", description = "关闭候选人链接访问权限并恢复管理端面试能力")
     @PostMapping("/{id}/access/disable")
     public Result<InterviewAccessResponse> disableAccess(@PathVariable Long id) {
         sessionService.disableAccess(id);
         InterviewSessionEntity entity = sessionService.getById(id);
         return Result.ok(
                 new InterviewAccessResponse(
-                        entity.getAccessToken(), false, entity.getAccessPassword() != null, null));
+                        entity.getAccessToken(),
+                        false,
+                        entity.getAccessPassword() != null,
+                        null,
+                        "DISABLED"));
     }
 
     @Operation(summary = "查询面试会话详情", description = "根据 ID 查询面试会话详情")
@@ -245,6 +271,9 @@ public class InterviewController {
         SessionStatus current = SessionStatus.valueOf(session.getStatus());
         if (current != SessionStatus.PLANNING) {
             throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
+        }
+        if ("CANDIDATE_ONLY".equals(session.getAccessMode())) {
+            throw new BizException(ErrorCode.ACCESS_DENIED, "该面试已设为候选端面试，请通过候选人链接进行");
         }
         sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
         sessionService.markStarted(id);

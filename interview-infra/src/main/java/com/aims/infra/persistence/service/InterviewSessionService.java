@@ -22,6 +22,12 @@ public interface InterviewSessionService {
     /** 作废候选人入口（access_enabled = false）。 */
     void disableAccess(Long id);
 
+    /** 更新入口模式（NONE / CANDIDATE_ONLY / DISABLED）。 */
+    void updateAccessMode(Long id, String accessMode);
+
+    /** 为会话生成候选人访问令牌（如尚未生成）。 */
+    String ensureAccessToken(Long id);
+
     /** 查询会话详情，不存在抛 BizException。 */
     InterviewSessionEntity getById(Long id);
 

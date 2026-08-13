@@ -22,7 +22,8 @@ public record InterviewResponse(
         Instant createdAt,
         Instant updatedAt,
         String accessToken,
-        String accessPassword) {
+        String accessPassword,
+        String accessMode) {
 
     /** 从持久化实体构建响应。 */
     public static InterviewResponse from(InterviewSessionEntity entity) {
@@ -53,6 +54,7 @@ public record InterviewResponse(
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),
                 entity.getAccessToken(),
-                rawPassword);
+                rawPassword,
+                entity.getAccessMode());
     }
 }

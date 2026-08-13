@@ -49,8 +49,8 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
         entity.setPositionId(positionId);
         entity.setPersona(InterviewerPersona.fromString(persona).name());
         entity.setStatus(SessionStatus.CREATED.name());
-        entity.setAccessToken(generateAccessToken());
-        entity.setAccessEnabled(Boolean.TRUE);
+        entity.setAccessEnabled(Boolean.FALSE);
+        entity.setAccessMode("NONE");
         Instant now = Instant.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
@@ -88,8 +88,30 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     public void disableAccess(Long id) {
         InterviewSessionEntity entity = getById(id);
         entity.setAccessEnabled(Boolean.FALSE);
+        entity.setAccessMode("DISABLED");
         entity.setUpdatedAt(Instant.now());
         sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public void updateAccessMode(Long id, String accessMode) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setAccessMode(accessMode);
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public String ensureAccessToken(Long id) {
+        InterviewSessionEntity entity = getById(id);
+        if (entity.getAccessToken() == null || entity.getAccessToken().isBlank()) {
+            entity.setAccessToken(generateAccessToken());
+            entity.setUpdatedAt(Instant.now());
+            sessionMapper.updateById(entity);
+        }
+        return entity.getAccessToken();
     }
 
     /** 生成高熵访问令牌（32 字节随机 → Base64 URL-safe），不可枚举。 */

@@ -5,4 +5,5 @@ public record InterviewAccessResponse(
         String accessToken,
         Boolean accessEnabled,
         Boolean requirePassword,
-        String accessPassword) {}
+        String accessPassword,
+        String accessMode) {}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
+import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-dot';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
@@ -97,6 +98,29 @@ export function InterviewRoomPage() {
           message={error?.message || '面试不存在'}
           onRetry={() => navigate('/interviews')}
         />
+      </div>
+    );
+  }
+
+  // CANDIDATE_ONLY 模式：管理端无法进入面试间
+  if (interview.accessMode === 'CANDIDATE_ONLY') {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="面试间"
+          subtitle={`面试 #${interview.id}`}
+          action={
+            <SilverButton variant="ghost" onClick={() => navigate(`/interviews/${interview.id}`)}>
+              返回控制台
+            </SilverButton>
+          }
+        />
+        <GlassCard className="p-8 text-center">
+          <p className="text-sm text-amber-400">该面试已设为候选端面试</p>
+          <p className="mt-2 text-xs text-text-muted">
+            候选人需通过面试链接进入，管理端无法直接操作面试间
+          </p>
+        </GlassCard>
       </div>
     );
   }

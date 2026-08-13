@@ -22,6 +22,7 @@ import {
   useInterviewAccess,
   useResetAccessPassword,
   useDisableAccess,
+  useGenerateAccess,
 } from '@/api/interview';
 import type { StartPlanBody } from '@/api/interview';
 
@@ -40,10 +41,13 @@ export function InterviewConsolePage() {
   const { data: accessConfig, isLoading: accessLoading } = useInterviewAccess(interviewId);
   const resetPasswordMutation = useResetAccessPassword();
   const disableMutation = useDisableAccess();
+  const generateMutation = useGenerateAccess();
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [generatePassword, setGeneratePassword] = useState('');
 
   const handleStart = () => {
     setPlanDialogOpen(true);
@@ -105,6 +109,8 @@ export function InterviewConsolePage() {
     ? `${window.location.origin}/i/${accessConfig.accessToken}`
     : null;
 
+  const canGenerate = interview?.status === 'PLANNING' || interview?.status === 'PAUSED';
+
   const handleCopyLink = () => {
     if (!candidateLink) return;
     navigator.clipboard
@@ -137,6 +143,24 @@ export function InterviewConsolePage() {
       onSuccess: () => toast.success('候选人入口已作废'),
       onError: (err: Error) => toast.error(err.message || '操作失败'),
     });
+  };
+
+  const handleGenerate = () => {
+    if (!interviewId) return;
+    generateMutation.mutate(
+      { id: interviewId, password: generatePassword.trim() || undefined },
+      {
+        onSuccess: (data) => {
+          toast.success('候选人面试链接已生成');
+          setShowGenerate(false);
+          setGeneratePassword('');
+          if (data.accessPassword) {
+            toast.info(`候选人访问密码：${data.accessPassword}`);
+          }
+        },
+        onError: (err: Error) => toast.error(err.message || '生成失败'),
+      },
+    );
   };
 
   // 全屏加载态（生成计划时）
@@ -204,7 +228,11 @@ export function InterviewConsolePage() {
               onStart={handleStart}
               onBeginInterview={handleBeginInterview}
               onCancel={handleCancel}
-              onEnterRoom={() => navigate(`/interviews/${interview.id}/room`)}
+              onEnterRoom={
+                interview.accessMode === 'CANDIDATE_ONLY'
+                  ? undefined
+                  : () => navigate(`/interviews/${interview.id}/room`)
+              }
               onPause={handlePause}
               onFinish={handleFinish}
               onResume={handleResume}
@@ -237,29 +265,55 @@ export function InterviewConsolePage() {
               <Skeleton className="h-20 w-full" />
             ) : (
               <div className="space-y-3 text-sm">
-                {candidateLink && (
-                  <div className="rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
-                    <p className="mb-1 text-xs text-text-muted">候选人面试链接（免登录，需密码）</p>
-                    <div className="flex items-center gap-2">
-                      <code className="min-w-0 flex-1 truncate text-xs text-silver-300">
-                        {candidateLink}
-                      </code>
-                      <SilverButton variant="ghost" onClick={handleCopyLink}>
-                        复制
-                      </SilverButton>
-                    </div>
-                  </div>
+                {/* NONE：未生成链接 */}
+                {(!accessConfig?.accessMode || accessConfig.accessMode === 'NONE') && (
+                  <>
+                    <p className="text-xs text-text-muted">
+                      尚未生成候选人面试链接。生成后面试将切换为候选端模式，管理端无法进入面试间。
+                    </p>
+                    <SilverButton
+                      onClick={() => setShowGenerate((v) => !v)}
+                      disabled={!canGenerate}
+                    >
+                      生成候选人面试链接
+                    </SilverButton>
+                    {showGenerate && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={generatePassword}
+                          onChange={(e) => setGeneratePassword(e.target.value)}
+                          placeholder="访问密码（留空则自动生成）"
+                          className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-overlay px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+                        />
+                        <SilverButton onClick={handleGenerate} disabled={generateMutation.isPending}>
+                          确认
+                        </SilverButton>
+                      </div>
+                    )}
+                  </>
                 )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-text-muted">
-                    {accessConfig?.accessEnabled === false
-                      ? '候选人入口已作废'
-                      : accessConfig?.requirePassword
-                        ? '需访问密码'
-                        : '无需访问密码'}
-                  </span>
-                  {accessConfig?.accessEnabled !== false && (
-                    <>
+
+                {/* CANDIDATE_ONLY：已生成，仅候选端 */}
+                {accessConfig?.accessMode === 'CANDIDATE_ONLY' && (
+                  <>
+                    {candidateLink && (
+                      <div className="rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
+                        <p className="mb-1 text-xs text-text-muted">候选人面试链接（免登录，需密码）</p>
+                        <div className="flex items-center gap-2">
+                          <code className="min-w-0 flex-1 truncate text-xs text-silver-300">
+                            {candidateLink}
+                          </code>
+                          <SilverButton variant="ghost" onClick={handleCopyLink}>
+                            复制
+                          </SilverButton>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-xs text-amber-400">
+                      已设为候选端面试，管理端无法进入面试间
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
                       <SilverButton
                         variant="ghost"
                         onClick={() => setShowResetPassword((v) => !v)}
@@ -269,20 +323,47 @@ export function InterviewConsolePage() {
                       <SilverButton variant="danger" onClick={handleDisableAccess}>
                         作废入口
                       </SilverButton>
-                    </>
-                  )}
-                </div>
-                {showResetPassword && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="输入新密码（留空则自动生成）"
-                      className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-overlay px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
-                    />
-                    <SilverButton onClick={handleResetPassword}>确认</SilverButton>
-                  </div>
+                    </div>
+                    {showResetPassword && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={passwordInput}
+                          onChange={(e) => setPasswordInput(e.target.value)}
+                          placeholder="输入新密码（留空则自动生成）"
+                          className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-overlay px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+                        />
+                        <SilverButton onClick={handleResetPassword}>确认</SilverButton>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* DISABLED：已作废 */}
+                {accessConfig?.accessMode === 'DISABLED' && (
+                  <>
+                    <p className="text-xs text-text-muted">候选人入口已作废，管理端可正常使用面试间</p>
+                    <SilverButton
+                      onClick={() => setShowGenerate((v) => !v)}
+                      disabled={!canGenerate}
+                    >
+                      重新生成链接
+                    </SilverButton>
+                    {showGenerate && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={generatePassword}
+                          onChange={(e) => setGeneratePassword(e.target.value)}
+                          placeholder="访问密码（留空则自动生成）"
+                          className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-overlay px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+                        />
+                        <SilverButton onClick={handleGenerate} disabled={generateMutation.isPending}>
+                          确认
+                        </SilverButton>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

@@ -68,6 +68,9 @@ public class InterviewSessionEntity {
     @TableField("access_enabled")
     private Boolean accessEnabled;
 
+    @TableField("access_mode")
+    private String accessMode;
+
     public Long getId() {
         return id;
     }
@@ -218,5 +221,13 @@ public class InterviewSessionEntity {
 
     public void setAccessEnabled(Boolean accessEnabled) {
         this.accessEnabled = accessEnabled;
+    }
+
+    public String getAccessMode() {
+        return accessMode;
+    }
+
+    public void setAccessMode(String accessMode) {
+        this.accessMode = accessMode;
     }
 }

@@ -160,6 +160,7 @@ export interface InterviewAccessConfig {
   accessEnabled: boolean | null;
   requirePassword: boolean | null;
   accessPassword: string | null;
+  accessMode: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED' | null;
 }
 
 /** 获取候选人访问配置（链接令牌/开关/是否有密码） */
@@ -189,6 +190,25 @@ export function useDisableAccess() {
   return useMutation({
     mutationFn: (id: number) =>
       http.post<InterviewAccessConfig>(`/api/v1/interviews/${id}/access/disable`),
-    onSuccess: (_data, id) => qc.invalidateQueries({ queryKey: [KEY, id, 'access'] }),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: [KEY, id, 'access'] });
+      qc.invalidateQueries({ queryKey: [KEY, id] });
+    },
+  });
+}
+
+/** 生成候选人面试链接（设为 CANDIDATE_ONLY） */
+export function useGenerateAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: number; password?: string }) =>
+      http.post<InterviewAccessConfig>(
+        `/api/v1/interviews/${params.id}/access/generate`,
+        { password: params.password },
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: [KEY, vars.id, 'access'] });
+      qc.invalidateQueries({ queryKey: [KEY, vars.id] });
+    },
   });
 }
