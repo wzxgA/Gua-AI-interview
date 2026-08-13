@@ -13,6 +13,15 @@ public interface InterviewSessionService {
     /** 创建面试会话（CREATED）。 */
     InterviewSessionEntity create(Long candidateId, Long positionId, String persona);
 
+    /** 按候选人访问令牌查询会话（生成 accessToken），不存在抛 BizException。 */
+    InterviewSessionEntity getByAccessToken(String accessToken);
+
+    /** 设置/重置候选人访问密码（存储 bcrypt 哈希）。 */
+    void updateAccessPassword(Long id, String passwordHash);
+
+    /** 作废候选人入口（access_enabled = false）。 */
+    void disableAccess(Long id);
+
     /** 查询会话详情，不存在抛 BizException。 */
     InterviewSessionEntity getById(Long id);
 

@@ -36,6 +36,18 @@ public class JwtUtil {
                 .compact();
     }
 
+    /** 签发候选人 guestToken（role=GUEST，携带 sid，独立短时效）。 */
+    public String generateGuestToken(Long sessionId, long guestTtlSeconds) {
+        return Jwts.builder()
+                .subject("guest")
+                .claim("role", "GUEST")
+                .claim("sid", sessionId)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + guestTtlSeconds * 1000))
+                .signWith(key)
+                .compact();
+    }
+
     /** 解析并校验 token，失败抛 JwtException。 */
     public Claims parse(String token) throws JwtException {
         return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();

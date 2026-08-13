@@ -22,6 +22,7 @@ export function InterviewCreatePage() {
   const [candidateId, setCandidateId] = useState<number | ''>('');
   const [positionId, setPositionId] = useState<number | ''>('');
   const [persona, setPersona] = useState<InterviewerPersona>('FRIENDLY');
+  const [accessPassword, setAccessPassword] = useState('');
 
   // 加载已解析的简历（仅 PARSED）
   const { data: resumeData, isLoading: resumesLoading, isError: resumesError } =
@@ -47,6 +48,7 @@ export function InterviewCreatePage() {
         candidateId,
         positionId: positionId || null,
         persona,
+        accessPassword: accessPassword.trim() || undefined,
       },
       {
         onSuccess: (data) => {
@@ -154,6 +156,21 @@ export function InterviewCreatePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* 候选人访问密码 */}
+          <div>
+            <Label>候选人访问密码（可选）</Label>
+            <input
+              type="text"
+              value={accessPassword}
+              onChange={(e) => setAccessPassword(e.target.value)}
+              placeholder="候选人进入面试需输入的密码；留空则系统自动生成"
+              className="w-full rounded-lg border border-border-default bg-surface-overlay px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-text-muted">
+              生成后可在面试控制台查看候选人面试链接与密码，也可随时重置/作废
+            </p>
           </div>
 
           {/* 提交按钮 */}

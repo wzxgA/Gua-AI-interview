@@ -1,5 +1,6 @@
 package com.aims.gateway.ws;
 
+import com.aims.gateway.security.GuestTokenService;
 import com.aims.gateway.security.JwtUtil;
 import io.jsonwebtoken.Claims;
 import java.util.Map;
@@ -69,13 +70,41 @@ public class InterviewWebSocketConfig implements WebSocketConfigurer {
             }
             try {
                 Claims claims = jwtUtil.parse(token);
+                String role = claims.get("role", String.class);
+                // GUEST（候选人）：校验 guestToken 绑定的 sid 与 URL 中 sessionId 一致
+                if ("GUEST".equals(role)) {
+                    Long sid = GuestTokenService.extractSessionId(claims);
+                    Long pathSid = extractPathSessionId(req);
+                    if (sid == null || !sid.equals(pathSid)) {
+                        log.warn("WebSocket 握手失败: GUEST 会话不匹配");
+                        return false;
+                    }
+                    attributes.put("role", "GUEST");
+                    attributes.put("guestSessionId", sid);
+                    log.info("WebSocket 握手成功: guestSessionId={}", sid);
+                    return true;
+                }
                 attributes.put("username", claims.getSubject());
-                attributes.put("role", claims.get("role", String.class));
+                attributes.put("role", role);
                 log.info("WebSocket 握手成功: username={}", claims.getSubject());
                 return true;
             } catch (Exception e) {
                 log.warn("WebSocket 握手鉴权失败: {}", e.getMessage());
                 return false;
+            }
+        }
+
+        /** 从握手 URI 路径解析 sessionId（形如 /ws/interview/{sessionId}）。 */
+        private Long extractPathSessionId(ServerHttpRequest req) {
+            String path = req.getURI().getPath();
+            String[] segments = path.split("/");
+            if (segments.length == 0) {
+                return null;
+            }
+            try {
+                return Long.valueOf(segments[segments.length - 1]);
+            } catch (NumberFormatException e) {
+                return null;
             }
         }
 

@@ -6,18 +6,21 @@ import type { WsServerMessage, WsClientMessage } from '@/types/interview';
 
 interface UseInterviewSessionOptions {
   sessionId: number | null;
+  /** 候选端传入 guestToken；管理端不传（自动取 accessToken）。 */
+  token?: string;
 }
 
 /**
  * 组合 WebSocket + sessionStore，处理面试消息流
  */
-export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
+export function useInterviewSession({ sessionId, token }: UseInterviewSessionOptions) {
   const store = useSessionStore();
   const qc = useQueryClient();
 
   const invalidateRounds = useCallback(() => {
     if (sessionId) {
       qc.invalidateQueries({ queryKey: ['interviews', sessionId, 'rounds'] });
+      qc.invalidateQueries({ queryKey: ['guest', 'rounds', sessionId] });
     }
   }, [qc, sessionId]);
 
@@ -83,6 +86,7 @@ export function useInterviewSession({ sessionId }: UseInterviewSessionOptions) {
 
   const { connect, send, disconnect, reconnect: wsReconnect } = useWebSocket({
     sessionId,
+    token,
     onMessage: handleMessage,
     onOpen: () => store.setConnected(true),
     onClose: () => {

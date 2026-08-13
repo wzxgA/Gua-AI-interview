@@ -4,6 +4,8 @@ import type { WsClientMessage, WsServerMessage } from '@/types/interview';
 
 interface UseWebSocketOptions {
   sessionId: number | null;
+  /** 指定鉴权 token；不传则按当前路径自动选择（/i/* 取 guestToken，否则取 accessToken）。 */
+  token?: string;
   onMessage: (msg: WsServerMessage) => void;
   onOpen?: () => void;
   onClose?: () => void;
@@ -14,11 +16,19 @@ const HEARTBEAT_INTERVAL = 30_000;
 const MAX_RETRIES = 3;
 const BASE_DELAY = 1000;
 
+/** 按当前路径选择 WS 鉴权 token：候选端取 guestToken，管理端取 accessToken。 */
+function getWsToken(): string {
+  if (window.location.pathname.startsWith('/i/')) {
+    return sessionStorage.getItem('guestToken') ?? '';
+  }
+  return localStorage.getItem('accessToken') ?? '';
+}
+
 /**
  * WebSocket hook：连接、心跳、指数退避重连、消息分发
  */
 export function useWebSocket(options: UseWebSocketOptions) {
-  const { sessionId, onMessage, onOpen, onClose, onError } = options;
+  const { sessionId, token, onMessage, onOpen, onClose, onError } = options;
 
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,7 +56,8 @@ export function useWebSocket(options: UseWebSocketOptions) {
     if (!sessionId) return;
     shouldConnectRef.current = true;
 
-    const url = `${WS_BASE}/ws/interview/${sessionId}?token=${localStorage.getItem('accessToken') ?? ''}`;
+    const effectiveToken = token ?? getWsToken();
+    const url = `${WS_BASE}/ws/interview/${sessionId}?token=${effectiveToken}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -87,7 +98,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     ws.onerror = (event) => {
       onErrorRef.current?.(event);
     };
-  }, [sessionId, clearHeartbeat]);
+  }, [sessionId, token, clearHeartbeat]);
 
   const send = useCallback((msg: WsClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

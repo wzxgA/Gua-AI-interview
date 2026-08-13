@@ -150,6 +150,14 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // GUEST（候选人）：校验 guestToken 绑定的 sid 与 URL 一致（握手已校验，此处双保险）
+        Object guestSid = session.getAttributes().get("guestSessionId");
+        if (guestSid != null && !guestSid.equals(sessionId)) {
+            send(session, WsOutbound.error(ErrorCode.ACCESS_DENIED.getCode(), "无权连接该会话"));
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("guest session mismatch"));
+            return;
+        }
+
         // 生成连接 ID 并尝试获取连接锁
         String connectionId = UUID.randomUUID().toString();
         boolean locked = sessionStore.tryLock(sessionId, connectionId);

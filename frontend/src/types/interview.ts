@@ -31,6 +31,10 @@ export interface InterviewResponse {
   totalRoundsToEvaluate: number | null;
   createdAt: string;
   updatedAt: string;
+  /** 候选人访问链接令牌（管理端） */
+  accessToken?: string | null;
+  /** 访问密码明文（仅创建/重置时返回） */
+  accessPassword?: string | null;
 }
 
 /** 对齐 CreateInterviewRequest */
@@ -38,6 +42,8 @@ export interface CreateInterviewRequest {
   candidateId: number;
   positionId?: number | null;
   persona?: InterviewerPersona;
+  /** 候选人访问密码（可选，不传则系统生成） */
+  accessPassword?: string;
 }
 
 /** 对齐 InterviewPlan */

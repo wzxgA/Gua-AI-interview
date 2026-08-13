@@ -19,6 +19,9 @@ import {
   useFinishInterview,
   usePauseInterview,
   useResumeInterview,
+  useInterviewAccess,
+  useResetAccessPassword,
+  useDisableAccess,
 } from '@/api/interview';
 import type { StartPlanBody } from '@/api/interview';
 
@@ -34,8 +37,13 @@ export function InterviewConsolePage() {
   const finishMutation = useFinishInterview();
   const pauseMutation = usePauseInterview();
   const resumeMutation = useResumeInterview();
+  const { data: accessConfig, isLoading: accessLoading } = useInterviewAccess(interviewId);
+  const resetPasswordMutation = useResetAccessPassword();
+  const disableMutation = useDisableAccess();
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
 
   const handleStart = () => {
     setPlanDialogOpen(true);
@@ -90,6 +98,44 @@ export function InterviewConsolePage() {
     resumeMutation.mutate(interviewId, {
       onSuccess: () => toast.success('面试已恢复'),
       onError: (err: Error) => toast.error(err.message || '恢复失败'),
+    });
+  };
+
+  const candidateLink = accessConfig?.accessToken
+    ? `${window.location.origin}/i/${accessConfig.accessToken}`
+    : null;
+
+  const handleCopyLink = () => {
+    if (!candidateLink) return;
+    navigator.clipboard
+      .writeText(candidateLink)
+      .then(() => toast.success('候选人面试链接已复制'))
+      .catch(() => toast.error('复制失败，请手动复制'));
+  };
+
+  const handleResetPassword = () => {
+    if (!interviewId) return;
+    resetPasswordMutation.mutate(
+      { id: interviewId, password: passwordInput.trim() || undefined },
+      {
+        onSuccess: (data) => {
+          toast.success('访问密码已重置');
+          setShowResetPassword(false);
+          setPasswordInput('');
+          if (data.accessPassword) {
+            toast.info(`候选人新密码：${data.accessPassword}`);
+          }
+        },
+        onError: (err: Error) => toast.error(err.message || '重置失败'),
+      },
+    );
+  };
+
+  const handleDisableAccess = () => {
+    if (!interviewId) return;
+    disableMutation.mutate(interviewId, {
+      onSuccess: () => toast.success('候选人入口已作废'),
+      onError: (err: Error) => toast.error(err.message || '操作失败'),
     });
   };
 
@@ -176,13 +222,71 @@ export function InterviewConsolePage() {
           )}
         </div>
 
-        {/* 右侧：计划查看 + 轮次时间线 */}
+        {/* 右侧：计划查看 + 轮次时间线 + 候选人入口 */}
         <div className="space-y-4 lg:col-span-2">
           <PlanViewer planJson={interview.planJson} />
           <RoundTimeline
             planJson={interview.planJson}
             currentRoundId={null}
           />
+
+          {/* 候选人入口 */}
+          <GlassCard className="p-5">
+            <h3 className="mb-3 text-sm font-medium text-text-primary">候选人入口</h3>
+            {accessLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : (
+              <div className="space-y-3 text-sm">
+                {candidateLink && (
+                  <div className="rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
+                    <p className="mb-1 text-xs text-text-muted">候选人面试链接（免登录，需密码）</p>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate text-xs text-silver-300">
+                        {candidateLink}
+                      </code>
+                      <SilverButton variant="ghost" onClick={handleCopyLink}>
+                        复制
+                      </SilverButton>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-text-muted">
+                    {accessConfig?.accessEnabled === false
+                      ? '候选人入口已作废'
+                      : accessConfig?.requirePassword
+                        ? '需访问密码'
+                        : '无需访问密码'}
+                  </span>
+                  {accessConfig?.accessEnabled !== false && (
+                    <>
+                      <SilverButton
+                        variant="ghost"
+                        onClick={() => setShowResetPassword((v) => !v)}
+                      >
+                        重置密码
+                      </SilverButton>
+                      <SilverButton variant="danger" onClick={handleDisableAccess}>
+                        作废入口
+                      </SilverButton>
+                    </>
+                  )}
+                </div>
+                {showResetPassword && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="输入新密码（留空则自动生成）"
+                      className="min-w-0 flex-1 rounded-lg border border-border-default bg-surface-overlay px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent-primary focus:outline-none"
+                    />
+                    <SilverButton onClick={handleResetPassword}>确认</SilverButton>
+                  </div>
+                )}
+              </div>
+            )}
+          </GlassCard>
         </div>
       </div>
 

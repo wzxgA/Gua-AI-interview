@@ -44,13 +44,11 @@ function applyThemeWithTransition(
   const resolved = resolveTheme(theme);
 
   // 不支持 View Transitions API 时直接切换
-  // @ts-expect-error - startViewTransition 在旧版浏览器不存在
   if (!document.startViewTransition) {
     toggleClass(resolved);
     return resolved;
   }
 
-  // @ts-expect-error - startViewTransition 在旧版浏览器不存在
   const transition = document.startViewTransition(() => {
     toggleClass(resolved);
   });
