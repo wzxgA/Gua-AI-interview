@@ -67,6 +67,15 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public void generateReport(Long sessionId) {
+        // FE.15 P11 幂等守卫：Kafka at-least-once 下重复投递时报告已生成（DONE/COMPLETED），
+        // 跳过 AI 调用避免重复生成报告浪费 token。
+        InterviewSessionEntity existing = sessionService.getById(sessionId);
+        String evalStatus = existing.getEvaluationStatus();
+        if ("DONE".equals(evalStatus) || "COMPLETED".equals(existing.getStatus())) {
+            log.info("报告已生成，跳过重复消费 sessionId={} evaluationStatus={}", sessionId, evalStatus);
+            return;
+        }
+
         log.info("开始生成报告 sessionId={}", sessionId);
 
         // 加载全部评分

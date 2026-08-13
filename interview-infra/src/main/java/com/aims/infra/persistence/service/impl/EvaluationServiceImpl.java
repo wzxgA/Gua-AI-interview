@@ -55,6 +55,15 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     @Override
     public void evaluateSession(Long sessionId) {
+        // FE.15 P11 幂等守卫：Kafka at-least-once 下重复投递时评估已完成（REPORTING/DONE），
+        // 跳过 AI 调用避免重复评估浪费 token。首次执行状态为 EVALUATING；失败重试耗尽置 FAILED 不命中守卫。
+        InterviewSessionEntity existing = sessionService.getById(sessionId);
+        String evalStatus = existing.getEvaluationStatus();
+        if ("REPORTING".equals(evalStatus) || "DONE".equals(evalStatus)) {
+            log.info("评估已完成，跳过重复消费 sessionId={} evaluationStatus={}", sessionId, evalStatus);
+            return;
+        }
+
         log.info("开始评估会话 sessionId={}", sessionId);
         sessionService.updateEvaluationStatus(sessionId, "EVALUATING");
 
