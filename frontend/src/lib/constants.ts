@@ -1,6 +1,8 @@
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 export const WS_BASE = import.meta.env.VITE_WS_BASE || 'ws://localhost:8080';
 
+export const APP_VERSION = 'v1.0';
+
 export const PAGE_SIZE_DEFAULT = 10;
 
 export const CATEGORIES = ['TECHNICAL', 'BEHAVIORAL', 'PROJECT'] as const;
@@ -56,4 +58,11 @@ export const PERSONA_LABELS: Record<string, string> = {
   FRIENDLY: '温和型',
   PRESSURE: '压力面型',
   TECHNICAL: '深度技术型',
+};
+
+export const TIER_LABELS: Record<string, string> = {
+  FLAGSHIP: '旗舰档（高质量面试对话）',
+  STANDARD: '标准档（追问决策 / 评估打分 / 计划 / 报告）',
+  ECONOMY: '经济档（摘要 / 低成本任务）',
+  EMBEDDING: '向量化档（题库 / 简历 / JD 向量嵌入）',
 };

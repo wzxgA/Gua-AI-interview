@@ -16,8 +16,8 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(
                         new Info()
-                                .title("AIMS API")
+                                .title("瓜分Offer API")
                                 .version("v1")
-                                .description("AI 智能面试 Agent 平台 API（P1：冒烟接口 + 健康检查）"));
+                                .description("瓜分Offer AI 智能面试 Agent 平台 API（P1：冒烟接口 + 健康检查）"));
     }
 }

@@ -34,7 +34,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-text-primary">AIMS</h1>
+          <h1 className="text-2xl font-bold text-text-primary">瓜分Offer</h1>
           <p className="mt-2 text-sm text-text-muted">AI 智能面试 Agent 平台</p>
         </div>
         <GlassCard className="p-8">
