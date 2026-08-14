@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Input, Textarea, Label } from '@/components/ui/input';
@@ -22,21 +23,26 @@ import type { PositionResponse } from '@/types/position';
 import { formatDate } from '@/lib/utils';
 import { PAGE_SIZE_DEFAULT } from '@/lib/constants';
 
-const positionSchema = z.object({
-  title: z.string().min(1, '请输入岗位名称'),
-  department: z.string(),
-  jdText: z.string().min(1, '请输入岗位描述'),
-});
-
-type PositionFormValues = z.infer<typeof positionSchema>;
+type PositionFormValues = {
+  title: string;
+  department: string;
+  jdText: string;
+};
 
 export function PositionListPage() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState({ title: '', department: '', page: 1 });
   const [searchInput, setSearchInput] = useState({ title: '', department: '' });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPosition, setEditingPosition] = useState<PositionResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PositionResponse | null>(null);
   const [embeddingId, setEmbeddingId] = useState<number | null>(null);
+
+  const positionSchema = z.object({
+    title: z.string().min(1, t('positions.validation.titleRequired')),
+    department: z.string(),
+    jdText: z.string().min(1, t('positions.validation.jdRequired')),
+  });
 
   const { data, isLoading, isError, error, refetch } = usePositionList({
     page: query.page,
@@ -91,19 +97,19 @@ export function PositionListPage() {
         { id: editingPosition.id, data: payload },
         {
           onSuccess: () => {
-            toast.success('岗位更新成功');
+            toast.success(t('positions.updateSuccess'));
             setModalOpen(false);
           },
-          onError: (err: Error) => toast.error(err.message || '更新失败'),
+          onError: (err: Error) => toast.error(err.message || t('positions.updateFailed')),
         },
       );
     } else {
       createMutation.mutate(payload, {
         onSuccess: () => {
-          toast.success('岗位创建成功');
+          toast.success(t('positions.createSuccess'));
           setModalOpen(false);
         },
-        onError: (err: Error) => toast.error(err.message || '创建失败'),
+        onError: (err: Error) => toast.error(err.message || t('positions.createFailed')),
       });
     }
   };
@@ -112,10 +118,10 @@ export function PositionListPage() {
     if (!deleteTarget) return;
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast.success('岗位已删除');
+        toast.success(t('positions.deleteSuccess'));
         setDeleteTarget(null);
       },
-      onError: (err: Error) => toast.error(err.message || '删除失败'),
+      onError: (err: Error) => toast.error(err.message || t('positions.deleteFailed')),
     });
   };
 
@@ -123,11 +129,11 @@ export function PositionListPage() {
     setEmbeddingId(id);
     embedMutation.mutate(id, {
       onSuccess: () => {
-        toast.success('向量化完成');
+        toast.success(t('positions.embedSuccess'));
         setEmbeddingId(null);
       },
       onError: (err: Error) => {
-        toast.error(err.message || '向量化失败');
+        toast.error(err.message || t('positions.embedFailed'));
         setEmbeddingId(null);
       },
     });
@@ -140,35 +146,35 @@ export function PositionListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="岗位管理"
-        subtitle="管理面试岗位、JD 文本与向量化状态"
+        title={t('positions.title')}
+        subtitle={t('positions.subtitle')}
         action={
-          <SilverButton onClick={openCreate}>创建岗位</SilverButton>
+          <SilverButton onClick={openCreate}>{t('positions.create')}</SilverButton>
         }
       />
 
       <GlassCard className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[180px]">
-            <Label>岗位名称</Label>
+            <Label>{t('positions.name')}</Label>
             <Input
-              placeholder="搜索岗位名称"
+              placeholder={t('positions.searchNamePlaceholder')}
               value={searchInput.title}
               onChange={(e) => setSearchInput((s) => ({ ...s, title: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           <div className="flex-1 min-w-[180px]">
-            <Label>部门</Label>
+            <Label>{t('positions.department')}</Label>
             <Input
-              placeholder="搜索部门"
+              placeholder={t('positions.searchDepartmentPlaceholder')}
               value={searchInput.department}
               onChange={(e) => setSearchInput((s) => ({ ...s, department: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           <SilverButton variant="ghost" onClick={handleSearch}>
-            搜索
+            {t('common.search')}
           </SilverButton>
         </div>
       </GlassCard>
@@ -179,20 +185,20 @@ export function PositionListPage() {
             <TableSkeleton />
           </div>
         ) : isError ? (
-          <ErrorState message={error?.message || '加载失败'} onRetry={() => refetch()} />
+          <ErrorState message={error?.message || t('positions.loadFailed')} onRetry={() => refetch()} />
         ) : records.length === 0 ? (
-          <EmptyState message="暂无岗位数据" />
+          <EmptyState message={t('positions.noData')} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-text-muted">
-                  <th className="px-4 py-3 text-left font-medium">岗位名称</th>
-                  <th className="px-4 py-3 text-left font-medium">部门</th>
-                  <th className="px-4 py-3 text-left font-medium">状态</th>
-                  <th className="px-4 py-3 text-left font-medium">向量状态</th>
-                  <th className="px-4 py-3 text-left font-medium">创建时间</th>
-                  <th className="px-4 py-3 text-right font-medium">操作</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('positions.name')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('positions.department')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('positions.status')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('positions.embeddingStatus')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('positions.createdAtColumn')}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('positions.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,26 +232,26 @@ export function PositionListPage() {
                           to={`/positions/${position.id}`}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
                         >
-                          查看
+                          {t('positions.view')}
                         </Link>
                         <button
                           onClick={() => openEdit(position)}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
                         >
-                          编辑
+                          {t('common.edit')}
                         </button>
                         <button
                           onClick={() => setDeleteTarget(position)}
                           className="text-xs text-danger hover:text-danger/80 transition-colors"
                         >
-                          删除
+                          {t('common.delete')}
                         </button>
                         <button
                           onClick={() => handleEmbed(position.id)}
                           disabled={embeddingId === position.id}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                         >
-                          {embeddingId === position.id ? '向量化中...' : '向量化'}
+                          {embeddingId === position.id ? t('positions.embedding') : t('positions.embed')}
                         </button>
                       </div>
                     </td>
@@ -273,13 +279,13 @@ export function PositionListPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-lg p-6">
             <h3 className="mb-4 text-lg font-semibold text-text-primary">
-              {editingPosition ? '编辑岗位' : '创建岗位'}
+              {editingPosition ? t('positions.edit') : t('positions.create')}
             </h3>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <Label>岗位名称</Label>
+                <Label>{t('positions.name')}</Label>
                 <Input
-                  placeholder="请输入岗位名称"
+                  placeholder={t('positions.inputNamePlaceholder')}
                   {...register('title')}
                 />
                 {errors.title && (
@@ -287,17 +293,17 @@ export function PositionListPage() {
                 )}
               </div>
               <div>
-                <Label>部门</Label>
+                <Label>{t('positions.department')}</Label>
                 <Input
-                  placeholder="请输入部门（可选）"
+                  placeholder={t('positions.inputDepartmentPlaceholder')}
                   {...register('department')}
                 />
               </div>
               <div>
-                <Label>岗位描述（JD）</Label>
+                <Label>{t('positions.jdTitle')}</Label>
                 <Textarea
                   rows={6}
-                  placeholder="请输入岗位描述"
+                  placeholder={t('positions.inputJdPlaceholder')}
                   {...register('jdText')}
                 />
                 {errors.jdText && (
@@ -310,10 +316,10 @@ export function PositionListPage() {
                   type="button"
                   onClick={() => setModalOpen(false)}
                 >
-                  取消
+                  {t('common.cancel')}
                 </SilverButton>
                 <SilverButton type="submit" disabled={submitting}>
-                  {submitting ? '保存中...' : '保存'}
+                  {submitting ? t('positions.saving') : t('positions.save')}
                 </SilverButton>
               </div>
             </form>
@@ -325,9 +331,9 @@ export function PositionListPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
-            <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
+            <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('positions.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
-              确定要删除岗位「{deleteTarget.title}」吗？此操作不可撤销。
+              {t('positions.deleteConfirmMessage', { title: deleteTarget.title })}
             </p>
             <div className="flex justify-end gap-2">
               <SilverButton
@@ -335,7 +341,7 @@ export function PositionListPage() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
               >
-                取消
+                {t('common.cancel')}
               </SilverButton>
               <SilverButton
                 variant="danger"
@@ -343,7 +349,7 @@ export function PositionListPage() {
                 disabled={deleteMutation.isPending}
                 onClick={confirmDelete}
               >
-                {deleteMutation.isPending ? '删除中...' : '确认删除'}
+                {deleteMutation.isPending ? t('positions.deleting') : t('positions.confirmDelete')}
               </SilverButton>
             </div>
           </GlassCard>

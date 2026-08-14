@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Input, Textarea, Select, Label } from '@/components/ui/input';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useImportQuestions } from '@/api/questions';
 import type { CreateQuestionRequest } from '@/types/question';
-import {
-  CATEGORIES,
-  DIFFICULTIES,
-  CATEGORY_LABELS,
-  DIFFICULTY_LABELS,
-} from '@/lib/constants';
+import { CATEGORIES, DIFFICULTIES } from '@/lib/constants';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
 interface QuestionRow {
   key: string;
@@ -37,6 +34,8 @@ function createEmptyRow(): QuestionRow {
 }
 
 export function QuestionImportPage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const navigate = useNavigate();
   const [rows, setRows] = useState<QuestionRow[]>([createEmptyRow()]);
   const [jsonText, setJsonText] = useState('');
@@ -56,13 +55,13 @@ export function QuestionImportPage() {
 
   const parseJson = () => {
     if (!jsonText.trim()) {
-      toast.error('请先粘贴 JSON 内容');
+      toast.error(t('questions.import.pasteFirst'));
       return;
     }
     try {
       const parsed = JSON.parse(jsonText);
       if (!Array.isArray(parsed)) {
-        toast.error('JSON 应为数组格式');
+        toast.error(t('questions.import.arrayRequired'));
         return;
       }
       const newRows: QuestionRow[] = parsed.map((item: Record<string, unknown>) => ({
@@ -76,16 +75,16 @@ export function QuestionImportPage() {
       }));
       setRows(newRows);
       setJsonText('');
-      toast.success(`已解析 ${newRows.length} 条题目`);
+      toast.success(t('questions.import.parsedCount', { count: newRows.length }));
     } catch {
-      toast.error('JSON 解析失败，请检查格式');
+      toast.error(t('questions.import.parseFailed'));
     }
   };
 
   const handleSubmit = () => {
     const validRows = rows.filter((r) => r.content.trim() && r.topic.trim());
     if (validRows.length === 0) {
-      toast.error('请至少填写一条完整题目（主题和题干必填）');
+      toast.error(t('questions.import.atLeastOne'));
       return;
     }
 
@@ -96,7 +95,7 @@ export function QuestionImportPage() {
       content: r.content,
       standardAnswer: r.standardAnswer || undefined,
       tags: r.tags
-        ? r.tags.split(',').map((t) => t.trim()).filter(Boolean)
+        ? r.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
         : undefined,
     }));
 
@@ -104,10 +103,10 @@ export function QuestionImportPage() {
       { questions },
       {
         onSuccess: () => {
-          toast.success(`成功导入 ${questions.length} 条题目`);
+          toast.success(t('questions.import.importSuccess', { count: questions.length }));
           navigate('/questions');
         },
-        onError: (err: Error) => toast.error(err.message || '导入失败'),
+        onError: (err: Error) => toast.error(err.message || t('questions.import.importFailed')),
       },
     );
   };
@@ -115,11 +114,11 @@ export function QuestionImportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="批量导入题目"
-        subtitle="支持手动添加或粘贴 JSON 批量填充"
+        title={t('questions.import.title')}
+        subtitle={t('questions.import.subtitle')}
         action={
           <SilverButton variant="ghost" onClick={() => navigate('/questions')}>
-            返回列表
+            {t('questions.backToList')}
           </SilverButton>
         }
       />
@@ -127,18 +126,18 @@ export function QuestionImportPage() {
       {/* JSON 批量填充 */}
       <GlassCard className="p-6">
         <h3 className="mb-3 text-sm font-medium text-text-muted">
-          粘贴 JSON 批量填充
+          {t('questions.import.pasteJsonTitle')}
         </h3>
         <Textarea
           rows={5}
-          placeholder='[{"category":"TECHNICAL","topic":"Java","difficulty":"EASY","content":"什么是多态？","standardAnswer":"...","tags":["Java","OOP"]}]'
+          placeholder={t('questions.import.jsonPlaceholder')}
           value={jsonText}
           onChange={(e) => setJsonText(e.target.value)}
           className="font-mono text-xs"
         />
         <div className="mt-2 flex justify-end">
           <SilverButton variant="ghost" onClick={parseJson}>
-            解析 JSON
+            {t('questions.import.parseJson')}
           </SilverButton>
         </div>
       </GlassCard>
@@ -149,74 +148,74 @@ export function QuestionImportPage() {
           <GlassCard key={row.key} className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-medium text-text-secondary">
-                题目 {index + 1}
+                {t('questions.import.questionIndex', { index: index + 1 })}
               </span>
               <button
                 onClick={() => removeRow(row.key)}
                 className="text-xs text-danger hover:text-danger/80 transition-colors"
               >
-                删除
+                {t('common.delete')}
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div>
-                <Label>分类</Label>
+                <Label>{t('questions.category')}</Label>
                 <Select
                   value={row.category}
                   onChange={(e) => updateRow(row.key, 'category', e.target.value)}
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {CATEGORY_LABELS[c]}
+                      {enumLabel('category', c)}
                     </option>
                   ))}
                 </Select>
               </div>
               <div>
-                <Label>难度</Label>
+                <Label>{t('questions.difficulty')}</Label>
                 <Select
                   value={row.difficulty}
                   onChange={(e) => updateRow(row.key, 'difficulty', e.target.value)}
                 >
                   {DIFFICULTIES.map((d) => (
                     <option key={d} value={d}>
-                      {DIFFICULTY_LABELS[d]}
+                      {enumLabel('difficulty', d)}
                     </option>
                   ))}
                 </Select>
               </div>
               <div className="col-span-2">
-                <Label>主题</Label>
+                <Label>{t('questions.topic')}</Label>
                 <Input
-                  placeholder="请输入主题"
+                  placeholder={t('questions.inputTopicPlaceholder')}
                   value={row.topic}
                   onChange={(e) => updateRow(row.key, 'topic', e.target.value)}
                 />
               </div>
             </div>
             <div className="mt-3">
-              <Label>题干</Label>
+              <Label>{t('questions.content')}</Label>
               <Textarea
                 rows={2}
-                placeholder="请输入题干"
+                placeholder={t('questions.inputContentPlaceholder')}
                 value={row.content}
                 onChange={(e) => updateRow(row.key, 'content', e.target.value)}
               />
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label>标准答案</Label>
+                <Label>{t('questions.standardAnswer')}</Label>
                 <Textarea
                   rows={2}
-                  placeholder="请输入标准答案（可选）"
+                  placeholder={t('questions.inputStandardAnswerPlaceholder')}
                   value={row.standardAnswer}
                   onChange={(e) => updateRow(row.key, 'standardAnswer', e.target.value)}
                 />
               </div>
               <div>
-                <Label>标签</Label>
+                <Label>{t('questions.tags')}</Label>
                 <Input
-                  placeholder="多个标签用逗号分隔"
+                  placeholder={t('questions.inputTagsPlaceholderRequired')}
                   value={row.tags}
                   onChange={(e) => updateRow(row.key, 'tags', e.target.value)}
                 />
@@ -229,15 +228,17 @@ export function QuestionImportPage() {
       {/* 底部操作 */}
       <div className="flex items-center justify-between">
         <SilverButton variant="ghost" onClick={addRow}>
-          + 添加题目
+          {t('questions.import.addRow')}
         </SilverButton>
         <SilverButton
           onClick={handleSubmit}
           disabled={importMutation.isPending}
         >
           {importMutation.isPending
-            ? '导入中...'
-            : `提交导入（${rows.filter((r) => r.content.trim() && r.topic.trim()).length} 条）`}
+            ? t('questions.import.importing')
+            : t('questions.import.submitImport', {
+                count: rows.filter((r) => r.content.trim() && r.topic.trim()).length,
+              })}
         </SilverButton>
       </div>
     </div>

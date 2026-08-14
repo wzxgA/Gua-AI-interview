@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -15,16 +17,16 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) {
-      toast.error('请输入用户名和密码');
+      toast.error(t('login.emptyError'));
       return;
     }
     setLoading(true);
     try {
       await login(username, password);
-      toast.success('登录成功');
+      toast.success(t('login.success'));
       navigate('/');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '登录失败');
+      toast.error(err instanceof Error ? err.message : t('login.failed'));
     } finally {
       setLoading(false);
     }
@@ -34,14 +36,14 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-text-primary">瓜分Offer</h1>
-          <p className="mt-2 text-sm text-text-muted">AI 智能面试 Agent 平台</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('common.appName')}</h1>
+          <p className="mt-2 text-sm text-text-muted">{t('common.platformSlogan')}</p>
         </div>
         <GlassCard className="p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-                用户名
+                {t('login.username')}
               </label>
               <input
                 type="text"
@@ -54,7 +56,7 @@ export function LoginPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-text-secondary">
-                密码
+                {t('login.password')}
               </label>
               <input
                 type="password"
@@ -65,12 +67,12 @@ export function LoginPage() {
               />
             </div>
             <SilverButton type="submit" disabled={loading} className="w-full justify-center">
-              {loading ? '登录中...' : '登录'}
+              {loading ? t('login.submitting') : t('login.submit')}
             </SilverButton>
           </form>
         </GlassCard>
         <p className="mt-4 text-center text-xs text-text-muted">
-          初始账号：admin / admin123
+          {t('login.defaultAccount')}
         </p>
       </div>
     </div>

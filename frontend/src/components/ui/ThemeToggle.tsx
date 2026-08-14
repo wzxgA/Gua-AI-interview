@@ -1,4 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SilverButton } from './silver-button';
 import { useTheme, type Theme } from '@/contexts/ThemeContext';
 
@@ -14,13 +15,14 @@ const nextMap: Record<Theme, Theme> = {
   system: 'dark',
 };
 
-const labelMap: Record<Theme, string> = {
-  dark: '深色',
-  light: '浅色',
-  system: '浅色',
+const labelKeyMap: Record<Theme, string> = {
+  dark: 'theme.dark',
+  light: 'theme.light',
+  system: 'theme.light',
 };
 
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const Icon = iconMap[theme];
 
@@ -36,7 +38,7 @@ export function ThemeToggle() {
     <SilverButton
       variant="ghost"
       onClick={handleClick}
-      title={`主题: ${labelMap[theme]}`}
+      title={t('theme.title', { label: t(labelKeyMap[theme]) })}
       className="px-2.5 py-2"
     >
       <Icon className="h-4 w-4" />

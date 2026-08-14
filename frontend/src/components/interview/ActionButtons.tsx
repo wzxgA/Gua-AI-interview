@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { SilverButton } from '@/components/ui/silver-button';
 import type { SessionStatus } from '@/types/interview';
 
@@ -26,15 +27,17 @@ export function ActionButtons({
   onResume,
   onViewReport,
 }: ActionButtonsProps) {
+  const { t } = useTranslation();
+
   switch (status) {
     case 'CREATED':
       return (
         <div className="flex flex-wrap gap-2">
           {onStart && (
-            <SilverButton onClick={onStart}>开始生成面试计划</SilverButton>
+            <SilverButton onClick={onStart}>{t('interviews.startPlan')}</SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </SilverButton>
         </div>
       );
@@ -43,10 +46,10 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onBeginInterview && (
-            <SilverButton onClick={onBeginInterview}>开始面试</SilverButton>
+            <SilverButton onClick={onBeginInterview}>{t('interviews.beginInterview')}</SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </SilverButton>
         </div>
       );
@@ -55,20 +58,20 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onEnterRoom && (
-            <SilverButton onClick={onEnterRoom}>进入面试间</SilverButton>
+            <SilverButton onClick={onEnterRoom}>{t('interviews.enterRoom')}</SilverButton>
           )}
           {onPause && (
             <SilverButton variant="ghost" onClick={onPause}>
-              暂停
+              {t('interviews.pause')}
             </SilverButton>
           )}
           {onFinish && (
             <SilverButton variant="ghost" onClick={onFinish}>
-              结束
+              {t('interviews.finish')}
             </SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </SilverButton>
         </div>
       );
@@ -78,19 +81,19 @@ export function ActionButtons({
         <div className="flex flex-wrap gap-2">
           {onEnterRoom && (
             <SilverButton variant="ghost" onClick={onEnterRoom}>
-              进入面试间
+              {t('interviews.enterRoom')}
             </SilverButton>
           )}
           {onResume && (
-            <SilverButton onClick={onResume}>恢复</SilverButton>
+            <SilverButton onClick={onResume}>{t('interviews.resume')}</SilverButton>
           )}
           {onFinish && (
             <SilverButton variant="ghost" onClick={onFinish}>
-              结束
+              {t('interviews.finish')}
             </SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </SilverButton>
         </div>
       );
@@ -98,14 +101,14 @@ export function ActionButtons({
     case 'EVALUATING':
       return (
         <div className="flex flex-wrap gap-2">
-          <SilverButton disabled>评估中，请稍候...</SilverButton>
+          <SilverButton disabled>{t('interviews.evaluatingButton')}</SilverButton>
         </div>
       );
 
     case 'REPORTING':
       return (
         <div className="flex flex-wrap gap-2">
-          <SilverButton disabled>报告生成中...</SilverButton>
+          <SilverButton disabled>{t('interviews.reportingButton')}</SilverButton>
         </div>
       );
 
@@ -113,11 +116,11 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onViewReport && (
-            <SilverButton onClick={onViewReport}>查看报告</SilverButton>
+            <SilverButton onClick={onViewReport}>{t('interviews.viewReport')}</SilverButton>
           )}
           {onEnterRoom && (
             <SilverButton variant="ghost" onClick={onEnterRoom}>
-              面试回顾
+              {t('interviews.review')}
             </SilverButton>
           )}
         </div>
@@ -128,7 +131,7 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onEnterRoom && (
-            <SilverButton onClick={onEnterRoom}>面试回顾</SilverButton>
+            <SilverButton onClick={onEnterRoom}>{t('interviews.review')}</SilverButton>
           )}
         </div>
       );

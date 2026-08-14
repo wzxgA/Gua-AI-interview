@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { cn } from '@/lib/utils';
 import type { InterviewPlan } from '@/types/interview';
@@ -9,6 +10,7 @@ interface RoundTimelineProps {
 
 /** 轮次时间线：展示预期轮次进度 */
 export function RoundTimeline({ planJson, currentRoundId }: RoundTimelineProps) {
+  const { t } = useTranslation();
   let questions: { questionId: string; topic: string }[] = [];
 
   if (planJson) {
@@ -23,15 +25,15 @@ export function RoundTimeline({ planJson, currentRoundId }: RoundTimelineProps) 
   if (questions.length === 0) {
     return (
       <GlassCard className="p-5">
-        <h3 className="mb-3 text-sm font-medium text-text-muted">轮次进度</h3>
-        <p className="text-sm text-text-muted">暂无轮次数据</p>
+        <h3 className="mb-3 text-sm font-medium text-text-muted">{t('interviews.roundProgress')}</h3>
+        <p className="text-sm text-text-muted">{t('interviews.noRoundData')}</p>
       </GlassCard>
     );
   }
 
   return (
     <GlassCard className="p-5">
-      <h3 className="mb-4 text-sm font-medium text-text-muted">轮次进度</h3>
+      <h3 className="mb-4 text-sm font-medium text-text-muted">{t('interviews.roundProgress')}</h3>
       <div className="space-y-0">
         {questions.map((q, i) => {
           const roundId = i + 1;

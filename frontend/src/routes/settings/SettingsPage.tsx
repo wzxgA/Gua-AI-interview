@@ -1,19 +1,53 @@
+import { useTranslation } from 'react-i18next';
+import { Check } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModelTiers } from '@/api/settings';
-import { APP_VERSION, TIER_LABELS } from '@/lib/constants';
+import { APP_VERSION } from '@/lib/constants';
+import { SUPPORTED_LANGUAGES } from '@/i18n';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
+import { cn } from '@/lib/utils';
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useModelTiers();
+  const { language, setLanguage } = useLanguage();
+  const enumLabel = useEnumLabel();
 
   return (
     <div>
-      <PageHeader title="设置" subtitle="模型档位与平台配置" />
+      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
       <div className="space-y-6">
         <GlassCard className="p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-primary">AI 模型档位</h3>
+          <h3 className="mb-1 text-sm font-medium text-text-primary">{t('language.title')}</h3>
+          <p className="mb-4 text-xs text-text-muted">{t('language.subtitle')}</p>
+          <div className="space-y-2">
+            {SUPPORTED_LANGUAGES.map((lang) => {
+              const selected = lang.code === language;
+              return (
+                <button
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-md border px-4 py-2.5 text-sm transition-all',
+                    selected
+                      ? 'border-border-strong bg-surface-hover text-silver-100'
+                      : 'border-border-subtle text-text-secondary hover:bg-surface-overlay hover:text-text-primary',
+                  )}
+                >
+                  <span>{lang.label}</span>
+                  {selected && <Check className="h-4 w-4" />}
+                </button>
+              );
+            })}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-6">
+          <h3 className="mb-4 text-sm font-medium text-text-primary">{t('settings.modelTiers')}</h3>
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
@@ -22,36 +56,36 @@ export function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {data?.tiers.map((t) => (
+              {data?.tiers.map((t_) => (
                 <div
-                  key={t.tier}
+                  key={t_.tier}
                   className="flex items-center justify-between border-b border-border-subtle pb-3 last:border-0 last:pb-0"
                 >
                   <div>
-                    <span className="text-sm font-medium text-silver-200">{t.tier}</span>
-                    {t.tier === data.defaultTier && (
+                    <span className="text-sm font-medium text-silver-200">{t_.tier}</span>
+                    {t_.tier === data.defaultTier && (
                       <span className="ml-2 rounded bg-surface-hover px-1.5 py-0.5 text-[10px] text-text-muted">
-                        默认
+                        {t('settings.defaultBadge')}
                       </span>
                     )}
                     <p className="mt-0.5 text-xs text-text-muted">
-                      {TIER_LABELS[t.tier] ?? t.tier}
+                      {enumLabel('tier', t_.tier, t_.tier)}
                     </p>
                   </div>
                   <div className="text-right text-xs text-text-secondary">
                     <p>
-                      {t.provider} / {t.model}
+                      {t_.provider} / {t_.model}
                     </p>
                     <p className="mt-0.5 text-text-muted">
-                      {t.dimensions != null
-                        ? `${t.dimensions} 维`
+                      {t_.dimensions != null
+                        ? t('settings.dimensions', { count: t_.dimensions })
                         : [
-                            t.temperature != null && `温度 ${t.temperature}`,
-                            t.maxTokens != null && `maxTokens ${t.maxTokens}`,
+                            t_.temperature != null && t('settings.temperature', { value: t_.temperature }),
+                            t_.maxTokens != null && t('settings.maxTokens', { value: t_.maxTokens }),
                           ]
                             .filter(Boolean)
                             .join(' · ')}
-                      {t.fallback && ` · 降级 ${t.fallback}`}
+                      {t_.fallback && ` · ${t('settings.fallback', { tier: t_.fallback })}`}
                     </p>
                   </div>
                 </div>
@@ -61,10 +95,10 @@ export function SettingsPage() {
         </GlassCard>
 
         <GlassCard className="p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-primary">环境信息</h3>
+          <h3 className="mb-4 text-sm font-medium text-text-primary">{t('settings.envInfo')}</h3>
           <div className="space-y-2 text-xs text-text-secondary">
             <div className="flex justify-between">
-              <span>前端版本</span>
+              <span>{t('settings.frontendVersion')}</span>
               <span>{APP_VERSION}</span>
             </div>
           </div>

@@ -42,21 +42,13 @@ export interface ReportResponse {
 /** 维度配置 */
 export const DIMENSION_CONFIG: Record<
   EvaluationDimension,
-  { label: string; weight: number }
+  { weight: number }
 > = {
-  PROFESSIONAL: { label: '专业能力', weight: 0.4 },
-  LOGIC: { label: '逻辑思维', weight: 0.2 },
-  COMMUNICATION: { label: '沟通表达', weight: 0.15 },
-  JOB_MATCH: { label: '岗位匹配', weight: 0.15 },
-  POTENTIAL: { label: '学习与潜力', weight: 0.1 },
-};
-
-/** 录用建议标签 */
-export const RECOMMENDATION_LABELS: Record<Recommendation, string> = {
-  STRONGLY_RECOMMEND: '强烈推荐',
-  RECOMMEND: '推荐',
-  NEUTRAL: '中立',
-  NOT_RECOMMEND: '不推荐',
+  PROFESSIONAL: { weight: 0.4 },
+  LOGIC: { weight: 0.2 },
+  COMMUNICATION: { weight: 0.15 },
+  JOB_MATCH: { weight: 0.15 },
+  POTENTIAL: { weight: 0.1 },
 };
 
 /** 录用建议颜色 */

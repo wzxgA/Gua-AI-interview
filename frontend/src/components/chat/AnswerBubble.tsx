@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import type { ChatMessage } from '@/types/interview';
@@ -9,6 +10,7 @@ interface AnswerBubbleProps {
 
 /** 候选人回答气泡：右侧银色竖条 */
 export function AnswerBubble({ message }: AnswerBubbleProps) {
+  const { t, i18n } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -22,9 +24,9 @@ export function AnswerBubble({ message }: AnswerBubbleProps) {
         {/* 顶部：候选人 + 时间戳 */}
         <div className="mb-2 flex items-center justify-end gap-2">
           <span className="text-xs text-text-muted">
-            {new Date(message.timestamp).toLocaleTimeString('zh-CN')}
+            {new Date(message.timestamp).toLocaleTimeString(i18n.language)}
           </span>
-          <span className="text-sm font-medium text-silver-200">候选人</span>
+          <span className="text-sm font-medium text-silver-200">{t('interviews.candidate')}</span>
         </div>
 
         {/* 回答文本（Markdown 渲染，块级内容统一左对齐） */}

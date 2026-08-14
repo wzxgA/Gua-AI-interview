@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
 import { StatusBadge } from '@/components/ui/status-dot';
@@ -15,6 +16,7 @@ import type { SessionStatus } from '@/types/interview';
 
 /** 候选面试间：免登录，基于 guestToken 连接 WS 完成实时问答（复用现有问答链路）。 */
 export function CandidateRoomPage() {
+  const { t } = useTranslation();
   const { accessToken } = useParams();
   const navigate = useNavigate();
   const guestToken = sessionStorage.getItem('guestToken');
@@ -83,24 +85,24 @@ export function CandidateRoomPage() {
     if (!sessionId) return;
     resumeGuestSession(sessionId)
       .then(() => {
-        toast.success('面试已恢复');
+        toast.success(t('candidate.resumeSuccess'));
         setStatus('IN_PROGRESS');
         queryClient.invalidateQueries({ queryKey: ['guest', 'session', sessionId] });
       })
-      .catch((err: Error) => toast.error(err.message || '恢复失败'));
+      .catch((err: Error) => toast.error(err.message || t('candidate.resumeFailed')));
   };
 
   const handleBegin = () => {
     if (!sessionId) return;
     startGuestSession(sessionId)
       .then(() => {
-        toast.success('面试已开始');
+        toast.success(t('candidate.startSuccess'));
         setStatus('IN_PROGRESS');
         queryClient.invalidateQueries({ queryKey: ['guest', 'session', sessionId] });
-        // 重连 WS 触发服务端首题生成（连接建立时状态为 IN_PROGRESS + 无轮次 → 发首题）
+        // 重连 WS 触发服务端首题生成（连接建立时状态为 IN_PROGRESS + 无轮次 -> 发首题）
         session.reconnect();
       })
-      .catch((err: Error) => toast.error(err.message || '开始失败'));
+      .catch((err: Error) => toast.error(err.message || t('candidate.startFailed')));
   };
 
   if (!guestSession || !sessionId) {
@@ -119,7 +121,7 @@ export function CandidateRoomPage() {
       {/* 顶部栏：AI 面试官 + 状态 + 操作按钮（暂停/结束/取消，可查看报告） */}
       <GlassCard className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-text-primary">AI 面试官</span>
+          <span className="text-sm font-medium text-text-primary">{t('interviews.aiInterviewer')}</span>
           <StatusBadge status={status} />
         </div>
         <ActionButtons

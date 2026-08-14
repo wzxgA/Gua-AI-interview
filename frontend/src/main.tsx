@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import './i18n';
 import App from './App';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import 'highlight.js/styles/github-dark.css';
 import './styles/globals.css';
@@ -39,14 +41,16 @@ function AppToaster() {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-            <AppToaster />
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
+      <LanguageProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+              <AppToaster />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </LanguageProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ReportResponse } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
@@ -8,6 +9,7 @@ interface ReportSummaryCardProps {
 }
 
 export function ReportSummaryCard({ report }: ReportSummaryCardProps) {
+  const { t } = useTranslation();
   const score = report.totalScore ?? 0;
   const scorePercent = (score / 5) * 100;
 
@@ -15,7 +17,7 @@ export function ReportSummaryCard({ report }: ReportSummaryCardProps) {
     <GlassCard className="p-6">
       <div className="flex items-start justify-between gap-6">
         <div className="flex-1">
-          <h3 className="mb-2 text-sm font-medium text-text-muted">综合概览</h3>
+          <h3 className="mb-2 text-sm font-medium text-text-muted">{t('interviews.summaryTitle')}</h3>
           <div className="mb-4 flex items-center gap-4">
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-bold text-text-primary">

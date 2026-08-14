@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Select, Label } from '@/components/ui/input';
@@ -10,14 +11,17 @@ import { useCreateInterview } from '@/api/interview';
 import { useResumeList } from '@/api/resumes';
 import { usePositionList } from '@/api/positions';
 import type { InterviewerPersona } from '@/types/interview';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
-const PERSONA_OPTIONS = [
-  { value: 'FRIENDLY', label: '温和型', desc: '鼓励引导，适合初级岗位' },
-  { value: 'PRESSURE', label: '压力面型', desc: '直接质疑，考察抗压能力' },
-  { value: 'TECHNICAL', label: '深度技术型', desc: '原理深挖，适合高级技术岗' },
-] as const;
+const PERSONA_OPTIONS: { value: InterviewerPersona; descKey: string }[] = [
+  { value: 'FRIENDLY', descKey: 'interviews.personaDescFriendly' },
+  { value: 'PRESSURE', descKey: 'interviews.personaDescPressure' },
+  { value: 'TECHNICAL', descKey: 'interviews.personaDescTechnical' },
+];
 
 export function InterviewCreatePage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const navigate = useNavigate();
   const [candidateId, setCandidateId] = useState<number | ''>('');
   const [positionId, setPositionId] = useState<number | ''>('');
@@ -39,7 +43,7 @@ export function InterviewCreatePage() {
 
   const handleSubmit = () => {
     if (!candidateId) {
-      toast.error('请选择候选人简历');
+      toast.error(t('interviews.validation.resumeRequired'));
       return;
     }
     createMutation.mutate(
@@ -50,10 +54,10 @@ export function InterviewCreatePage() {
       },
       {
         onSuccess: (data) => {
-          toast.success('面试已创建');
+          toast.success(t('interviews.createSuccess'));
           navigate(`/interviews/${data.id}`);
         },
-        onError: (err: Error) => toast.error(err.message || '创建失败'),
+        onError: (err: Error) => toast.error(err.message || t('interviews.createFailed')),
       },
     );
   };
@@ -61,9 +65,9 @@ export function InterviewCreatePage() {
   if (resumesError || positionsError) {
     return (
       <div className="space-y-6">
-        <PageHeader title="创建面试" />
+        <PageHeader title={t('interviews.create')} />
         <ErrorState
-          message="加载数据失败"
+          message={t('interviews.loadDataFailed')}
           onRetry={() => navigate('/interviews')}
         />
       </div>
@@ -73,11 +77,11 @@ export function InterviewCreatePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="创建面试"
-        subtitle="选择候选人简历与岗位，创建面试会话"
+        title={t('interviews.create')}
+        subtitle={t('interviews.createSubtitle')}
         action={
           <SilverButton variant="ghost" onClick={() => navigate('/interviews')}>
-            返回列表
+            {t('interviews.backToList')}
           </SilverButton>
         }
       />
@@ -86,7 +90,7 @@ export function InterviewCreatePage() {
         <div className="space-y-5">
           {/* 选择简历 */}
           <div>
-            <Label>候选人简历 *</Label>
+            <Label>{t('interviews.candidateResume')}</Label>
             {resumesLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
@@ -96,24 +100,24 @@ export function InterviewCreatePage() {
                   setCandidateId(e.target.value ? Number(e.target.value) : '')
                 }
               >
-                <option value="">请选择已解析的简历</option>
+                <option value="">{t('interviews.selectResumePlaceholder')}</option>
                 {resumes.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.candidateName}（#{r.id}）
+                    {t('interviews.nameWithId', { name: r.candidateName, id: r.id })}
                   </option>
                 ))}
               </Select>
             )}
             {resumes.length === 0 && !resumesLoading && (
               <p className="mt-1 text-xs text-text-muted">
-                暂无已解析的简历，请先上传并解析简历
+                {t('interviews.noParsedResumes')}
               </p>
             )}
           </div>
 
           {/* 选择岗位 */}
           <div>
-            <Label>面试岗位（可选）</Label>
+            <Label>{t('interviews.positionOptional')}</Label>
             {positionsLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
@@ -123,10 +127,10 @@ export function InterviewCreatePage() {
                   setPositionId(e.target.value ? Number(e.target.value) : '')
                 }
               >
-                <option value="">不指定岗位</option>
+                <option value="">{t('interviews.noPosition')}</option>
                 {positions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.title}（#{p.id}）
+                    {t('interviews.nameWithId', { name: p.title, id: p.id })}
                   </option>
                 ))}
               </Select>
@@ -135,12 +139,12 @@ export function InterviewCreatePage() {
 
           {/* 面试官人设 */}
           <div>
-            <Label>面试官人设</Label>
+            <Label>{t('interviews.personaLabel')}</Label>
             <div className="space-y-2">
               {PERSONA_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => setPersona(opt.value as InterviewerPersona)}
+                  onClick={() => setPersona(opt.value)}
                   className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
                     persona === opt.value
                       ? 'border-silver-400 bg-silver-400/10'
@@ -148,8 +152,8 @@ export function InterviewCreatePage() {
                   }`}
                 >
                   <div>
-                    <span className="text-sm font-medium text-text-primary">{opt.label}</span>
-                    <span className="ml-2 text-xs text-text-muted">{opt.desc}</span>
+                    <span className="text-sm font-medium text-text-primary">{enumLabel('persona', opt.value)}</span>
+                    <span className="ml-2 text-xs text-text-muted">{t(opt.descKey)}</span>
                   </div>
                 </button>
               ))}
@@ -163,14 +167,14 @@ export function InterviewCreatePage() {
               type="button"
               onClick={() => navigate('/interviews')}
             >
-              取消
+              {t('common.cancel')}
             </SilverButton>
             <SilverButton
               type="button"
               onClick={handleSubmit}
               disabled={createMutation.isPending || !candidateId}
             >
-              {createMutation.isPending ? '创建中...' : '创建面试'}
+              {createMutation.isPending ? t('interviews.creating') : t('interviews.create')}
             </SilverButton>
           </div>
         </div>

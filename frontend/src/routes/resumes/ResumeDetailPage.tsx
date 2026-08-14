@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useResume, useParseResume, useEmbedResume, useUpdateParsedResume } from '@/api/resumes';
 import { formatDate } from '@/lib/utils';
 import type { ParsedResume, WorkExperience, ProjectExperience, Award } from '@/types/resume';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
 // ---------- 编辑模式辅助组件 ----------
 
@@ -23,6 +25,7 @@ function TagEditor({
   onChange: (v: string[]) => void;
   placeholder?: string;
 }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const add = () => {
     const v = input.trim();
@@ -31,13 +34,13 @@ function TagEditor({
   };
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {tags.map((t, i) => (
+      {tags.map((tag, i) => (
         <button
           key={i}
           onClick={() => onChange(tags.filter((_, idx) => idx !== i))}
           className="rounded-full bg-surface-hover px-3 py-1 text-xs text-text-primary transition hover:bg-border-strong"
         >
-          {t} ×
+          {tag} ×
         </button>
       ))}
       <input
@@ -49,7 +52,7 @@ function TagEditor({
             add();
           }
         }}
-        placeholder={placeholder || '输入后回车添加'}
+        placeholder={placeholder || t('resumes.tagPlaceholder')}
         className="bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
       />
     </div>
@@ -62,6 +65,8 @@ const inputClass =
 // ---------- 主页面 ----------
 
 export function ResumeDetailPage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const { id } = useParams();
   const navigate = useNavigate();
   const resumeId = id ? Number(id) : undefined;
@@ -77,16 +82,16 @@ export function ResumeDetailPage() {
   const handleParse = () => {
     if (!resumeId) return;
     parseMutation.mutate(resumeId, {
-      onSuccess: () => toast.success('解析已触发'),
-      onError: (err: Error) => toast.error(err.message || '解析失败'),
+      onSuccess: () => toast.success(t('resumes.parseTriggered')),
+      onError: (err: Error) => toast.error(err.message || t('resumes.parseFailed')),
     });
   };
 
   const handleEmbed = () => {
     if (!resumeId) return;
     embedMutation.mutate(resumeId, {
-      onSuccess: () => toast.success('向量化完成'),
-      onError: (err: Error) => toast.error(err.message || '向量化失败'),
+      onSuccess: () => toast.success(t('resumes.embedSuccess')),
+      onError: (err: Error) => toast.error(err.message || t('resumes.embedFailed')),
     });
   };
 
@@ -108,11 +113,11 @@ export function ResumeDetailPage() {
       { id: resumeId, parsed: draft },
       {
         onSuccess: () => {
-          toast.success('修改已保存');
+          toast.success(t('resumes.saveSuccess'));
           setIsEditing(false);
           setDraft(null);
         },
-        onError: (err: Error) => toast.error(err.message || '保存失败'),
+        onError: (err: Error) => toast.error(err.message || t('resumes.saveFailed')),
       },
     );
   };
@@ -210,7 +215,7 @@ export function ResumeDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="简历详情" />
+        <PageHeader title={t('resumes.detail')} />
         <GlassCard className="p-6">
           <Skeleton className="h-8 w-48" />
           <div className="mt-4 space-y-3">
@@ -229,9 +234,9 @@ export function ResumeDetailPage() {
   if (isError || !resume) {
     return (
       <div className="space-y-6">
-        <PageHeader title="简历详情" />
+        <PageHeader title={t('resumes.detail')} />
         <ErrorState
-          message={error?.message || '简历不存在'}
+          message={error?.message || t('resumes.notFound')}
           onRetry={() => navigate('/resumes')}
         />
       </div>
@@ -245,28 +250,28 @@ export function ResumeDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="简历详情"
+        title={t('resumes.detail')}
         subtitle={resume.candidateName}
         action={
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
                 <SilverButton variant="ghost" onClick={cancelEdit} disabled={updateMutation.isPending}>
-                  取消
+                  {t('common.cancel')}
                 </SilverButton>
                 <SilverButton variant="primary" onClick={saveEdit} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? '保存中...' : '保存'}
+                  {updateMutation.isPending ? t('resumes.saving') : t('common.save')}
                 </SilverButton>
               </>
             ) : (
               <>
                 {canEdit && (
                   <SilverButton variant="ghost" onClick={startEdit}>
-                    编辑
+                    {t('common.edit')}
                   </SilverButton>
                 )}
                 <SilverButton variant="ghost" onClick={() => navigate('/resumes')}>
-                  返回列表
+                  {t('resumes.backToList')}
                 </SilverButton>
               </>
             )}
@@ -276,10 +281,10 @@ export function ResumeDetailPage() {
 
       {/* 基本信息 */}
       <GlassCard className="p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-muted">基本信息</h3>
+        <h3 className="mb-4 text-sm font-medium text-text-muted">{t('resumes.basicInfo')}</h3>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-text-muted">候选人姓名</p>
+            <p className="text-xs text-text-muted">{t('resumes.candidateName')}</p>
             {isEditing && draft ? (
               <input
                 className={inputClass}
@@ -291,7 +296,7 @@ export function ResumeDetailPage() {
             )}
           </div>
           <div>
-            <p className="text-xs text-text-muted">手机</p>
+            <p className="text-xs text-text-muted">{t('resumes.phone')}</p>
             {isEditing && draft ? (
               <input
                 className={inputClass}
@@ -303,7 +308,7 @@ export function ResumeDetailPage() {
             )}
           </div>
           <div>
-            <p className="text-xs text-text-muted">邮箱</p>
+            <p className="text-xs text-text-muted">{t('resumes.email')}</p>
             {isEditing && draft ? (
               <input
                 className={inputClass}
@@ -315,11 +320,11 @@ export function ResumeDetailPage() {
             )}
           </div>
           <div>
-            <p className="text-xs text-text-muted">解析状态</p>
+            <p className="text-xs text-text-muted">{t('resumes.parseStatus')}</p>
             <div className="mt-1">
               <StatusBadge
                 status={resume.parseStatus}
-                label={resume.parseStatus === 'FAILED' ? '解析失败' : undefined}
+                label={enumLabel('parseStatus', resume.parseStatus)}
               />
             </div>
           </div>
@@ -327,13 +332,13 @@ export function ResumeDetailPage() {
         {!isEditing && (
           <div className="mt-4 flex items-center gap-2">
             <SilverButton variant="ghost" onClick={handleParse} disabled={parsing}>
-              {parsing ? '解析中...' : '解析简历'}
+              {parsing ? t('resumes.parsing') : t('resumes.parseResume')}
             </SilverButton>
             <SilverButton variant="ghost" onClick={handleEmbed} disabled={embedMutation.isPending}>
-              {embedMutation.isPending ? '向量化中...' : '向量化'}
+              {embedMutation.isPending ? t('resumes.embedding') : t('resumes.embed')}
             </SilverButton>
             <span className="text-xs text-text-muted">
-              创建于 {formatDate(resume.createdAt)}
+              {t('resumes.createdAt', { date: formatDate(resume.createdAt) })}
             </span>
           </div>
         )}
@@ -341,9 +346,9 @@ export function ResumeDetailPage() {
 
       {/* 原文摘要 */}
       <GlassCard className="p-6">
-        <h3 className="mb-3 text-sm font-medium text-text-muted">原文摘要</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-muted">{t('resumes.rawText')}</h3>
         <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
-          {resume.rawText || '暂无原文内容'}
+          {resume.rawText || t('resumes.noRawText')}
         </pre>
       </GlassCard>
 
@@ -352,10 +357,10 @@ export function ResumeDetailPage() {
         <>
           {/* 解析基本信息 */}
           <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">解析信息</h3>
+            <h3 className="mb-4 text-sm font-medium text-text-muted">{t('resumes.parsedInfo')}</h3>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-xs text-text-muted">工作年限</p>
+                <p className="text-xs text-text-muted">{t('resumes.yearsOfExperience')}</p>
                 {isEditing && draft ? (
                   <input
                     type="number"
@@ -370,12 +375,14 @@ export function ResumeDetailPage() {
                   />
                 ) : (
                   <p className="mt-1 text-sm text-text-primary">
-                    {parsed.yearsOfExperience != null ? `${parsed.yearsOfExperience} 年` : '-'}
+                    {parsed.yearsOfExperience != null
+                      ? t('resumes.yearsValue', { years: parsed.yearsOfExperience })
+                      : '-'}
                   </p>
                 )}
               </div>
               <div>
-                <p className="text-xs text-text-muted">学历</p>
+                <p className="text-xs text-text-muted">{t('resumes.education')}</p>
                 {isEditing && draft ? (
                   <input
                     className={inputClass}
@@ -387,7 +394,7 @@ export function ResumeDetailPage() {
                 )}
               </div>
               <div>
-                <p className="text-xs text-text-muted">当前职位</p>
+                <p className="text-xs text-text-muted">{t('resumes.currentTitle')}</p>
                 {isEditing && draft ? (
                   <input
                     className={inputClass}
@@ -403,12 +410,12 @@ export function ResumeDetailPage() {
 
           {/* 技能标签云 */}
           <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">技能标签</h3>
+            <h3 className="mb-4 text-sm font-medium text-text-muted">{t('resumes.skills')}</h3>
             {isEditing && draft ? (
               <TagEditor
                 tags={draft.skills}
                 onChange={(v) => updateField('skills', v)}
-                placeholder="输入技能后回车添加"
+                placeholder={t('resumes.skillPlaceholder')}
               />
             ) : parsed.skills.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -419,17 +426,17 @@ export function ResumeDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">暂无技能数据</p>
+              <p className="text-sm text-text-muted">{t('resumes.noSkills')}</p>
             )}
           </GlassCard>
 
           {/* 工作/实习经历 */}
           <GlassCard className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-text-muted">工作或实习经历</h3>
+              <h3 className="text-sm font-medium text-text-muted">{t('resumes.workTitle')}</h3>
               {isEditing && draft && (
                 <SilverButton variant="ghost" onClick={addWorkExp}>
-                  + 添加
+                  {t('resumes.add')}
                 </SilverButton>
               )}
             </div>
@@ -443,37 +450,37 @@ export function ResumeDetailPage() {
                         value={exp.type}
                         onChange={(e) => updateWorkExp(index, { type: e.target.value })}
                       >
-                        <option value="WORK">工作经历</option>
-                        <option value="INTERNSHIP">实习经历</option>
+                        <option value="WORK">{t('resumes.workExpType')}</option>
+                        <option value="INTERNSHIP">{t('resumes.internshipType')}</option>
                       </select>
                       <SilverButton variant="ghost" onClick={() => removeWorkExp(index)}>
-                        删除
+                        {t('common.delete')}
                       </SilverButton>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         className={inputClass}
-                        placeholder="公司"
+                        placeholder={t('resumes.companyPlaceholder')}
                         value={exp.company}
                         onChange={(e) => updateWorkExp(index, { company: e.target.value })}
                       />
                       <input
                         className={inputClass}
-                        placeholder="职位"
+                        placeholder={t('resumes.jobTitlePlaceholder')}
                         value={exp.title}
                         onChange={(e) => updateWorkExp(index, { title: e.target.value })}
                       />
                     </div>
                     <input
                       className={inputClass}
-                      placeholder="时间段"
+                      placeholder={t('resumes.periodPlaceholder')}
                       value={exp.period}
                       onChange={(e) => updateWorkExp(index, { period: e.target.value })}
                     />
                     <textarea
                       className={inputClass}
                       rows={2}
-                      placeholder="描述"
+                      placeholder={t('resumes.descriptionPlaceholder')}
                       value={exp.description}
                       onChange={(e) => updateWorkExp(index, { description: e.target.value })}
                     />
@@ -492,7 +499,7 @@ export function ResumeDetailPage() {
                       )}
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="category">
-                          {isInternship ? '实习经历' : '工作经历'}
+                          {isInternship ? t('resumes.internshipType') : t('resumes.workExpType')}
                         </Badge>
                         <span className="text-sm font-medium text-text-primary">
                           {exp.title}
@@ -508,17 +515,17 @@ export function ResumeDetailPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">暂无工作或实习经历数据</p>
+              <p className="text-sm text-text-muted">{t('resumes.noWorkData')}</p>
             )}
           </GlassCard>
 
           {/* 项目经历 */}
           <GlassCard className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-text-muted">项目经历</h3>
+              <h3 className="text-sm font-medium text-text-muted">{t('resumes.projectTitle')}</h3>
               {isEditing && draft && (
                 <SilverButton variant="ghost" onClick={addProject}>
-                  + 添加
+                  {t('resumes.add')}
                 </SilverButton>
               )}
             </div>
@@ -529,24 +536,24 @@ export function ResumeDetailPage() {
                     <div className="flex items-center justify-between">
                       <input
                         className={inputClass}
-                        placeholder="项目名称"
+                        placeholder={t('resumes.projectNamePlaceholder')}
                         value={project.name}
                         onChange={(e) => updateProject(index, { name: e.target.value })}
                       />
                       <SilverButton variant="ghost" onClick={() => removeProject(index)}>
-                        删除
+                        {t('common.delete')}
                       </SilverButton>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         className={inputClass}
-                        placeholder="角色"
+                        placeholder={t('resumes.rolePlaceholder')}
                         value={project.role || ''}
                         onChange={(e) => updateProject(index, { role: e.target.value })}
                       />
                       <input
                         className={inputClass}
-                        placeholder="时间段"
+                        placeholder={t('resumes.periodPlaceholder')}
                         value={project.period || ''}
                         onChange={(e) => updateProject(index, { period: e.target.value })}
                       />
@@ -554,18 +561,18 @@ export function ResumeDetailPage() {
                     <textarea
                       className={inputClass}
                       rows={2}
-                      placeholder="项目描述"
+                      placeholder={t('resumes.projectDescPlaceholder')}
                       value={project.description || ''}
                       onChange={(e) => updateProject(index, { description: e.target.value })}
                     />
                     <div>
-                      <p className="mb-2 text-xs text-text-muted">项目亮点</p>
+                      <p className="mb-2 text-xs text-text-muted">{t('resumes.highlights')}</p>
                       <div className="space-y-2">
                         {project.highlights.map((item, hIndex) => (
                           <div key={hIndex} className="flex items-center gap-2">
                             <input
                               className={inputClass}
-                              placeholder="亮点"
+                              placeholder={t('resumes.highlightPlaceholder')}
                               value={item}
                               onChange={(e) => updateProjectHighlight(index, hIndex, e.target.value)}
                             />
@@ -578,7 +585,7 @@ export function ResumeDetailPage() {
                           </div>
                         ))}
                         <SilverButton variant="ghost" onClick={() => addProjectHighlight(index)}>
-                          + 添加亮点
+                          {t('resumes.addHighlight')}
                         </SilverButton>
                       </div>
                     </div>
@@ -594,7 +601,7 @@ export function ResumeDetailPage() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium text-text-primary">
-                        {project.name || '未命名项目'}
+                        {project.name || t('resumes.unnamedProject')}
                       </span>
                       {project.role && (
                         <span className="text-xs text-text-muted">· {project.role}</span>
@@ -607,7 +614,7 @@ export function ResumeDetailPage() {
                       <p className="mt-2 text-sm text-text-secondary">{project.description}</p>
                     )}
                     <div className="mt-3">
-                      <p className="mb-2 text-xs text-text-muted">项目亮点</p>
+                      <p className="mb-2 text-xs text-text-muted">{t('resumes.highlights')}</p>
                       {project.highlights?.length > 0 ? (
                         <ul className="space-y-2">
                           {project.highlights.map((item, highlightIndex) => (
@@ -621,27 +628,27 @@ export function ResumeDetailPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-sm text-text-muted">暂无项目亮点数据</p>
+                        <p className="text-sm text-text-muted">{t('resumes.noHighlights')}</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">暂无项目经历数据</p>
+              <p className="text-sm text-text-muted">{t('resumes.noProjects')}</p>
             )}
           </GlassCard>
 
           {/* 竞赛/证书 */}
           <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">竞赛/证书</h3>
+            <h3 className="mb-4 text-sm font-medium text-text-muted">{t('resumes.awards')}</h3>
             {isEditing && draft ? (
               <TagEditor
                 tags={(draft.awards || []).map((a) => a.name)}
                 onChange={(names) =>
                   updateAward(names.map((name) => ({ name })))
                 }
-                placeholder="输入奖项/证书后回车添加"
+                placeholder={t('resumes.awardPlaceholder')}
               />
             ) : (parsed.awards?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -652,7 +659,7 @@ export function ResumeDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-text-muted">暂无竞赛/证书数据</p>
+              <p className="text-sm text-text-muted">{t('resumes.noAwards')}</p>
             )}
           </GlassCard>
         </>

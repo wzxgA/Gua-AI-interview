@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { EvaluationResponse } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
 
@@ -6,6 +7,7 @@ interface RoundEvaluationListProps {
 }
 
 export function RoundEvaluationList({ evaluations }: RoundEvaluationListProps) {
+  const { t } = useTranslation();
   // 按 roundId 分组
   const grouped = evaluations.reduce<
     Record<number, EvaluationResponse[]>
@@ -20,7 +22,7 @@ export function RoundEvaluationList({ evaluations }: RoundEvaluationListProps) {
 
   return (
     <GlassCard className="p-6">
-      <h3 className="mb-4 text-sm font-medium text-text-muted">轮次评估明细</h3>
+      <h3 className="mb-4 text-sm font-medium text-text-muted">{t('interviews.roundEvaluationTitle')}</h3>
       <div className="space-y-6">
         {roundIds.map((roundId, idx) => (
           <div key={roundId}>
@@ -29,7 +31,7 @@ export function RoundEvaluationList({ evaluations }: RoundEvaluationListProps) {
                 {idx + 1}
               </span>
               <span className="text-sm font-medium text-text-secondary">
-                第 {idx + 1} 轮
+                {t('interviews.roundNumber', { index: idx + 1 })}
               </span>
             </div>
             <div className="space-y-3 pl-8">

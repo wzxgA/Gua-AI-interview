@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { WifiOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { SilverButton } from '@/components/ui/silver-button';
 
 interface DisconnectOverlayProps {
@@ -14,6 +15,7 @@ export function DisconnectOverlay({
   maxRetries,
   onReconnect,
 }: DisconnectOverlayProps) {
+  const { t } = useTranslation();
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
       <motion.div
@@ -23,16 +25,16 @@ export function DisconnectOverlay({
         className="flex flex-col items-center gap-4"
       >
         <WifiOff className="h-12 w-12 text-danger" />
-        <p className="text-lg font-medium text-text-primary">连接已断开</p>
+        <p className="text-lg font-medium text-text-primary">{t('interviews.disconnected')}</p>
         {retryCount < maxRetries ? (
           <p className="text-sm text-text-muted">
-            正在重连 {retryCount}/{maxRetries}...
+            {t('interviews.reconnecting', { current: retryCount, max: maxRetries })}
           </p>
         ) : (
-          <p className="text-sm text-danger">重连失败，请手动重试</p>
+          <p className="text-sm text-danger">{t('interviews.reconnectFailed')}</p>
         )}
         <SilverButton variant="ghost" onClick={onReconnect}>
-          重新连接
+          {t('interviews.reconnect')}
         </SilverButton>
       </motion.div>
     </div>
