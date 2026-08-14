@@ -13,7 +13,7 @@ interface UseWebSocketOptions {
 }
 
 const HEARTBEAT_INTERVAL = 30_000;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 6;
 const BASE_DELAY = 1000;
 
 /** 按当前路径选择 WS 鉴权 token：候选端取 guestToken，管理端取 accessToken。 */
@@ -121,8 +121,19 @@ export function useWebSocket(options: UseWebSocketOptions) {
 
   const reconnect = useCallback(() => {
     retryCountRef.current = 0;
-    connect();
-  }, [connect]);
+    shouldConnectRef.current = true;
+    // 关闭旧连接：触发服务端 afterConnectionClosed → 释放会话锁
+    if (wsRef.current) {
+      wsRef.current.onclose = null; // 防止旧连接 onclose 触发额外重连
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    clearHeartbeat();
+    // 延迟重建：等待旧连接 close 帧到达服务端、锁释放（close 是异步握手）
+    setTimeout(() => {
+      if (shouldConnectRef.current) connect();
+    }, 300);
+  }, [connect, clearHeartbeat]);
 
   // 组件卸载时断开连接
   useEffect(() => {
