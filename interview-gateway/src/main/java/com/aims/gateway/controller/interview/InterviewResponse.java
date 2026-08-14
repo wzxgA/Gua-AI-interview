@@ -20,10 +20,22 @@ public record InterviewResponse(
         Integer evaluatedRounds,
         Integer totalRoundsToEvaluate,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        String accessToken,
+        String accessPassword,
+        String accessMode) {
 
     /** 从持久化实体构建响应。 */
     public static InterviewResponse from(InterviewSessionEntity entity) {
+        return from(entity, null);
+    }
+
+    /**
+     * 从持久化实体构建响应。
+     *
+     * @param rawPassword 访问密码明文（仅创建/重置时返回，其余场景传 null）
+     */
+    public static InterviewResponse from(InterviewSessionEntity entity, String rawPassword) {
         SessionStatus sessionStatus =
                 entity.getStatus() == null ? null : SessionStatus.valueOf(entity.getStatus());
         return new InterviewResponse(
@@ -40,6 +52,9 @@ public record InterviewResponse(
                 entity.getEvaluatedRounds(),
                 entity.getTotalRoundsToEvaluate(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt());
+                entity.getUpdatedAt(),
+                entity.getAccessToken(),
+                rawPassword,
+                entity.getAccessMode());
     }
 }

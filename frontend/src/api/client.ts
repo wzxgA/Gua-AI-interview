@@ -36,7 +36,7 @@ async function doRefresh(): Promise<string | null> {
       });
       if (!res.ok) return null;
       const result: Result<{ accessToken: string; refreshToken: string }> = await res.json();
-      if (result.code !== 0) return null;
+      if (result.code !== 0 || !result.data) return null;
       localStorage.setItem('accessToken', result.data.accessToken);
       localStorage.setItem('refreshToken', result.data.refreshToken);
       return result.data.accessToken;
@@ -54,6 +54,24 @@ function clearTokens() {
   localStorage.removeItem('refreshToken');
 }
 
+/** 是否处于候选端（/i/* 路径，免登录）。 */
+function isGuestMode(): boolean {
+  return window.location.pathname.startsWith('/i/');
+}
+
+/** 取当前请求的鉴权 token：候选端优先 guestToken，管理端取 accessToken。 */
+function getAuthToken(): string | null {
+  if (isGuestMode()) {
+    return sessionStorage.getItem('guestToken');
+  }
+  return localStorage.getItem('accessToken');
+}
+
+function clearGuestTokens() {
+  sessionStorage.removeItem('guestToken');
+  sessionStorage.removeItem('guestSessionId');
+}
+
 async function request<T>(url: string, options?: RequestOptions): Promise<T> {
   const { unwrap = true, _retried = false, ...init } = options ?? {};
 
@@ -64,7 +82,7 @@ async function request<T>(url: string, options?: RequestOptions): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
   // 注入 Authorization 头
-  const token = localStorage.getItem('accessToken');
+  const token = getAuthToken();
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -74,8 +92,16 @@ async function request<T>(url: string, options?: RequestOptions): Promise<T> {
     headers,
   });
 
-  // 401 自动刷新 + 重放（排除 auth 接口自身）
+  // 401 处理（排除 auth 接口自身）
   if (res.status === 401 && !_retried && !url.includes('/auth/')) {
+    // 候选端：guestToken 过期 → 清除并回到进入页重新输入密码
+    if (isGuestMode()) {
+      clearGuestTokens();
+      const enterPath = window.location.pathname.replace(/\/room$|\/report$/, '');
+      window.location.href = enterPath;
+      throw new ApiError(5001, '会话已过期，请重新输入访问密码', '');
+    }
+    // 管理端：自动刷新 + 重放
     const newToken = await doRefresh();
     if (newToken) {
       return request<T>(url, { ...options, _retried: true });

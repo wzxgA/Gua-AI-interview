@@ -150,9 +150,27 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // 生成连接 ID 并尝试获取连接锁
-        String connectionId = UUID.randomUUID().toString();
+        // GUEST（候选人）：校验 guestToken 绑定的 sid 与 URL 一致（握手已校验，此处双保险）
+        Object guestSid = session.getAttributes().get("guestSessionId");
+        if (guestSid != null && !guestSid.equals(sessionId)) {
+            send(session, WsOutbound.error(ErrorCode.ACCESS_DENIED.getCode(), "无权连接该会话"));
+            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("guest session mismatch"));
+            return;
+        }
+
+        // 生成连接 ID 并尝试获取连接锁（连接 ID 附身份后缀，供同身份抢占判断）
+        String identity = buildIdentity(session);
+        String connectionId = UUID.randomUUID().toString() + "|" + identity;
         boolean locked = sessionStore.tryLock(sessionId, connectionId);
+        if (!locked) {
+            // 同身份抢占：F5 刷新/断线重连时旧锁（TTL 60s）残留，同一候选人/用户允许抢占
+            String owner = sessionStore.getLockValue(sessionId);
+            if (owner != null && owner.endsWith("|" + identity)) {
+                log.info("同身份连接抢占旧锁 sessionId={} owner={}", sessionId, owner);
+                sessionStore.forceUnlock(sessionId);
+                locked = sessionStore.tryLock(sessionId, connectionId);
+            }
+        }
         if (!locked) {
             send(session, WsOutbound.error(ErrorCode.SESSION_LOCKED.getCode(), "会话已被其他连接占用"));
             session.close(CloseStatus.NOT_ACCEPTABLE.withReason("session locked"));
@@ -174,6 +192,16 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         if (current == SessionStatus.IN_PROGRESS || current == SessionStatus.PAUSED) {
             handleReconnectOrStart(session, sessionId, entity);
         }
+    }
+
+    /** 构建连接身份标识：候选端 guest:{sid}，管理端 user:{username}。用于同身份抢占判断。 */
+    private String buildIdentity(WebSocketSession session) {
+        Object guestSid = session.getAttributes().get("guestSessionId");
+        if (guestSid != null) {
+            return "guest:" + guestSid;
+        }
+        Object username = session.getAttributes().get("username");
+        return "user:" + (username == null ? "unknown" : username);
     }
 
     /**

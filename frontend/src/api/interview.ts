@@ -34,6 +34,9 @@ export function useInterview(id: number | undefined) {
       if (status === 'PLANNING' || status === 'EVALUATING' || status === 'REPORTING') {
         return 2000;
       }
+      if (status === 'IN_PROGRESS' || status === 'PAUSED') {
+        return 5000;
+      }
       return false;
     },
   });
@@ -148,5 +151,64 @@ export function useDeleteInterview() {
   return useMutation({
     mutationFn: (id: number) => http.del<void>(`/api/v1/interviews/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+/** 候选人访问配置 */
+export interface InterviewAccessConfig {
+  accessToken: string | null;
+  accessEnabled: boolean | null;
+  requirePassword: boolean | null;
+  accessPassword: string | null;
+  accessMode: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED' | null;
+}
+
+/** 获取候选人访问配置（链接令牌/开关/是否有密码） */
+export function useInterviewAccess(id: number | undefined) {
+  return useQuery({
+    queryKey: [KEY, id, 'access'],
+    queryFn: () => http.get<InterviewAccessConfig>(`/api/v1/interviews/${id}/access`),
+    enabled: !!id,
+  });
+}
+
+/** 设置/重置候选人访问密码 */
+export function useResetAccessPassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: number; password?: string }) =>
+      http.post<InterviewAccessConfig>(`/api/v1/interviews/${params.id}/access/password`, {
+        password: params.password,
+      }),
+    onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: [KEY, vars.id, 'access'] }),
+  });
+}
+
+/** 作废候选人入口 */
+export function useDisableAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      http.post<InterviewAccessConfig>(`/api/v1/interviews/${id}/access/disable`),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: [KEY, id, 'access'] });
+      qc.invalidateQueries({ queryKey: [KEY, id] });
+    },
+  });
+}
+
+/** 生成候选人面试链接（设为 CANDIDATE_ONLY） */
+export function useGenerateAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: number; password?: string }) =>
+      http.post<InterviewAccessConfig>(
+        `/api/v1/interviews/${params.id}/access/generate`,
+        { password: params.password },
+      ),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: [KEY, vars.id, 'access'] });
+      qc.invalidateQueries({ queryKey: [KEY, vars.id] });
+    },
   });
 }

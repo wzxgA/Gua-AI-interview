@@ -34,7 +34,7 @@ export function AnswerInput({ onSend, disabled = false }: AnswerInputProps) {
         onChange={(e) => setText(e.target.value.slice(0, MAX_LENGTH))}
         onKeyDown={handleKeyDown}
         placeholder="输入你的回答...（Ctrl+Enter 发送）"
-        rows={4}
+        rows={3}
         disabled={disabled}
         className="resize-none"
       />

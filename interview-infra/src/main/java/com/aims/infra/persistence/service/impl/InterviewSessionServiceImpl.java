@@ -13,7 +13,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** 面试会话持久化服务实现。 */
 @Service
 public class InterviewSessionServiceImpl implements InterviewSessionService {
+
+    /** 候选人访问令牌长度（32 字节随机串，Base64 URL-safe 编码后 43 字符）。 */
+    private static final int ACCESS_TOKEN_BYTES = 32;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     private final InterviewSessionMapper sessionMapper;
     private final InterviewRoundMapper roundMapper;
@@ -42,11 +49,76 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
         entity.setPositionId(positionId);
         entity.setPersona(InterviewerPersona.fromString(persona).name());
         entity.setStatus(SessionStatus.CREATED.name());
+        entity.setAccessEnabled(Boolean.FALSE);
+        entity.setAccessMode("NONE");
         Instant now = Instant.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         sessionMapper.insert(entity);
         return entity;
+    }
+
+    @Override
+    public InterviewSessionEntity getByAccessToken(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "访问令牌不能为空");
+        }
+        InterviewSessionEntity entity =
+                sessionMapper.selectOne(
+                        new LambdaQueryWrapper<InterviewSessionEntity>()
+                                .eq(InterviewSessionEntity::getAccessToken, accessToken));
+        if (entity == null || Boolean.FALSE.equals(entity.getAccessEnabled())) {
+            throw new BizException(ErrorCode.SESSION_NOT_FOUND, "面试链接不存在或已失效");
+        }
+        return entity;
+    }
+
+    @Override
+    @Transactional
+    public void updateAccessPassword(Long id, String passwordHash) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setAccessPassword(passwordHash);
+        entity.setAccessEnabled(Boolean.TRUE);
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public void disableAccess(Long id) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setAccessEnabled(Boolean.FALSE);
+        entity.setAccessMode("DISABLED");
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public void updateAccessMode(Long id, String accessMode) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setAccessMode(accessMode);
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public String ensureAccessToken(Long id) {
+        InterviewSessionEntity entity = getById(id);
+        if (entity.getAccessToken() == null || entity.getAccessToken().isBlank()) {
+            entity.setAccessToken(generateAccessToken());
+            entity.setUpdatedAt(Instant.now());
+            sessionMapper.updateById(entity);
+        }
+        return entity.getAccessToken();
+    }
+
+    /** 生成高熵访问令牌（32 字节随机 → Base64 URL-safe），不可枚举。 */
+    private String generateAccessToken() {
+        byte[] bytes = new byte[ACCESS_TOKEN_BYTES];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Override

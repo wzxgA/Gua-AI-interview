@@ -643,9 +643,9 @@ export function ResumeDetailPage() {
                 }
                 placeholder="输入奖项/证书后回车添加"
               />
-            ) : parsed.awards?.length > 0 ? (
+            ) : (parsed.awards?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {parsed.awards.map((award, index) => (
+                {(parsed.awards ?? []).map((award, index) => (
                   <Badge key={index} variant="category">
                     {award.name}
                   </Badge>

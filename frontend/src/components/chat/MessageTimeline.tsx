@@ -18,7 +18,7 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex min-h-full items-center justify-center">
         <p className="text-sm text-text-muted">等待面试开始...</p>
       </div>
     );

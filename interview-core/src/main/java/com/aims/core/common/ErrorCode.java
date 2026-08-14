@@ -50,7 +50,8 @@ public enum ErrorCode {
     BAD_CREDENTIALS(5002, "用户名或密码错误"),
     ACCESS_DENIED(5003, "无权访问"),
     ACCOUNT_DISABLED(5004, "账号已禁用"),
-    REFRESH_TOKEN_INVALID(5005, "刷新令牌无效或已过期");
+    REFRESH_TOKEN_INVALID(5005, "刷新令牌无效或已过期"),
+    ACCESS_RATE_LIMITED(5006, "尝试次数过多，请稍后再试");
 
     private final int code;
     private final String message;

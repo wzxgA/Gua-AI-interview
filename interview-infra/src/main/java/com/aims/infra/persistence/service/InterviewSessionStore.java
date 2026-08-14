@@ -68,6 +68,11 @@ public class InterviewSessionStore {
         return Boolean.TRUE.equals(ok);
     }
 
+    /** 读取锁的原始值（connectionId，含身份后缀），用于同身份抢占判断；无锁返回 null。 */
+    public String getLockValue(Long sessionId) {
+        return redis.opsForValue().get(KEY_LOCK + sessionId);
+    }
+
     /** 续租连接锁。 */
     public boolean renewLock(Long sessionId, String connectionId) {
         String key = KEY_LOCK + sessionId;

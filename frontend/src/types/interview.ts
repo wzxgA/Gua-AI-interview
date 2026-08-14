@@ -31,6 +31,12 @@ export interface InterviewResponse {
   totalRoundsToEvaluate: number | null;
   createdAt: string;
   updatedAt: string;
+  /** 候选人访问链接令牌（管理端） */
+  accessToken?: string | null;
+  /** 访问密码明文（仅创建/重置时返回） */
+  accessPassword?: string | null;
+  /** 入口模式：NONE=未生成链接，CANDIDATE_ONLY=仅候选端，DISABLED=已作废 */
+  accessMode?: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED';
 }
 
 /** 对齐 CreateInterviewRequest */

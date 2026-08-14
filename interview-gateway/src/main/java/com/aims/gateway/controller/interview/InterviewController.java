@@ -24,10 +24,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,6 +62,14 @@ public class InterviewController {
     private static final java.util.Map<String, Integer> MINUTES_PER_QUESTION =
             java.util.Map.of("BASIC", 2, "BALANCED", 3, "ADVANCED", 5);
 
+    /** 系统生成访问密码长度与字符集（去掉易混淆字符）。 */
+    private static final int ACCESS_PASSWORD_LENGTH = 8;
+
+    private static final String ACCESS_PASSWORD_CHARS =
+            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+
+    private final SecureRandom secureRandom = new SecureRandom();
+
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
     private final PositionService positionService;
@@ -69,6 +79,7 @@ public class InterviewController {
     private final InterviewSessionStore sessionStore;
     private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public InterviewController(
             InterviewSessionService sessionService,
@@ -79,7 +90,8 @@ public class InterviewController {
             InterviewPlanGenerator planGenerator,
             InterviewSessionStore sessionStore,
             EvaluationMessageProducer evaluationMessageProducer,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            PasswordEncoder passwordEncoder) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.positionService = positionService;
@@ -89,6 +101,7 @@ public class InterviewController {
         this.sessionStore = sessionStore;
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Operation(summary = "分页查询面试会话列表")
@@ -102,12 +115,82 @@ public class InterviewController {
         return Result.ok(mapped);
     }
 
-    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED")
+    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED（不自动生成候选人链接）")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
         InterviewSessionEntity entity =
                 sessionService.create(req.candidateId(), req.positionId(), req.persona());
         return Result.ok(InterviewResponse.from(entity));
+    }
+
+    @Operation(summary = "获取候选人访问配置", description = "返回面试链接令牌、入口开关、是否有密码与入口模式")
+    @GetMapping("/{id}/access")
+    public Result<InterviewAccessResponse> getAccess(@PathVariable Long id) {
+        InterviewSessionEntity entity = sessionService.getById(id);
+        return Result.ok(
+                new InterviewAccessResponse(
+                        entity.getAccessToken(),
+                        entity.getAccessEnabled(),
+                        entity.getAccessPassword() != null,
+                        null,
+                        entity.getAccessMode()));
+    }
+
+    @Operation(
+            summary = "生成候选人面试链接",
+            description = "生成访问令牌与密码，设为 CANDIDATE_ONLY 模式（仅 PLANNING/PAUSED 允许）")
+    @PostMapping("/{id}/access/generate")
+    public Result<InterviewAccessResponse> generateAccess(
+            @PathVariable Long id, @RequestBody(required = false) ResetAccessPasswordRequest req) {
+        InterviewSessionEntity entity = sessionService.getById(id);
+        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
+        if (current != SessionStatus.PLANNING && current != SessionStatus.PAUSED) {
+            throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT, "请先生成面试计划后再生成候选人面试链接");
+        }
+        String token = sessionService.ensureAccessToken(id);
+        String raw =
+                (req == null || req.password() == null || req.password().isBlank())
+                        ? generateAccessPassword()
+                        : req.password();
+        sessionService.updateAccessPassword(id, passwordEncoder.encode(raw));
+        sessionService.updateAccessMode(id, "CANDIDATE_ONLY");
+        InterviewSessionEntity updated = sessionService.getById(id);
+        return Result.ok(
+                new InterviewAccessResponse(
+                        updated.getAccessToken(), true, true, raw, "CANDIDATE_ONLY"));
+    }
+
+    @Operation(summary = "设置/重置候选人访问密码", description = "重新生成候选人访问密码（bcrypt 存储），返回新密码明文")
+    @PostMapping("/{id}/access/password")
+    public Result<InterviewAccessResponse> resetAccessPassword(
+            @PathVariable Long id, @RequestBody ResetAccessPasswordRequest req) {
+        String raw = req.password();
+        if (raw == null || raw.isBlank()) {
+            raw = generateAccessPassword();
+        }
+        sessionService.updateAccessPassword(id, passwordEncoder.encode(raw));
+        InterviewSessionEntity entity = sessionService.getById(id);
+        return Result.ok(
+                new InterviewAccessResponse(
+                        entity.getAccessToken(),
+                        entity.getAccessEnabled(),
+                        true,
+                        raw,
+                        entity.getAccessMode()));
+    }
+
+    @Operation(summary = "作废候选人入口", description = "关闭候选人链接访问权限并恢复管理端面试能力")
+    @PostMapping("/{id}/access/disable")
+    public Result<InterviewAccessResponse> disableAccess(@PathVariable Long id) {
+        sessionService.disableAccess(id);
+        InterviewSessionEntity entity = sessionService.getById(id);
+        return Result.ok(
+                new InterviewAccessResponse(
+                        entity.getAccessToken(),
+                        false,
+                        entity.getAccessPassword() != null,
+                        null,
+                        "DISABLED"));
     }
 
     @Operation(summary = "查询面试会话详情", description = "根据 ID 查询面试会话详情")
@@ -188,6 +271,9 @@ public class InterviewController {
         SessionStatus current = SessionStatus.valueOf(session.getStatus());
         if (current != SessionStatus.PLANNING) {
             throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
+        }
+        if ("CANDIDATE_ONLY".equals(session.getAccessMode())) {
+            throw new BizException(ErrorCode.ACCESS_DENIED, "该面试已设为候选端面试，请通过候选人链接进行");
         }
         sessionService.updateStatus(id, SessionStatus.IN_PROGRESS);
         sessionService.markStarted(id);
@@ -270,6 +356,17 @@ public class InterviewController {
     }
 
     // ---- 私有辅助方法 ----
+
+    /** 生成 8 位候选访问密码（字母+数字，去除易混淆字符）。 */
+    private String generateAccessPassword() {
+        StringBuilder sb = new StringBuilder(ACCESS_PASSWORD_LENGTH);
+        for (int i = 0; i < ACCESS_PASSWORD_LENGTH; i++) {
+            sb.append(
+                    ACCESS_PASSWORD_CHARS.charAt(
+                            secureRandom.nextInt(ACCESS_PASSWORD_CHARS.length())));
+        }
+        return sb.toString();
+    }
 
     /** 构建简历摘要：优先使用 parsedJson，否则使用 rawText 截断。 */
     private String buildResumeSummary(ResumeEntity resume) {

@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
+import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-dot';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
@@ -24,9 +26,11 @@ export function InterviewRoomPage() {
 
   const session = useInterviewSession({ sessionId: interviewId ?? null });
   const setSession = useSessionStore((s) => s.setSession);
+  const setStatus = useSessionStore((s) => s.setStatus);
   const resetStore = useSessionStore((s) => s.reset);
   const addQuestion = useSessionStore((s) => s.addQuestion);
   const addAnswer = useSessionStore((s) => s.addAnswer);
+  const queryClient = useQueryClient();
   const { connect, disconnect } = session;
 
   // WebSocket 连接（只依赖 interviewId，不受 rounds 加载影响）
@@ -68,7 +72,11 @@ export function InterviewRoomPage() {
   const handleResume = () => {
     if (!interviewId) return;
     resumeMutation.mutate(interviewId, {
-      onSuccess: () => toast.success('面试已恢复'),
+      onSuccess: () => {
+        toast.success('面试已恢复');
+        setStatus('IN_PROGRESS');
+        queryClient.invalidateQueries({ queryKey: ['interviews', interviewId] });
+      },
       onError: (err: Error) => toast.error(err.message || '恢复失败'),
     });
   };
@@ -90,6 +98,29 @@ export function InterviewRoomPage() {
           message={error?.message || '面试不存在'}
           onRetry={() => navigate('/interviews')}
         />
+      </div>
+    );
+  }
+
+  // CANDIDATE_ONLY 模式：管理端无法进入面试间
+  if (interview.accessMode === 'CANDIDATE_ONLY') {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="面试间"
+          subtitle={`面试 #${interview.id}`}
+          action={
+            <SilverButton variant="ghost" onClick={() => navigate(`/interviews/${interview.id}`)}>
+              返回控制台
+            </SilverButton>
+          }
+        />
+        <GlassCard className="p-8 text-center">
+          <p className="text-sm text-amber-400">该面试已设为候选端面试</p>
+          <p className="mt-2 text-xs text-text-muted">
+            候选人需通过面试链接进入，管理端无法直接操作面试间
+          </p>
+        </GlassCard>
       </div>
     );
   }

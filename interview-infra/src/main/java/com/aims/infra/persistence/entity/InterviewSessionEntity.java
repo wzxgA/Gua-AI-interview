@@ -59,6 +59,18 @@ public class InterviewSessionEntity {
     @TableField("persona")
     private String persona;
 
+    @TableField("access_token")
+    private String accessToken;
+
+    @TableField("access_password")
+    private String accessPassword;
+
+    @TableField("access_enabled")
+    private Boolean accessEnabled;
+
+    @TableField("access_mode")
+    private String accessMode;
+
     public Long getId() {
         return id;
     }
@@ -185,5 +197,37 @@ public class InterviewSessionEntity {
 
     public void setPersona(String persona) {
         this.persona = persona;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public String getAccessPassword() {
+        return accessPassword;
+    }
+
+    public void setAccessPassword(String accessPassword) {
+        this.accessPassword = accessPassword;
+    }
+
+    public Boolean getAccessEnabled() {
+        return accessEnabled;
+    }
+
+    public void setAccessEnabled(Boolean accessEnabled) {
+        this.accessEnabled = accessEnabled;
+    }
+
+    public String getAccessMode() {
+        return accessMode;
+    }
+
+    public void setAccessMode(String accessMode) {
+        this.accessMode = accessMode;
     }
 }

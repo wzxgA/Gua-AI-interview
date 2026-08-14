@@ -37,7 +37,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Claims claims = jwtUtil.parse(token);
-                // 校验账号是否仍处于启用状态
+                // GUEST：候选人 guestToken，跳过用户表校验，认证上下文绑定 sid
+                if ("GUEST".equals(claims.get("role", String.class))) {
+                    Long sid = GuestTokenService.extractSessionId(claims);
+                    UsernamePasswordAuthenticationToken guestAuth =
+                            new UsernamePasswordAuthenticationToken(
+                                    "guest",
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_GUEST")));
+                    guestAuth.setDetails(sid);
+                    SecurityContextHolder.getContext().setAuthentication(guestAuth);
+                    chain.doFilter(req, res);
+                    return;
+                }
+                // 管理员/面试官：校验账号是否仍处于启用状态
                 SysUserEntity user = sysUserService.findByUsername(claims.getSubject());
                 if (user == null || Boolean.FALSE.equals(user.getEnabled())) {
                     SecurityContextHolder.clearContext();
