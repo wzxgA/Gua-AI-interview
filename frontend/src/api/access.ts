@@ -61,6 +61,10 @@ export function resumeGuestSession(sessionId: number) {
   return http.post<void>(`/api/v1/access/interviews/${sessionId}/resume`);
 }
 
+export function startGuestSession(sessionId: number) {
+  return http.post<GuestSession>(`/api/v1/access/interviews/${sessionId}/start`);
+}
+
 // ---- React Query hooks ----
 
 export function useGuestSession(sessionId: number | null) {

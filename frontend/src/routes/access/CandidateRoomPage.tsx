@@ -10,7 +10,7 @@ import { DisconnectOverlay } from '@/components/chat/DisconnectOverlay';
 import { ActionButtons } from '@/components/interview/ActionButtons';
 import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
-import { useGuestRounds, useGuestSession, resumeGuestSession } from '@/api/access';
+import { useGuestRounds, useGuestSession, resumeGuestSession, startGuestSession } from '@/api/access';
 import type { SessionStatus } from '@/types/interview';
 
 /** 候选面试间：免登录，基于 guestToken 连接 WS 完成实时问答（复用现有问答链路）。 */
@@ -90,6 +90,19 @@ export function CandidateRoomPage() {
       .catch((err: Error) => toast.error(err.message || '恢复失败'));
   };
 
+  const handleBegin = () => {
+    if (!sessionId) return;
+    startGuestSession(sessionId)
+      .then(() => {
+        toast.success('面试已开始');
+        setStatus('IN_PROGRESS');
+        queryClient.invalidateQueries({ queryKey: ['guest', 'session', sessionId] });
+        // 重连 WS 触发服务端首题生成（连接建立时状态为 IN_PROGRESS + 无轮次 → 发首题）
+        session.reconnect();
+      })
+      .catch((err: Error) => toast.error(err.message || '开始失败'));
+  };
+
   if (!guestSession || !sessionId) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -111,6 +124,7 @@ export function CandidateRoomPage() {
         </div>
         <ActionButtons
           status={status}
+          onBeginInterview={handleBegin}
           onPause={() => session.pauseInterview()}
           onFinish={() => session.finishInterview()}
           onCancel={() => session.cancelInterview()}

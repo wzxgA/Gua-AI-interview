@@ -165,6 +165,23 @@ public class InterviewAccessController {
         return Result.ok(null);
     }
 
+    @Operation(summary = "候选开始面试", description = "CANDIDATE_ONLY 模式下候选人确认开始，PLANNING → IN_PROGRESS")
+    @PreAuthorize("hasRole('GUEST')")
+    @PostMapping("/{sessionId}/start")
+    public Result<GuestSessionResponse> start(@PathVariable Long sessionId) {
+        requireSameSession(sessionId);
+        InterviewSessionEntity session = sessionService.getById(sessionId);
+        if (!"CANDIDATE_ONLY".equals(session.getAccessMode())) {
+            throw new BizException(ErrorCode.ACCESS_DENIED, "该会话未开放候选端入口");
+        }
+        if (SessionStatus.valueOf(session.getStatus()) != SessionStatus.PLANNING) {
+            throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
+        }
+        sessionService.updateStatus(sessionId, SessionStatus.IN_PROGRESS);
+        sessionService.markStarted(sessionId);
+        return Result.ok(GuestSessionResponse.from(sessionService.getById(sessionId)));
+    }
+
     @Operation(summary = "候选查看自己的评分明细", description = "携带 guestToken 访问，仅返回自身会话评分")
     @PreAuthorize("hasRole('GUEST')")
     @GetMapping("/{sessionId}/evaluations")
