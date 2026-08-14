@@ -115,9 +115,9 @@ export function CandidateRoomPage() {
   const isTerminal = ['COMPLETED', 'CANCELLED', 'FAILED'].includes(status);
 
   return (
-    <div className="relative mx-auto flex h-screen max-w-3xl flex-col gap-4 p-4">
+    <div className="relative mx-auto flex h-screen w-full max-w-5xl flex-col gap-4 p-4">
       {/* 顶部栏：AI 面试官 + 状态 + 操作按钮（暂停/结束/取消，可查看报告） */}
-      <GlassCard className="flex flex-wrap items-center justify-between gap-3 p-4">
+      <GlassCard className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-text-primary">AI 面试官</span>
           <StatusBadge status={status} />
