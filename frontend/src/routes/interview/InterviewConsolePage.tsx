@@ -62,10 +62,11 @@ export function InterviewConsolePage() {
   const [linkLang, setLinkLang] = useState<LanguageCode | null>(null);
   const [proctorEnabled, setProctorEnabled] = useState(false);
   const [proctorTabSwitch, setProctorTabSwitch] = useState(true);
+  const [proctorGaze, setProctorGaze] = useState(true);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
 
-  // 面试开启切屏检测时，控制台轮询防作弊事件/摘要
-  const proctorActive = accessConfig?.proctor?.tabSwitch ?? false;
+  // 面试开启切屏/眼神检测时，控制台轮询防作弊事件/摘要
+  const proctorActive = (accessConfig?.proctor?.tabSwitch || accessConfig?.proctor?.gaze) ?? false;
   const { data: proctorEvents } = useProctorEvents(interviewId, proctorActive);
   const { data: proctorSummary } = useProctorSummary(interviewId, proctorActive);
 
@@ -187,8 +188,8 @@ export function InterviewConsolePage() {
       {
         id: interviewId,
         password: generatePassword.trim() || undefined,
-        // 防作弊为可选：勾选后随生成请求保存（眼神检测待二期）
-        proctor: proctorEnabled ? { tabSwitch: proctorTabSwitch, gaze: false } : undefined,
+        // 防作弊为可选：勾选后随生成请求保存（含切屏/眼神子项）
+        proctor: proctorEnabled ? { tabSwitch: proctorTabSwitch, gaze: proctorGaze } : undefined,
       },
       {
         onSuccess: (data) => {
@@ -327,15 +328,26 @@ export function InterviewConsolePage() {
                             {t('proctor.enableLabel')}
                           </label>
                           {proctorEnabled && (
-                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                              <input
-                                type="checkbox"
-                                checked={proctorTabSwitch}
-                                onChange={(e) => setProctorTabSwitch(e.target.checked)}
-                                className="accent-silver-400"
-                              />
-                              {t('proctor.tabSwitchLabel')}
-                            </label>
+                            <>
+                              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                                <input
+                                  type="checkbox"
+                                  checked={proctorTabSwitch}
+                                  onChange={(e) => setProctorTabSwitch(e.target.checked)}
+                                  className="accent-silver-400"
+                                />
+                                {t('proctor.tabSwitchLabel')}
+                              </label>
+                              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                                <input
+                                  type="checkbox"
+                                  checked={proctorGaze}
+                                  onChange={(e) => setProctorGaze(e.target.checked)}
+                                  className="accent-silver-400"
+                                />
+                                {t('proctor.gazeLabel')}
+                              </label>
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -433,15 +445,26 @@ export function InterviewConsolePage() {
                             {t('proctor.enableLabel')}
                           </label>
                           {proctorEnabled && (
-                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                              <input
-                                type="checkbox"
-                                checked={proctorTabSwitch}
-                                onChange={(e) => setProctorTabSwitch(e.target.checked)}
-                                className="accent-silver-400"
-                              />
-                              {t('proctor.tabSwitchLabel')}
-                            </label>
+                            <>
+                              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                                <input
+                                  type="checkbox"
+                                  checked={proctorTabSwitch}
+                                  onChange={(e) => setProctorTabSwitch(e.target.checked)}
+                                  className="accent-silver-400"
+                                />
+                                {t('proctor.tabSwitchLabel')}
+                              </label>
+                              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                                <input
+                                  type="checkbox"
+                                  checked={proctorGaze}
+                                  onChange={(e) => setProctorGaze(e.target.checked)}
+                                  className="accent-silver-400"
+                                />
+                                {t('proctor.gazeLabel')}
+                              </label>
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -472,7 +495,7 @@ export function InterviewConsolePage() {
                 )}
               </div>
             )}
-            {accessConfig?.proctor?.tabSwitch && (
+            {(accessConfig?.proctor?.tabSwitch || accessConfig?.proctor?.gaze) && (
               <div className="space-y-3 pt-3">
                 <ProctorSummaryCard summary={proctorSummary} />
                 <ProctorLivePanel events={proctorEvents} />

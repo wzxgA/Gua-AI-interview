@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,8 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useGuestRounds, useGuestSession, resumeGuestSession, startGuestSession } from '@/api/access';
 import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
 import { useTabSwitchDetection } from '@/hooks/useTabSwitchDetection';
+import { useGazeDetection } from '@/hooks/useGazeDetection';
+import { GazeDetector } from '@/components/candidate/GazeDetector';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import type { SessionStatus } from '@/types/interview';
 
@@ -121,6 +123,56 @@ export function CandidateRoomPage() {
   // 切屏检测（仅 proctor.tabSwitch 开启且面试 IN_PROGRESS 时启用；暂停/结束/取消后停止统计）
   useTabSwitchDetection(proctor.tabSwitch && session.status === 'IN_PROGRESS', sessionId);
 
+  // 眼神检测（仅 proctor.gaze 开启且面试 IN_PROGRESS 时启用；拒绝摄像头不阻断面试）
+  // 预览视频元素始终渲染（保证 ref 有效），仅授权后可见，默认右上角、可拖动
+  const gazeVideoRef = useRef<HTMLVideoElement>(null);
+  const [gazePos, setGazePos] = useState<{ x: number; y: number } | null>(null);
+  const gazeDragRef = useRef<{
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+  } | null>(null);
+
+  const handleGazePointerDown = (e: React.PointerEvent<HTMLVideoElement>) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const base = gazePos ?? { x: rect.left, y: rect.top };
+    setGazePos(base);
+    gazeDragRef.current = {
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      baseX: base.x,
+      baseY: base.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleGazePointerMove = (e: React.PointerEvent<HTMLVideoElement>) => {
+    const d = gazeDragRef.current;
+    if (!d) return;
+    const w = 240;
+    const h = 160;
+    setGazePos({
+      x: Math.min(Math.max(d.baseX + (e.clientX - d.startX), 0), window.innerWidth - w),
+      y: Math.min(Math.max(d.baseY + (e.clientY - d.startY), 0), window.innerHeight - h),
+    });
+  };
+
+  const handleGazePointerUp = () => {
+    gazeDragRef.current = null;
+  };
+
+  const gaze = useGazeDetection(
+    proctor.gaze && session.status === 'IN_PROGRESS',
+    sessionId,
+    gazeVideoRef.current,
+  );
+
   if (!guestSession || !sessionId) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -171,6 +223,25 @@ export function CandidateRoomPage() {
           onReconnect={session.reconnect}
         />
       )}
+
+      {/* 眼神检测授权弹窗（仅等待授权时渲染，拒绝不阻断） */}
+      <GazeDetector gaze={gaze} />
+
+      {/* 摄像头预览（元素始终渲染保证 ref 有效，仅授权运行后可见；默认右上角，按住可拖动） */}
+      <video
+        ref={gazeVideoRef}
+        muted
+        playsInline
+        autoPlay
+        onPointerDown={handleGazePointerDown}
+        onPointerMove={handleGazePointerMove}
+        onPointerUp={handleGazePointerUp}
+        onPointerCancel={handleGazePointerUp}
+        style={gazePos ? { left: gazePos.x, top: gazePos.y } : undefined}
+        className={`fixed z-40 h-40 w-60 cursor-move touch-none select-none rounded-xl border border-border-subtle bg-black object-cover shadow-lg ${
+          gaze.camState === 'granted' ? '' : 'invisible'
+        } ${gazePos ? '' : 'right-4 top-4'}`}
+      />
     </div>
   );
 }
