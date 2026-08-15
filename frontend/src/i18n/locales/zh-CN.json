@@ -582,5 +582,21 @@
     "networkError": "语音识别网络异常",
     "serviceNotAllowed": "浏览器禁止语音识别服务",
     "genericError": "语音识别失败，请重试"
+  },
+  "proctor": {
+    "summaryTitle": "防作弊摘要",
+    "liveTitle": "防作弊实时面板",
+    "enableLabel": "启用防作弊检测",
+    "tabSwitchLabel": "切屏检测",
+    "eventTabSwitch": "切屏",
+    "eventWindowBlur": "窗口失焦",
+    "eventCameraDenied": "拒绝摄像头",
+    "eventCameraOff": "摄像头关闭",
+    "eventCameraOn": "摄像头开启",
+    "eventGazeAway": "眼神偏离",
+    "eventFaceLost": "人脸离屏",
+    "eventUnknown": "其他",
+    "empty": "暂无防作弊事件",
+    "totalOffFocusLabel": "累计偏离时长"
   }
 }

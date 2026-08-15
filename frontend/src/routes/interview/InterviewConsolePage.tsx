@@ -25,10 +25,14 @@ import {
   useResetAccessPassword,
   useDisableAccess,
   useGenerateAccess,
+  useProctorEvents,
+  useProctorSummary,
 } from '@/api/interview';
 import type { StartPlanBody } from '@/api/interview';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
+import { ProctorSummaryCard } from '@/components/interview/ProctorSummaryCard';
+import { ProctorLivePanel } from '@/components/interview/ProctorLivePanel';
 
 export function InterviewConsolePage() {
   const { t } = useTranslation();
@@ -56,7 +60,14 @@ export function InterviewConsolePage() {
   const [generatePassword, setGeneratePassword] = useState('');
   const [generateLang, setGenerateLang] = useState<LanguageCode>(language);
   const [linkLang, setLinkLang] = useState<LanguageCode | null>(null);
+  const [proctorEnabled, setProctorEnabled] = useState(false);
+  const [proctorTabSwitch, setProctorTabSwitch] = useState(true);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+
+  // 面试开启切屏检测时，控制台轮询防作弊事件/摘要
+  const proctorActive = accessConfig?.proctor?.tabSwitch ?? false;
+  const { data: proctorEvents } = useProctorEvents(interviewId, proctorActive);
+  const { data: proctorSummary } = useProctorSummary(interviewId, proctorActive);
 
   const handleStart = () => {
     setPlanDialogOpen(true);
@@ -173,7 +184,12 @@ export function InterviewConsolePage() {
   const handleGenerate = () => {
     if (!interviewId) return;
     generateMutation.mutate(
-      { id: interviewId, password: generatePassword.trim() || undefined },
+      {
+        id: interviewId,
+        password: generatePassword.trim() || undefined,
+        // 防作弊为可选：勾选后随生成请求保存（眼神检测待二期）
+        proctor: proctorEnabled ? { tabSwitch: proctorTabSwitch, gaze: false } : undefined,
+      },
       {
         onSuccess: (data) => {
           toast.success(t('interviews.linkGenerated'));
@@ -299,7 +315,30 @@ export function InterviewConsolePage() {
                       {t('interviews.generateLink')}
                     </SilverButton>
                     {showGenerate && (
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="pt-1">
+                        <div className="mb-2 flex items-center gap-4">
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                            <input
+                              type="checkbox"
+                              checked={proctorEnabled}
+                              onChange={(e) => setProctorEnabled(e.target.checked)}
+                              className="accent-silver-400"
+                            />
+                            {t('proctor.enableLabel')}
+                          </label>
+                          {proctorEnabled && (
+                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                              <input
+                                type="checkbox"
+                                checked={proctorTabSwitch}
+                                onChange={(e) => setProctorTabSwitch(e.target.checked)}
+                                className="accent-silver-400"
+                              />
+                              {t('proctor.tabSwitchLabel')}
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
                         <select
                           value={generateLang}
                           onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
@@ -320,6 +359,7 @@ export function InterviewConsolePage() {
                         <SilverButton onClick={handleGenerate} disabled={generateMutation.isPending}>
                           {t('common.confirm')}
                         </SilverButton>
+                        </div>
                       </div>
                     )}
                   </>
@@ -381,7 +421,30 @@ export function InterviewConsolePage() {
                       {t('interviews.regenerateLink')}
                     </SilverButton>
                     {showGenerate && (
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="pt-1">
+                        <div className="mb-2 flex items-center gap-4">
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                            <input
+                              type="checkbox"
+                              checked={proctorEnabled}
+                              onChange={(e) => setProctorEnabled(e.target.checked)}
+                              className="accent-silver-400"
+                            />
+                            {t('proctor.enableLabel')}
+                          </label>
+                          {proctorEnabled && (
+                            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+                              <input
+                                type="checkbox"
+                                checked={proctorTabSwitch}
+                                onChange={(e) => setProctorTabSwitch(e.target.checked)}
+                                className="accent-silver-400"
+                              />
+                              {t('proctor.tabSwitchLabel')}
+                            </label>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
                         <select
                           value={generateLang}
                           onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
@@ -402,10 +465,17 @@ export function InterviewConsolePage() {
                         <SilverButton onClick={handleGenerate} disabled={generateMutation.isPending}>
                           {t('common.confirm')}
                         </SilverButton>
+                        </div>
                       </div>
                     )}
                   </>
                 )}
+              </div>
+            )}
+            {accessConfig?.proctor?.tabSwitch && (
+              <div className="space-y-3 pt-3">
+                <ProctorSummaryCard summary={proctorSummary} />
+                <ProctorLivePanel events={proctorEvents} />
               </div>
             )}
           </GlassCard>

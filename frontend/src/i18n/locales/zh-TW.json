@@ -582,5 +582,21 @@
     "networkError": "語音辨識網路異常",
     "serviceNotAllowed": "瀏覽器禁止語音辨識服務",
     "genericError": "語音辨識失敗，請重試"
+  },
+  "proctor": {
+    "summaryTitle": "防作弊摘要",
+    "liveTitle": "防作弊即時面板",
+    "enableLabel": "啟用防作弊偵測",
+    "tabSwitchLabel": "切換視窗偵測",
+    "eventTabSwitch": "切換視窗",
+    "eventWindowBlur": "視窗失焦",
+    "eventCameraDenied": "拒絕攝影機",
+    "eventCameraOff": "攝影機關閉",
+    "eventCameraOn": "攝影機開啟",
+    "eventGazeAway": "視線偏移",
+    "eventFaceLost": "人臉離鏡",
+    "eventUnknown": "其他",
+    "empty": "暫無防作弊事件",
+    "totalOffFocusLabel": "累計偏離時長"
   }
 }

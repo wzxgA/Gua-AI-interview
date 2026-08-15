@@ -30,7 +30,11 @@ export function CandidateAccessPage() {
     setError(null);
     getAccessInfo(accessToken)
       .then((d) => {
-        if (!cancelled) setInfo(d);
+        if (!cancelled) {
+          setInfo(d);
+          // 面试级防作弊配置传给面试间使用
+          sessionStorage.setItem('guestProctor', JSON.stringify(d.proctor ?? { tabSwitch: false, gaze: false }));
+        }
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : t('candidate.invalidLink'));

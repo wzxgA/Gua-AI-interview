@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { http } from './client';
 import type { RoundResponse } from '@/types/interview';
 import type { EvaluationResponse, ReportResponse } from '@/types/report';
+import type { ProctorConfig } from '@/types/interview';
 
 /** 候选入口信息 */
 export interface AccessInfo {
@@ -11,12 +12,22 @@ export interface AccessInfo {
   status: string;
   requirePassword: boolean;
   enabled: boolean;
+  /** 面试级防作弊配置（生成链接时配置） */
+  proctor: ProctorConfig;
 }
 
 /** 密码校验通过响应 */
 export interface VerifyResult {
   sessionId: number;
   guestToken: string;
+}
+
+/** 防作弊事件上报项 */
+export interface ProctorEventItem {
+  eventType: string;
+  occurredAt: string;
+  durationMs: number | null;
+  detail?: string | null;
 }
 
 /** 候选会话视图 */
@@ -63,6 +74,11 @@ export function resumeGuestSession(sessionId: number) {
 
 export function startGuestSession(sessionId: number) {
   return http.post<GuestSession>(`/api/v1/access/interviews/${sessionId}/start`);
+}
+
+/** 批量上报防作弊事件（GUEST，自动携带 guestToken） */
+export function postProctorEvents(sessionId: number, events: ProctorEventItem[]) {
+  return http.post<void>(`/api/v1/access/interviews/${sessionId}/proctor/events`, { events });
 }
 
 // ---- React Query hooks ----

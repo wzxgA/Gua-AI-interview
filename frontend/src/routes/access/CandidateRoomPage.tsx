@@ -13,6 +13,7 @@ import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useGuestRounds, useGuestSession, resumeGuestSession, startGuestSession } from '@/api/access';
 import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
+import { useTabSwitchDetection } from '@/hooks/useTabSwitchDetection';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import type { SessionStatus } from '@/types/interview';
 
@@ -108,6 +109,17 @@ export function CandidateRoomPage() {
       })
       .catch((err: Error) => toast.error(err.message || t('candidate.startFailed')));
   };
+
+  // 读取面试级防作弊配置（进入页写入 sessionStorage）
+  const proctorJson = sessionStorage.getItem('guestProctor');
+  let proctor: { tabSwitch: boolean; gaze: boolean } = { tabSwitch: false, gaze: false };
+  try {
+    if (proctorJson) proctor = JSON.parse(proctorJson) as typeof proctor;
+  } catch {
+    // 忽略非法配置，按关闭处理
+  }
+  // 切屏检测（仅 proctor.tabSwitch 开启且面试 IN_PROGRESS 时启用；暂停/结束/取消后停止统计）
+  useTabSwitchDetection(proctor.tabSwitch && session.status === 'IN_PROGRESS', sessionId);
 
   if (!guestSession || !sessionId) {
     return (

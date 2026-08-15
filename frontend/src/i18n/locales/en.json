@@ -582,5 +582,21 @@
     "networkError": "Speech recognition network error",
     "serviceNotAllowed": "Speech recognition service is blocked by the browser",
     "genericError": "Speech recognition failed, please retry"
+  },
+  "proctor": {
+    "summaryTitle": "Proctoring Summary",
+    "liveTitle": "Proctoring Live Panel",
+    "enableLabel": "Enable proctoring",
+    "tabSwitchLabel": "Tab switch detection",
+    "eventTabSwitch": "Tab switched",
+    "eventWindowBlur": "Window blurred",
+    "eventCameraDenied": "Camera denied",
+    "eventCameraOff": "Camera off",
+    "eventCameraOn": "Camera on",
+    "eventGazeAway": "Gaze away",
+    "eventFaceLost": "Face lost",
+    "eventUnknown": "Other",
+    "empty": "No proctoring events yet",
+    "totalOffFocusLabel": "Total off-focus time"
   }
 }

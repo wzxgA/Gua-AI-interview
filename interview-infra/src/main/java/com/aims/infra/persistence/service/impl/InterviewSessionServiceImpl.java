@@ -104,6 +104,13 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     @Override
     @Transactional
+    public void saveProctor(Long id, String proctorJson) {
+        getById(id);
+        sessionMapper.updateProctorJson(id, proctorJson);
+    }
+
+    @Override
+    @Transactional
     public String ensureAccessToken(Long id) {
         InterviewSessionEntity entity = getById(id);
         if (entity.getAccessToken() == null || entity.getAccessToken().isBlank()) {

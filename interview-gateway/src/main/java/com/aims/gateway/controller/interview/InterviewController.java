@@ -9,6 +9,7 @@ import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
+import com.aims.infra.persistence.entity.ProctorEventEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
@@ -16,6 +17,7 @@ import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.InterviewSessionStore;
 import com.aims.infra.persistence.service.PositionService;
+import com.aims.infra.persistence.service.ProctorEventService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -80,6 +82,7 @@ public class InterviewController {
     private final EvaluationMessageProducer evaluationMessageProducer;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final ProctorEventService proctorEventService;
 
     public InterviewController(
             InterviewSessionService sessionService,
@@ -91,7 +94,8 @@ public class InterviewController {
             InterviewSessionStore sessionStore,
             EvaluationMessageProducer evaluationMessageProducer,
             ObjectMapper objectMapper,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ProctorEventService proctorEventService) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.positionService = positionService;
@@ -102,6 +106,7 @@ public class InterviewController {
         this.evaluationMessageProducer = evaluationMessageProducer;
         this.objectMapper = objectMapper;
         this.passwordEncoder = passwordEncoder;
+        this.proctorEventService = proctorEventService;
     }
 
     @Operation(summary = "分页查询面试会话列表")
@@ -133,7 +138,8 @@ public class InterviewController {
                         entity.getAccessEnabled(),
                         entity.getAccessPassword() != null,
                         null,
-                        entity.getAccessMode()));
+                        entity.getAccessMode(),
+                        ProctorConfig.from(entity)));
     }
 
     @Operation(
@@ -154,10 +160,58 @@ public class InterviewController {
                         : req.password();
         sessionService.updateAccessPassword(id, passwordEncoder.encode(raw));
         sessionService.updateAccessMode(id, "CANDIDATE_ONLY");
+        // 可选：开启防作弊检测（生成链接时选择，重置密码不影响已配置项）
+        if (req != null && req.proctor() != null) {
+            sessionService.saveProctor(id, req.proctor().toJson());
+        }
         InterviewSessionEntity updated = sessionService.getById(id);
         return Result.ok(
                 new InterviewAccessResponse(
-                        updated.getAccessToken(), true, true, raw, "CANDIDATE_ONLY"));
+                        updated.getAccessToken(),
+                        true,
+                        true,
+                        raw,
+                        "CANDIDATE_ONLY",
+                        ProctorConfig.from(updated)));
+    }
+
+    @Operation(summary = "查询防作弊事件", description = "增量查询：仅返回 id 大于 after 的事件（控制台实时面板轮询用）")
+    @GetMapping("/{id}/proctor/events")
+    public Result<List<ProctorEventResponse>> proctorEvents(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") long after,
+            @RequestParam(defaultValue = "50") int limit) {
+        sessionService.getById(id);
+        List<ProctorEventEntity> events = proctorEventService.listAfter(id, after, limit);
+        return Result.ok(
+                events.stream()
+                        .map(
+                                e ->
+                                        new ProctorEventResponse(
+                                                e.getId(),
+                                                e.getEventType(),
+                                                e.getOccurredAt() == null
+                                                        ? null
+                                                        : e.getOccurredAt().toString(),
+                                                e.getDurationMs(),
+                                                e.getDetail()))
+                        .toList());
+    }
+
+    @Operation(summary = "防作弊事件摘要", description = "按类型聚合事件数与总时长（控制台摘要卡片）")
+    @GetMapping("/{id}/proctor/summary")
+    public Result<ProctorSummaryResponse> proctorSummary(@PathVariable Long id) {
+        sessionService.getById(id);
+        List<ProctorSummaryResponse.ProctorTypeSummary> items =
+                proctorEventService.countByType(id).stream()
+                        .map(
+                                r ->
+                                        new ProctorSummaryResponse.ProctorTypeSummary(
+                                                String.valueOf(r.get("type")),
+                                                ((Number) r.get("cnt")).longValue(),
+                                                ((Number) r.get("total_duration_ms")).longValue()))
+                        .toList();
+        return Result.ok(new ProctorSummaryResponse(items));
     }
 
     @Operation(summary = "设置/重置候选人访问密码", description = "重新生成候选人访问密码（bcrypt 存储），返回新密码明文")
@@ -176,7 +230,8 @@ public class InterviewController {
                         entity.getAccessEnabled(),
                         true,
                         raw,
-                        entity.getAccessMode()));
+                        entity.getAccessMode(),
+                        ProctorConfig.from(entity)));
     }
 
     @Operation(summary = "作废候选人入口", description = "关闭候选人链接访问权限并恢复管理端面试能力")
@@ -190,7 +245,8 @@ public class InterviewController {
                         false,
                         entity.getAccessPassword() != null,
                         null,
-                        "DISABLED"));
+                        "DISABLED",
+                        ProctorConfig.from(entity)));
     }
 
     @Operation(summary = "查询面试会话详情", description = "根据 ID 查询面试会话详情")

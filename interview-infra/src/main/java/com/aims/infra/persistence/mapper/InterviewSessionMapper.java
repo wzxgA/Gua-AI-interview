@@ -39,6 +39,12 @@ public interface InterviewSessionMapper extends BaseMapper<InterviewSessionEntit
                     + " #{id}")
     int updateTotalScore(@Param("id") Long id, @Param("score") BigDecimal score);
 
+    /** 更新防作弊配置（proctor_json 为 JSONB 类型，需 ::jsonb 转型；null 参数即写入 NULL 清空）。 */
+    @Update(
+            "UPDATE interview_session SET proctor_json = #{proctorJson}::jsonb, updated_at = now()"
+                    + " WHERE id = #{id}")
+    int updateProctorJson(@Param("id") Long id, @Param("proctorJson") String proctorJson);
+
     /** 原子条件状态转移：仅当当前状态在 from 列表中时才更新为 target，返回受影响行数。 */
     @Update(
             "UPDATE interview_session SET status = #{target}, updated_at = now()"

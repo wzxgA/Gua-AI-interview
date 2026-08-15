@@ -4,21 +4,25 @@ import com.aims.core.common.ErrorCode;
 import com.aims.core.common.Result;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.session.SessionStatus;
+import com.aims.gateway.controller.interview.ProctorConfig;
 import com.aims.gateway.controller.interview.RoundResponse;
 import com.aims.gateway.controller.report.EvaluationResponse;
 import com.aims.gateway.controller.report.ReportResponse;
 import com.aims.gateway.security.GuestTokenService;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
+import com.aims.infra.persistence.entity.ProctorEventEntity;
 import com.aims.infra.persistence.entity.ReportEntity;
 import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
+import com.aims.infra.persistence.service.ProctorEventService;
 import com.aims.infra.persistence.service.ReportService;
 import com.aims.infra.persistence.service.ResumeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -57,6 +61,7 @@ public class InterviewAccessController {
     private final GuestTokenService guestTokenService;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redis;
+    private final ProctorEventService proctorEventService;
 
     public InterviewAccessController(
             InterviewSessionService sessionService,
@@ -67,7 +72,8 @@ public class InterviewAccessController {
             EvaluationService evaluationService,
             GuestTokenService guestTokenService,
             PasswordEncoder passwordEncoder,
-            StringRedisTemplate redis) {
+            StringRedisTemplate redis,
+            ProctorEventService proctorEventService) {
         this.sessionService = sessionService;
         this.resumeService = resumeService;
         this.positionService = positionService;
@@ -77,6 +83,7 @@ public class InterviewAccessController {
         this.guestTokenService = guestTokenService;
         this.passwordEncoder = passwordEncoder;
         this.redis = redis;
+        this.proctorEventService = proctorEventService;
     }
 
     @Operation(summary = "查询候选人入口信息", description = "公开接口，无需登录；返回候选人名/岗位/状态等非敏感信息")
@@ -90,7 +97,36 @@ public class InterviewAccessController {
                         resolvePosition(session),
                         session.getStatus(),
                         session.getAccessPassword() != null,
-                        true));
+                        true,
+                        ProctorConfig.from(session)));
+    }
+
+    @Operation(summary = "上报防作弊事件", description = "GUEST 批量上报（切屏/失焦等），仅允许本人会话")
+    @PreAuthorize("hasRole('GUEST')")
+    @PostMapping("/{sessionId}/proctor/events")
+    public Result<Void> reportProctorEvents(
+            @PathVariable Long sessionId, @RequestBody ProctorEventsRequest req) {
+        requireSameSession(sessionId);
+        if (req == null || req.events() == null || req.events().isEmpty()) {
+            return Result.ok(null);
+        }
+        List<ProctorEventEntity> entities =
+                req.events().stream()
+                        .map(
+                                item -> {
+                                    ProctorEventEntity e = new ProctorEventEntity();
+                                    e.setEventType(item.eventType());
+                                    e.setOccurredAt(
+                                            item.occurredAt() == null || item.occurredAt().isBlank()
+                                                    ? Instant.now()
+                                                    : Instant.parse(item.occurredAt()));
+                                    e.setDurationMs(item.durationMs());
+                                    e.setDetail(item.detail());
+                                    return e;
+                                })
+                        .toList();
+        proctorEventService.saveEvents(sessionId, entities);
+        return Result.ok(null);
     }
 
     @Operation(summary = "校验访问密码并签发 guestToken", description = "公开接口，无需登录；密码正确后返回候选人短期凭证")
@@ -235,7 +271,15 @@ public class InterviewAccessController {
             String position,
             String status,
             boolean requirePassword,
-            boolean enabled) {}
+            boolean enabled,
+            ProctorConfig proctor) {}
+
+    /** 防作弊事件上报请求。 */
+    public record ProctorEventsRequest(List<ProctorEventItem> events) {}
+
+    /** 防作弊事件项。 */
+    public record ProctorEventItem(
+            String eventType, String occurredAt, Long durationMs, String detail) {}
 
     /** 密码校验请求。 */
     public record VerifyRequest(String password) {}
