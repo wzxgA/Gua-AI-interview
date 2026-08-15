@@ -4,6 +4,8 @@ import type { SessionStatus } from '@/types/interview';
 
 interface ActionButtonsProps {
   status: SessionStatus;
+  /** 生成面试计划进行中：禁用「生成计划/开始面试」按钮，避免并发提交 */
+  planning?: boolean;
   onStart?: () => void;
   onBeginInterview?: () => void;
   onCancel: () => void;
@@ -18,6 +20,7 @@ interface ActionButtonsProps {
 /** 按状态显示操作按钮 */
 export function ActionButtons({
   status,
+  planning = false,
   onStart,
   onBeginInterview,
   onCancel,
@@ -34,7 +37,9 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onStart && (
-            <SilverButton onClick={onStart}>{t('interviews.startPlan')}</SilverButton>
+            <SilverButton onClick={onStart} disabled={planning}>
+              {planning ? t('interviews.generatingPlan') : t('interviews.startPlan')}
+            </SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
             {t('common.cancel')}
@@ -46,7 +51,9 @@ export function ActionButtons({
       return (
         <div className="flex flex-wrap gap-2">
           {onBeginInterview && (
-            <SilverButton onClick={onBeginInterview}>{t('interviews.beginInterview')}</SilverButton>
+            <SilverButton onClick={onBeginInterview} disabled={planning}>
+              {planning ? t('interviews.generatingPlan') : t('interviews.beginInterview')}
+            </SilverButton>
           )}
           <SilverButton variant="danger" onClick={onCancel}>
             {t('common.cancel')}

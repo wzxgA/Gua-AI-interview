@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -111,7 +112,14 @@ export function InterviewConsolePage() {
     ? `${window.location.origin}/i/${accessConfig.accessToken}`
     : null;
 
-  const canGenerate = interview?.status === 'PLANNING' || interview?.status === 'PAUSED';
+  // 生成中 = 本地请求进行中 ∪ 服务端仍处于生成窗口（切页/刷新后 mutation 状态丢失，靠 2s 轮询兜底）
+  const isGenerating =
+    planMutation.isPending ||
+    (interview?.status === 'PLANNING' && !interview?.planJson);
+
+  // 生成中不可生成/重新生成候选人链接（计划未生成完成）
+  const canGenerate =
+    !isGenerating && (interview?.status === 'PLANNING' || interview?.status === 'PAUSED');
 
   const handleCopyLink = () => {
     if (!candidateLink) return;
@@ -165,18 +173,7 @@ export function InterviewConsolePage() {
     );
   };
 
-  // 全屏加载态（生成计划时）
-  if (planMutation.isPending) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
-          <p className="text-sm text-text-secondary">{t('interviews.generatingPlan')}</p>
-        </div>
-      </div>
-    );
-  }
-
+  // 生成计划不再全屏遮罩：页面保持可交互，进度以按钮态/骨架屏/角落提示条展示
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -227,6 +224,7 @@ export function InterviewConsolePage() {
             <h3 className="mb-3 text-sm font-medium text-text-muted">{t('interviews.actionsTitle')}</h3>
             <ActionButtons
               status={interview.status}
+              planning={isGenerating}
               onStart={handleStart}
               onBeginInterview={handleBeginInterview}
               onCancel={handleCancel}
@@ -254,7 +252,11 @@ export function InterviewConsolePage() {
 
         {/* 右侧：计划查看 + 轮次时间线 + 候选人入口 */}
         <div className="space-y-4 lg:col-span-2">
-          <PlanViewer planJson={interview.planJson} />
+          {isGenerating ? (
+            <Skeleton className="h-60 w-full" />
+          ) : (
+            <PlanViewer planJson={interview.planJson} />
+          )}
           <RoundTimeline
             planJson={interview.planJson}
             currentRoundId={null}
@@ -378,6 +380,18 @@ export function InterviewConsolePage() {
         onClose={() => setPlanDialogOpen(false)}
         onConfirm={handlePlanConfirm}
       />
+
+      {/* 生成计划中的非阻塞提示条（页面保持可交互） */}
+      {isGenerating && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border-default bg-surface-overlay px-4 py-3 shadow-lg"
+        >
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
+          <p className="text-sm text-text-secondary">{t('interviews.generatingPlan')}</p>
+        </motion.div>
+      )}
     </div>
   );
 }
