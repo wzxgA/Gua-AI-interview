@@ -276,8 +276,14 @@ export function PositionListPage() {
 
       {/* 创建/编辑弹窗 */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-lg p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setModalOpen(false)}
+        >
+          <GlassCard
+            className="w-full max-w-lg p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-4 text-lg font-semibold text-text-primary">
               {editingPosition ? t('positions.edit') : t('positions.create')}
             </h3>
@@ -329,8 +335,14 @@ export function PositionListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-sm p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('positions.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
               {t('positions.deleteConfirmMessage', { title: deleteTarget.title })}

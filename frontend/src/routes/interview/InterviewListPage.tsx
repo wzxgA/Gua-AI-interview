@@ -205,8 +205,14 @@ export function InterviewListPage() {
 
       {/* 取消确认弹窗 */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-sm p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setCancelTarget(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('interviews.cancelConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
               {t('interviews.cancelConfirmMessage', { id: cancelTarget.id })}
@@ -234,8 +240,14 @@ export function InterviewListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-sm p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('interviews.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
               {t('interviews.deleteConfirmMessage', { id: deleteTarget.id })}

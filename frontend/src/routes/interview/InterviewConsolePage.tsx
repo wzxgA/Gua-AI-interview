@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,9 +27,12 @@ import {
   useGenerateAccess,
 } from '@/api/interview';
 import type { StartPlanBody } from '@/api/interview';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
 
 export function InterviewConsolePage() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const interviewId = id ? Number(id) : undefined;
@@ -50,6 +54,9 @@ export function InterviewConsolePage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [showGenerate, setShowGenerate] = useState(false);
   const [generatePassword, setGeneratePassword] = useState('');
+  const [generateLang, setGenerateLang] = useState<LanguageCode>(language);
+  const [linkLang, setLinkLang] = useState<LanguageCode | null>(null);
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
 
   const handleStart = () => {
     setPlanDialogOpen(true);
@@ -108,16 +115,31 @@ export function InterviewConsolePage() {
   };
 
   const candidateLink = accessConfig?.accessToken
-    ? `${window.location.origin}/i/${accessConfig.accessToken}`
+    ? `${window.location.origin}/i/${accessConfig.accessToken}${linkLang ? `?lang=${linkLang}` : ''}`
     : null;
 
-  const canGenerate = interview?.status === 'PLANNING' || interview?.status === 'PAUSED';
+  // 生成中 = 本地请求进行中 ∪ 服务端仍处于生成窗口（切页/刷新后 mutation 状态丢失，靠 2s 轮询兜底）
+  const isGenerating =
+    planMutation.isPending ||
+    (interview?.status === 'PLANNING' && !interview?.planJson);
+
+  // 生成中不可生成/重新生成候选人链接（计划未生成完成）
+  const canGenerate =
+    !isGenerating && (interview?.status === 'PLANNING' || interview?.status === 'PAUSED');
 
   const handleCopyLink = () => {
     if (!candidateLink) return;
     navigator.clipboard
       .writeText(candidateLink)
       .then(() => toast.success(t('interviews.linkCopied')))
+      .catch(() => toast.error(t('interviews.copyFailed')));
+  };
+
+  const handleCopyPassword = () => {
+    if (!revealedPassword) return;
+    navigator.clipboard
+      .writeText(revealedPassword)
+      .then(() => toast.success(t('interviews.passwordCopied')))
       .catch(() => toast.error(t('interviews.copyFailed')));
   };
 
@@ -131,7 +153,8 @@ export function InterviewConsolePage() {
           setShowResetPassword(false);
           setPasswordInput('');
           if (data.accessPassword) {
-            toast.info(t('interviews.newPasswordInfo', { password: data.accessPassword }));
+            // 密码仅弹窗展示一次（明文不持久存储/显示）
+            setRevealedPassword(data.accessPassword);
           }
         },
         onError: (err: Error) => toast.error(err.message || t('interviews.resetFailed')),
@@ -156,8 +179,10 @@ export function InterviewConsolePage() {
           toast.success(t('interviews.linkGenerated'));
           setShowGenerate(false);
           setGeneratePassword('');
+          setLinkLang(generateLang); // 记录生成时选择的候选人语言，链接带 ?lang=
           if (data.accessPassword) {
-            toast.info(t('interviews.accessPasswordInfo', { password: data.accessPassword }));
+            // 密码仅弹窗展示一次（明文不持久存储/显示）
+            setRevealedPassword(data.accessPassword);
           }
         },
         onError: (err: Error) => toast.error(err.message || t('interviews.generateFailed')),
@@ -165,18 +190,7 @@ export function InterviewConsolePage() {
     );
   };
 
-  // 全屏加载态（生成计划时）
-  if (planMutation.isPending) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
-          <p className="text-sm text-text-secondary">{t('interviews.generatingPlan')}</p>
-        </div>
-      </div>
-    );
-  }
-
+  // 生成计划不再全屏遮罩：页面保持可交互，进度以按钮态/骨架屏/角落提示条展示
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -227,6 +241,7 @@ export function InterviewConsolePage() {
             <h3 className="mb-3 text-sm font-medium text-text-muted">{t('interviews.actionsTitle')}</h3>
             <ActionButtons
               status={interview.status}
+              planning={isGenerating}
               onStart={handleStart}
               onBeginInterview={handleBeginInterview}
               onCancel={handleCancel}
@@ -254,7 +269,11 @@ export function InterviewConsolePage() {
 
         {/* 右侧：计划查看 + 轮次时间线 + 候选人入口 */}
         <div className="space-y-4 lg:col-span-2">
-          <PlanViewer planJson={interview.planJson} />
+          {isGenerating ? (
+            <Skeleton className="h-60 w-full" />
+          ) : (
+            <PlanViewer planJson={interview.planJson} />
+          )}
           <RoundTimeline
             planJson={interview.planJson}
             currentRoundId={null}
@@ -281,6 +300,16 @@ export function InterviewConsolePage() {
                     </SilverButton>
                     {showGenerate && (
                       <div className="flex items-center gap-2 pt-1">
+                        <select
+                          value={generateLang}
+                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          title={t('interviews.candidateLanguage')}
+                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
+                        >
+                          {SUPPORTED_LANGUAGES.map((l) => (
+                            <option key={l.code} value={l.code}>{l.label}</option>
+                          ))}
+                        </select>
                         <input
                           type="text"
                           value={generatePassword}
@@ -353,6 +382,16 @@ export function InterviewConsolePage() {
                     </SilverButton>
                     {showGenerate && (
                       <div className="flex items-center gap-2 pt-1">
+                        <select
+                          value={generateLang}
+                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          title={t('interviews.candidateLanguage')}
+                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
+                        >
+                          {SUPPORTED_LANGUAGES.map((l) => (
+                            <option key={l.code} value={l.code}>{l.label}</option>
+                          ))}
+                        </select>
                         <input
                           type="text"
                           value={generatePassword}
@@ -378,6 +417,47 @@ export function InterviewConsolePage() {
         onClose={() => setPlanDialogOpen(false)}
         onConfirm={handlePlanConfirm}
       />
+
+      {/* 生成计划中的非阻塞提示条（页面保持可交互） */}
+      {isGenerating && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border-default bg-surface-overlay px-4 py-3 shadow-lg"
+        >
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
+          <p className="text-sm text-text-secondary">{t('interviews.generatingPlan')}</p>
+        </motion.div>
+      )}
+
+      {/* 密码展示弹窗（生成/重置时仅展示一次，明文不持久存储） */}
+      {revealedPassword !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setRevealedPassword(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-lg font-semibold text-text-primary">{t('interviews.passwordDialogTitle')}</h3>
+            <p className="mb-4 text-sm text-text-muted">{t('interviews.passwordDialogHint')}</p>
+            <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
+              <code className="min-w-0 flex-1 truncate text-sm font-mono text-silver-300">
+                {revealedPassword}
+              </code>
+              <SilverButton variant="ghost" onClick={handleCopyPassword}>
+                {t('interviews.copy')}
+              </SilverButton>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <SilverButton onClick={() => setRevealedPassword(null)}>
+                {t('common.confirm')}
+              </SilverButton>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,11 +12,14 @@ import { ActionButtons } from '@/components/interview/ActionButtons';
 import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useGuestRounds, useGuestSession, resumeGuestSession, startGuestSession } from '@/api/access';
+import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import type { SessionStatus } from '@/types/interview';
 
 /** 候选面试间：免登录，基于 guestToken 连接 WS 完成实时问答（复用现有问答链路）。 */
 export function CandidateRoomPage() {
   const { t } = useTranslation();
+  useUrlLanguageInit();
   const { accessToken } = useParams();
   const navigate = useNavigate();
   const guestToken = sessionStorage.getItem('guestToken');
@@ -122,6 +125,7 @@ export function CandidateRoomPage() {
       {/* 顶部栏：AI 面试官 + 状态 + 操作按钮（暂停/结束/取消，可查看报告） */}
       <GlassCard className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           <span className="text-sm font-medium text-text-primary">{t('interviews.aiInterviewer')}</span>
           <StatusBadge status={status} />
         </div>

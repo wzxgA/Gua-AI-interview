@@ -11,10 +11,13 @@ import { DimensionScoreList } from '@/components/report/DimensionScoreList';
 import { RoundEvaluationList } from '@/components/report/RoundEvaluationList';
 import { getGuestReport, getGuestEvaluations } from '@/api/access';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
+import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /** 候选人报告页：免登录，只读自己的评估报告。 */
 export function CandidateReportPage() {
   const { t } = useTranslation();
+  useUrlLanguageInit();
   const { accessToken } = useParams();
   const navigate = useNavigate();
   const sessionIdStr = sessionStorage.getItem('guestSessionId');
@@ -69,9 +72,12 @@ export function CandidateReportPage() {
         title={t('candidate.reportTitle')}
         subtitle={t('candidate.reportSubtitle')}
         action={
-          <SilverButton variant="ghost" onClick={() => navigate(`/i/${accessToken}/room`)}>
-            {t('candidate.backToRoom')}
-          </SilverButton>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <SilverButton variant="ghost" onClick={() => navigate(`/i/${accessToken}/room`)}>
+              {t('candidate.backToRoom')}
+            </SilverButton>
+          </div>
         }
       />
 
