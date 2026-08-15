@@ -1,7 +1,7 @@
 import type { Result } from '@/types/common';
 import i18n from '@/i18n';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
 export class ApiError extends Error {
   constructor(

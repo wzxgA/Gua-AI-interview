@@ -582,5 +582,27 @@
     "networkError": "Speech recognition network error",
     "serviceNotAllowed": "Speech recognition service is blocked by the browser",
     "genericError": "Speech recognition failed, please retry"
+  },
+  "proctor": {
+    "summaryTitle": "Proctoring Summary",
+    "liveTitle": "Proctoring Live Panel",
+    "focusTitle": "Focus Reference",
+    "focusNotScored": "For reference only; not part of the evaluation score",
+    "enableLabel": "Enable proctoring",
+    "tabSwitchLabel": "Tab switch detection",
+    "gazeLabel": "Gaze detection",
+    "gazeDialogTitle": "Enable gaze detection?",
+    "gazeDialogHint": "Your camera will be used to detect your focus (whether your face/gaze leaves the screen). Video is processed locally in your browser only and is never uploaded. You can still take the interview if you decline.",
+    "gazeAllow": "Allow & enable",
+    "eventTabSwitch": "Tab switched",
+    "eventWindowBlur": "Window blurred",
+    "eventCameraDenied": "Camera denied",
+    "eventCameraOff": "Camera off",
+    "eventCameraOn": "Camera on",
+    "eventGazeAway": "Gaze away",
+    "eventFaceLost": "Face lost",
+    "eventUnknown": "Other",
+    "empty": "No proctoring events yet",
+    "totalOffFocusLabel": "Total off-focus time"
   }
 }

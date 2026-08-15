@@ -71,6 +71,9 @@ public class InterviewSessionEntity {
     @TableField("access_mode")
     private String accessMode;
 
+    @TableField("proctor_json")
+    private String proctorJson;
+
     public Long getId() {
         return id;
     }
@@ -229,5 +232,13 @@ public class InterviewSessionEntity {
 
     public void setAccessMode(String accessMode) {
         this.accessMode = accessMode;
+    }
+
+    public String getProctorJson() {
+        return proctorJson;
+    }
+
+    public void setProctorJson(String proctorJson) {
+        this.proctorJson = proctorJson;
     }
 }

@@ -582,5 +582,27 @@
     "networkError": "語音辨識網路異常",
     "serviceNotAllowed": "瀏覽器禁止語音辨識服務",
     "genericError": "語音辨識失敗，請重試"
+  },
+  "proctor": {
+    "summaryTitle": "防作弊摘要",
+    "liveTitle": "防作弊即時面板",
+    "focusTitle": "專注度參考",
+    "focusNotScored": "資料僅供參考，不參與評估打分",
+    "enableLabel": "啟用防作弊偵測",
+    "tabSwitchLabel": "切換視窗偵測",
+    "gazeLabel": "眼神偵測",
+    "gazeDialogTitle": "開啟眼神偵測？",
+    "gazeDialogHint": "將使用攝影機偵測您的專注度（人臉/視線是否偏離螢幕），影片僅在瀏覽器本地處理、不會上傳，請放心。拒絕後仍可正常面試。",
+    "gazeAllow": "同意並開啟",
+    "eventTabSwitch": "切換視窗",
+    "eventWindowBlur": "視窗失焦",
+    "eventCameraDenied": "拒絕攝影機",
+    "eventCameraOff": "攝影機關閉",
+    "eventCameraOn": "攝影機開啟",
+    "eventGazeAway": "視線偏移",
+    "eventFaceLost": "人臉離鏡",
+    "eventUnknown": "其他",
+    "empty": "暫無防作弊事件",
+    "totalOffFocusLabel": "累計偏離時長"
   }
 }

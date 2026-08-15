@@ -25,6 +25,9 @@ public interface InterviewSessionService {
     /** 更新入口模式（NONE / CANDIDATE_ONLY / DISABLED）。 */
     void updateAccessMode(Long id, String accessMode);
 
+    /** 保存防作弊配置（JSON 字符串，null 表示清空）。 */
+    void saveProctor(Long id, String proctorJson);
+
     /** 为会话生成候选人访问令牌（如尚未生成）。 */
     String ensureAccessToken(Long id);
 

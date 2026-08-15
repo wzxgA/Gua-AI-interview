@@ -6,4 +6,5 @@ public record InterviewAccessResponse(
         Boolean accessEnabled,
         Boolean requirePassword,
         String accessPassword,
-        String accessMode) {}
+        String accessMode,
+        ProctorConfig proctor) {}

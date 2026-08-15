@@ -6,6 +6,9 @@ import type {
   CreateInterviewRequest,
   InterviewQuery,
   RoundResponse,
+  ProctorConfig,
+  ProctorEvent,
+  ProctorSummary,
 } from '@/types/interview';
 
 const KEY = 'interviews';
@@ -161,6 +164,8 @@ export interface InterviewAccessConfig {
   requirePassword: boolean | null;
   accessPassword: string | null;
   accessMode: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED' | null;
+  /** 防作弊配置（生成链接时开启） */
+  proctor: ProctorConfig;
 }
 
 /** 获取候选人访问配置（链接令牌/开关/是否有密码） */
@@ -197,18 +202,38 @@ export function useDisableAccess() {
   });
 }
 
-/** 生成候选人面试链接（设为 CANDIDATE_ONLY） */
+/** 生成候选人面试链接（设为 CANDIDATE_ONLY，可同时开启防作弊） */
 export function useGenerateAccess() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: number; password?: string }) =>
+    mutationFn: (params: { id: number; password?: string; proctor?: ProctorConfig }) =>
       http.post<InterviewAccessConfig>(
         `/api/v1/interviews/${params.id}/access/generate`,
-        { password: params.password },
+        { password: params.password, proctor: params.proctor },
       ),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: [KEY, vars.id, 'access'] });
       qc.invalidateQueries({ queryKey: [KEY, vars.id] });
     },
+  });
+}
+
+/** 查询防作弊事件（最近 100 条，控制台实时面板轮询用） */
+export function useProctorEvents(id: number | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: [KEY, id, 'proctor', 'events'],
+    queryFn: () => http.get<ProctorEvent[]>(`/api/v1/interviews/${id}/proctor/events?after=0&limit=100`),
+    enabled: !!id && enabled,
+    refetchInterval: enabled ? 5000 : false,
+  });
+}
+
+/** 查询防作弊摘要（按类型聚合，控制台摘要卡片用） */
+export function useProctorSummary(id: number | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: [KEY, id, 'proctor', 'summary'],
+    queryFn: () => http.get<ProctorSummary>(`/api/v1/interviews/${id}/proctor/summary`),
+    enabled: !!id && enabled,
+    refetchInterval: enabled ? 10000 : false,
   });
 }

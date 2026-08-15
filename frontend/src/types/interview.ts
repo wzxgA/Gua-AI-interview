@@ -12,6 +12,26 @@ export type SessionStatus =
 
 export const TERMINAL_STATUSES: SessionStatus[] = ['COMPLETED', 'CANCELLED', 'FAILED'];
 
+/** 面试级防作弊开关（生成候选人链接时配置） */
+export interface ProctorConfig {
+  tabSwitch: boolean;
+  gaze: boolean;
+}
+
+/** 防作弊事件（管理端视图） */
+export interface ProctorEvent {
+  id: number;
+  eventType: string;
+  occurredAt: string | null;
+  durationMs: number | null;
+  detail: string | null;
+}
+
+/** 防作弊摘要（管理端视图） */
+export interface ProctorSummary {
+  items: { type: string; count: number; totalDurationMs: number }[];
+}
+
 /** 面试官人设 */
 export type InterviewerPersona = 'FRIENDLY' | 'PRESSURE' | 'TECHNICAL';
 
