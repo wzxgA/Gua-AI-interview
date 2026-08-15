@@ -586,6 +586,8 @@
   "proctor": {
     "summaryTitle": "防作弊摘要",
     "liveTitle": "防作弊实时面板",
+    "focusTitle": "专注度参考",
+    "focusNotScored": "数据仅作参考，不参与评估打分",
     "enableLabel": "启用防作弊检测",
     "tabSwitchLabel": "切屏检测",
     "gazeLabel": "眼神检测",

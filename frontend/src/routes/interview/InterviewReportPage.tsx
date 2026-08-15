@@ -8,7 +8,8 @@ import { ReportSummaryCard } from '@/components/report/ReportSummaryCard';
 import { DimensionRadarChart } from '@/components/report/DimensionRadarChart';
 import { DimensionScoreList } from '@/components/report/DimensionScoreList';
 import { RoundEvaluationList } from '@/components/report/RoundEvaluationList';
-import { useInterview } from '@/api/interview';
+import { ProctorFocusCard } from '@/components/report/ProctorFocusCard';
+import { useInterview, useInterviewAccess, useProctorSummary } from '@/api/interview';
 import { useInterviewReport, useInterviewEvaluations } from '@/api/report';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 
@@ -23,6 +24,12 @@ export function InterviewReportPage() {
   const { data: report, isLoading: reportLoading, isError: reportError } =
     useInterviewReport(interviewId);
   const { data: evaluations } = useInterviewEvaluations(interviewId);
+
+  // 该面试是否开启防作弊（专注度摘要仅开启时展示）
+  const { data: accessConfig } = useInterviewAccess(interviewId);
+  const proctorActive =
+    (accessConfig?.proctor?.tabSwitch || accessConfig?.proctor?.gaze) ?? false;
+  const { data: proctorSummary } = useProctorSummary(interviewId, proctorActive);
 
   const isLoading = interviewLoading || reportLoading;
 
@@ -106,6 +113,9 @@ export function InterviewReportPage() {
       />
 
       <ReportSummaryCard report={report} />
+
+      {/* 专注度摘要（开启防作弊时展示；与评估打分解耦，仅参考） */}
+      {proctorActive && <ProctorFocusCard summary={proctorSummary} />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DimensionRadarChart scores={dimensionScores} />

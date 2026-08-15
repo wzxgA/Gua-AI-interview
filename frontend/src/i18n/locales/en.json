@@ -586,6 +586,8 @@
   "proctor": {
     "summaryTitle": "Proctoring Summary",
     "liveTitle": "Proctoring Live Panel",
+    "focusTitle": "Focus Reference",
+    "focusNotScored": "For reference only; not part of the evaluation score",
     "enableLabel": "Enable proctoring",
     "tabSwitchLabel": "Tab switch detection",
     "gazeLabel": "Gaze detection",
