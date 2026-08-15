@@ -205,6 +205,33 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
+     * BEGIN：候选端确认开始面试后触发首题生成。
+     *
+     * <p>等价于连接建立时的「首次进入面试间」逻辑（无轮次 -> 生成首题），但不关闭连接， 从而避免触发 {@link #afterConnectionClosed}
+     * 的断线自动暂停（IN_PROGRESS -> PAUSED）。
+     *
+     * <p>仅当会话状态为 IN_PROGRESS 时生效（REST /start 已把状态置为 IN_PROGRESS）。
+     */
+    private void handleBegin(WebSocketSession session, Long sessionId) {
+        InterviewSessionEntity entity;
+        try {
+            entity = sessionService.getById(sessionId);
+        } catch (Exception e) {
+            send(session, WsOutbound.error(ErrorCode.SESSION_NOT_FOUND.getCode(), "面试会话不存在"));
+            return;
+        }
+        SessionStatus current = SessionStatus.valueOf(entity.getStatus());
+        if (current != SessionStatus.IN_PROGRESS) {
+            send(
+                    session,
+                    WsOutbound.error(
+                            ErrorCode.SESSION_STATUS_CONFLICT.getCode(), "面试尚未开始，请先通过开始面试确认"));
+            return;
+        }
+        handleReconnectOrStart(session, sessionId, entity);
+    }
+
+    /**
      * 连接建立后，根据轮次记录决定后续动作：
      *
      * <ul>
@@ -412,6 +439,10 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                         WsOutbound.error(
                                 ErrorCode.SESSION_MESSAGE_INVALID.getCode(),
                                 "面试计划请通过 REST /start 接口生成，WebSocket 不再支持 START 消息"));
+            } else if (inbound.isType("BEGIN")) {
+                // 候选端确认开始后触发首题：复用连接建立时的 handleReconnectOrStart，
+                // 避免前端 reconnect 关闭旧连接触发断线自动暂停（IN_PROGRESS -> PAUSED）
+                handleBegin(session, sessionId);
             } else if (inbound.isType("ANSWER")) {
                 handleAnswer(session, sessionId, inbound.text(), inbound.roundId());
             } else if (inbound.isType("HEARTBEAT")) {
@@ -448,8 +479,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // 释放连接锁
         sessionStore.unlock(sessionId, connectionId);
-        // Phase 5：从 SessionManager 注销
-        sessionManager.unregister(sessionId);
+        // Phase 5：从 SessionManager 注销（带连接身份校验，避免旧连接关闭回调误删新注册连接）
+        sessionManager.unregister(sessionId, session);
         log.info(
                 "WebSocket 连接关闭 sessionId={} connectionId={} status={}",
                 sessionId,

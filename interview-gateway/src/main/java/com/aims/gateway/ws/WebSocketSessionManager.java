@@ -47,10 +47,15 @@ public class WebSocketSessionManager {
     /**
      * 注销会话。
      *
+     * <p>带连接身份校验：仅当 {@code sessionId} 当前注册的正是 {@code session} 时才移除。 防止旧连接（如 StrictMode
+     * 双连接、断线重连时的前一连接）的关闭回调把新注册的活跃连接误删—— 一旦误删，Engine 推送 {@link #getSession} 返回 null 会静默丢弃，前端收不到任何消息。
+     *
      * @param sessionId 面试 sessionId
+     * @param session 正在关闭的 WebSocket 会话
      */
-    public void unregister(Long sessionId) {
-        sessions.remove(sessionId);
+    public void unregister(Long sessionId, WebSocketSession session) {
+        // ConcurrentHashMap.remove(key, value)：仅当 key 映射到该 value 时才删除，原子且安全
+        sessions.remove(sessionId, session);
     }
 
     /**

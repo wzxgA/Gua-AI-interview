@@ -383,6 +383,40 @@ class InterviewWebSocketHandlerTest {
         verify(engine, never()).getPendingState(anyLong());
     }
 
+    // ==================== BEGIN：候选端确认开始后触发首题（不关闭连接） ====================
+
+    @Test
+    @DisplayName("BEGIN：IN_PROGRESS + rounds 空 -> 触发 Engine 首题，且不触发断线暂停")
+    void begin_inProgress_emptyRounds_startsInterview() throws Exception {
+        setStatus(SessionStatus.IN_PROGRESS);
+        when(roundService.listBySession(32L)).thenReturn(List.of());
+        when(engine.isEnabled()).thenReturn(true);
+        when(engine.startInterview(32L)).thenReturn(true);
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"BEGIN\"}"));
+
+        verify(engine).startInterview(32L);
+        // BEGIN 走 handleReconnectOrStart，不关闭连接 -> afterConnectionClosed 不被调用
+        verify(sessionService, never())
+                .tryTransitionTo(
+                        anyLong(),
+                        org.mockito.ArgumentMatchers.eq(SessionStatus.PAUSED),
+                        any(),
+                        any());
+    }
+
+    @Test
+    @DisplayName("BEGIN：非 IN_PROGRESS 状态被拒（SESSION_STATUS_CONFLICT），不触发首题")
+    void begin_notInProgress_rejected() throws Exception {
+        setStatus(SessionStatus.PAUSED);
+
+        handler.handleTextMessage(session, new TextMessage("{\"type\":\"BEGIN\"}"));
+
+        verify(engine, never()).startInterview(anyLong());
+        ObjectNode err = lastSent();
+        assertEquals(ErrorCode.SESSION_STATUS_CONFLICT.getCode(), err.get("code").asInt());
+    }
+
     // ==================== FE.10 P6：断线竞态（afterConnectionClosed 原子转移） ====================
 
     @Test
@@ -437,5 +471,25 @@ class InterviewWebSocketHandlerTest {
         attrs.put("sessionId", 32L);
         attrs.put("connectionId", "conn-1");
         when(session.getAttributes()).thenReturn(attrs);
+    }
+
+    // ==================== U10 追加：unregister 带连接身份校验 ====================
+
+    @Test
+    @DisplayName("连接关闭：unregister 传入关闭的 session（防误删新连接）")
+    void connectionClosed_unregistersWithSessionIdentity() throws Exception {
+        stubClosedSession();
+        when(sessionService.tryTransitionTo(
+                        anyLong(),
+                        org.mockito.ArgumentMatchers.eq(SessionStatus.PAUSED),
+                        any(),
+                        any()))
+                .thenReturn(true);
+
+        handler.afterConnectionClosed(session, org.springframework.web.socket.CloseStatus.NORMAL);
+
+        // 必须把当前关闭的 session 传给 unregister，SessionManager 才能按身份移除，
+        // 避免旧连接关闭回调把新注册的活跃连接误删
+        verify(sessionManager).unregister(32L, session);
     }
 }

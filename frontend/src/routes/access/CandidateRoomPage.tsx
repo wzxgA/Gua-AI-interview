@@ -99,8 +99,9 @@ export function CandidateRoomPage() {
         toast.success(t('candidate.startSuccess'));
         setStatus('IN_PROGRESS');
         queryClient.invalidateQueries({ queryKey: ['guest', 'session', sessionId] });
-        // 重连 WS 触发服务端首题生成（连接建立时状态为 IN_PROGRESS + 无轮次 -> 发首题）
-        session.reconnect();
+        // 触发服务端首题生成：向现有连接发送 BEGIN（服务端 handleBegin 复用 handleReconnectOrStart）。
+        // 不能 reconnect()——重连会关闭旧连接触发服务端断线自动暂停（IN_PROGRESS -> PAUSED）
+        session.send({ type: 'BEGIN' });
       })
       .catch((err: Error) => toast.error(err.message || t('candidate.startFailed')));
   };

@@ -140,6 +140,7 @@ export function useInterviewSession({ sessionId, token }: UseInterviewSessionOpt
     connect,
     disconnect,
     reconnect,
+    send,
     submitAnswer,
     pauseInterview,
     finishInterview,

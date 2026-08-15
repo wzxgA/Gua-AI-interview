@@ -76,7 +76,8 @@ export type WsClientMessage =
   | { type: 'HEARTBEAT' }
   | { type: 'PAUSE' }
   | { type: 'FINISH' }
-  | { type: 'CANCEL' };
+  | { type: 'CANCEL' }
+  | { type: 'BEGIN' };
 
 /** WebSocket 服务端 -> 客户端消息 */
 export interface WsServerMessage {
