@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SilverButton } from '@/components/ui/silver-button';
@@ -12,6 +13,7 @@ import { useInterviewReport, useInterviewEvaluations } from '@/api/report';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 
 export function InterviewReportPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const interviewId = id ? Number(id) : undefined;
@@ -32,14 +34,14 @@ export function InterviewReportPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="评估报告"
-          subtitle={`面试 #${interviewId}`}
+          title={t('interviews.reportTitle')}
+          subtitle={t('interviews.interviewIdSubtitle', { id: interviewId })}
           action={
             <SilverButton
               variant="ghost"
               onClick={() => navigate(`/interviews/${interviewId}`)}
             >
-              返回控制台
+              {t('interviews.backToConsole')}
             </SilverButton>
           }
         />
@@ -48,8 +50,8 @@ export function InterviewReportPage() {
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-sky-400/20 border-t-sky-400" />
             <p className="text-sm text-text-secondary">
               {interview.status === 'EVALUATING'
-                ? '正在评估面试表现...'
-                : '正在生成面试报告...'}
+                ? t('interviews.evaluatingText')
+                : t('interviews.reportingText')}
             </p>
           </div>
         </GlassCard>
@@ -60,7 +62,7 @@ export function InterviewReportPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="评估报告" />
+        <PageHeader title={t('interviews.reportTitle')} />
         <Skeleton className="h-40 w-full" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Skeleton className="h-64 w-full" />
@@ -74,9 +76,9 @@ export function InterviewReportPage() {
   if (reportError || !report) {
     return (
       <div className="space-y-6">
-        <PageHeader title="评估报告" />
+        <PageHeader title={t('interviews.reportTitle')} />
         <ErrorState
-          message="报告尚未生成或不存在"
+          message={t('interviews.reportNotGenerated')}
           onRetry={() => navigate(`/interviews/${interviewId}`)}
         />
       </div>
@@ -89,15 +91,15 @@ export function InterviewReportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="评估报告"
-        subtitle={`面试 #${interviewId}`}
+        title={t('interviews.reportTitle')}
+        subtitle={t('interviews.interviewIdSubtitle', { id: interviewId })}
         action={
           <div className="flex gap-2">
             <SilverButton
               variant="ghost"
               onClick={() => navigate(`/interviews/${interviewId}`)}
             >
-              返回控制台
+              {t('interviews.backToConsole')}
             </SilverButton>
           </div>
         }

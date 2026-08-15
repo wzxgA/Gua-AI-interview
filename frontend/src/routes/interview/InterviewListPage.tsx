@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Select } from '@/components/ui/input';
@@ -14,9 +15,12 @@ import {
   useDeleteInterview,
 } from '@/api/interview';
 import type { SessionStatus } from '@/types/interview';
-import { PAGE_SIZE_DEFAULT, SESSION_STATUSES, SESSION_STATUS_LABELS } from '@/lib/constants';
+import { PAGE_SIZE_DEFAULT, SESSION_STATUSES } from '@/lib/constants';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
 export function InterviewListPage() {
+  const { t, i18n } = useTranslation();
+  const enumLabel = useEnumLabel();
   const navigate = useNavigate();
   const [query, setQuery] = useState<{ page: number; status?: SessionStatus }>({
     page: 1,
@@ -36,10 +40,10 @@ export function InterviewListPage() {
     if (!cancelTarget) return;
     cancelMutation.mutate(cancelTarget.id, {
       onSuccess: () => {
-        toast.success('面试已取消');
+        toast.success(t('interviews.cancelSuccess'));
         setCancelTarget(null);
       },
-      onError: (err: Error) => toast.error(err.message || '取消失败'),
+      onError: (err: Error) => toast.error(err.message || t('interviews.cancelFailed')),
     });
   };
 
@@ -47,10 +51,10 @@ export function InterviewListPage() {
     if (!deleteTarget) return;
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast.success('面试已删除');
+        toast.success(t('interviews.deleteSuccess'));
         setDeleteTarget(null);
       },
-      onError: (err: Error) => toast.error(err.message || '删除失败'),
+      onError: (err: Error) => toast.error(err.message || t('interviews.deleteFailed')),
     });
   };
 
@@ -60,11 +64,11 @@ export function InterviewListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="面试管理"
-        subtitle="管理面试会话、查看进度与结果"
+        title={t('interviews.title')}
+        subtitle={t('interviews.subtitle')}
         action={
           <SilverButton onClick={() => navigate('/interviews/new')}>
-            创建面试
+            {t('interviews.create')}
           </SilverButton>
         }
       />
@@ -73,7 +77,7 @@ export function InterviewListPage() {
       <GlassCard className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[200px]">
-            <label className="mb-1.5 block text-sm text-text-secondary">状态筛选</label>
+            <label className="mb-1.5 block text-sm text-text-secondary">{t('interviews.statusFilter')}</label>
             <Select
               value={query.status ?? ''}
               onChange={(e) =>
@@ -83,10 +87,10 @@ export function InterviewListPage() {
                 })
               }
             >
-              <option value="">全部状态</option>
+              <option value="">{t('interviews.allStatuses')}</option>
               {SESSION_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {SESSION_STATUS_LABELS[s]}
+                  {enumLabel('sessionStatus', s)}
                 </option>
               ))}
             </Select>
@@ -101,21 +105,21 @@ export function InterviewListPage() {
             <TableSkeleton />
           </div>
         ) : isError ? (
-          <ErrorState message={error?.message || '加载失败'} onRetry={() => refetch()} />
+          <ErrorState message={error?.message || t('interviews.loadFailed')} onRetry={() => refetch()} />
         ) : records.length === 0 ? (
-          <EmptyState message="暂无面试数据" />
+          <EmptyState message={t('interviews.noData')} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-text-muted">
-                  <th className="px-4 py-3 text-left font-medium">ID</th>
-                  <th className="px-4 py-3 text-left font-medium">候选人 ID</th>
-                  <th className="px-4 py-3 text-left font-medium">岗位 ID</th>
-                  <th className="px-4 py-3 text-left font-medium">状态</th>
-                  <th className="px-4 py-3 text-left font-medium">创建时间</th>
-                  <th className="px-4 py-3 text-left font-medium">开始时间</th>
-                  <th className="px-4 py-3 text-right font-medium">操作</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.idColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.candidateIdColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.positionIdColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.statusColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.createdAtColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.startedAtColumn')}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('interviews.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -140,11 +144,11 @@ export function InterviewListPage() {
                       <StatusBadge status={item.status} />
                     </td>
                     <td className="px-4 py-3 text-text-secondary">
-                      {new Date(item.createdAt).toLocaleString('zh-CN')}
+                      {new Date(item.createdAt).toLocaleString(i18n.language)}
                     </td>
                     <td className="px-4 py-3 text-text-secondary">
                       {item.startedAt
-                        ? new Date(item.startedAt).toLocaleString('zh-CN')
+                        ? new Date(item.startedAt).toLocaleString(i18n.language)
                         : '-'}
                     </td>
                     <td className="px-4 py-3">
@@ -153,7 +157,7 @@ export function InterviewListPage() {
                           to={`/interviews/${item.id}`}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
                         >
-                          控制台
+                          {t('interviews.console')}
                         </Link>
                         {(item.status === 'IN_PROGRESS' ||
                           item.status === 'PAUSED') && (
@@ -161,7 +165,7 @@ export function InterviewListPage() {
                             to={`/interviews/${item.id}/room`}
                             className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
                           >
-                            面试间
+                            {t('interviews.room')}
                           </Link>
                         )}
                         {item.status === 'CREATED' && (
@@ -169,14 +173,14 @@ export function InterviewListPage() {
                             onClick={() => setCancelTarget({ id: item.id })}
                             className="text-xs text-danger hover:text-danger/80 transition-colors"
                           >
-                            取消
+                            {t('common.cancel')}
                           </button>
                         )}
                         <button
                           onClick={() => setDeleteTarget({ id: item.id })}
                           className="text-xs text-text-muted hover:text-danger transition-colors"
                         >
-                          删除
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -203,9 +207,9 @@ export function InterviewListPage() {
       {cancelTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
-            <h3 className="mb-2 text-lg font-semibold text-text-primary">确认取消</h3>
+            <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('interviews.cancelConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
-              确定要取消面试 #{cancelTarget.id} 吗？此操作不可撤销。
+              {t('interviews.cancelConfirmMessage', { id: cancelTarget.id })}
             </p>
             <div className="flex justify-end gap-2">
               <SilverButton
@@ -213,7 +217,7 @@ export function InterviewListPage() {
                 type="button"
                 onClick={() => setCancelTarget(null)}
               >
-                返回
+                {t('common.back')}
               </SilverButton>
               <SilverButton
                 variant="danger"
@@ -221,7 +225,7 @@ export function InterviewListPage() {
                 disabled={cancelMutation.isPending}
                 onClick={confirmCancel}
               >
-                {cancelMutation.isPending ? '取消中...' : '确认取消'}
+                {cancelMutation.isPending ? t('interviews.cancelling') : t('interviews.confirmCancel')}
               </SilverButton>
             </div>
           </GlassCard>
@@ -232,9 +236,9 @@ export function InterviewListPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
-            <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
+            <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('interviews.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
-              确定要删除面试 #{deleteTarget.id} 吗？将级联删除所有轮次数据，此操作不可恢复。
+              {t('interviews.deleteConfirmMessage', { id: deleteTarget.id })}
             </p>
             <div className="flex justify-end gap-2">
               <SilverButton
@@ -242,7 +246,7 @@ export function InterviewListPage() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
               >
-                返回
+                {t('common.back')}
               </SilverButton>
               <SilverButton
                 variant="danger"
@@ -250,7 +254,7 @@ export function InterviewListPage() {
                 disabled={deleteMutation.isPending}
                 onClick={confirmDelete}
               >
-                {deleteMutation.isPending ? '删除中...' : '确认删除'}
+                {deleteMutation.isPending ? t('interviews.deleting') : t('interviews.confirmDelete')}
               </SilverButton>
             </div>
           </GlassCard>

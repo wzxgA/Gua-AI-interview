@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
@@ -9,12 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, ErrorState } from '@/components/common/PageHeader';
 import { useRagQuestions, useRagResumes } from '@/api/rag';
 import type { SearchMetrics } from '@/api/rag';
-import {
-  CATEGORIES,
-  DIFFICULTIES,
-  CATEGORY_LABELS,
-  DIFFICULTY_LABELS,
-} from '@/lib/constants';
+import { CATEGORIES, DIFFICULTIES } from '@/lib/constants';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
 /** 低分阈值：低于此分数显示警告 */
 const LOW_SCORE_THRESHOLD = 0.5;
@@ -22,6 +19,8 @@ const LOW_SCORE_THRESHOLD = 0.5;
 type SearchMode = 'question' | 'resume';
 
 export function RagDebugPage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const navigate = useNavigate();
   const [mode, setMode] = useState<SearchMode>('question');
   const [inputText, setInputText] = useState('');
@@ -46,7 +45,7 @@ export function RagDebugPage() {
 
   const handleSearch = () => {
     if (!inputText.trim()) {
-      toast.error('请输入检索内容');
+      toast.error(t('rag.inputRequired'));
       return;
     }
     setSearchText(inputText.trim());
@@ -68,43 +67,43 @@ export function RagDebugPage() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-text-primary">RAG 检索调试</h2>
-        <p className="mt-1 text-sm text-text-muted">调试向量检索结果与相似度分数</p>
+        <h2 className="text-xl font-semibold text-text-primary">{t('rag.title')}</h2>
+        <p className="mt-1 text-sm text-text-muted">{t('rag.subtitle')}</p>
       </div>
 
       <div className="flex gap-4">
         {/* 左栏 - 检索表单 */}
         <div className="w-2/5">
           <GlassCard className="p-6">
-            <h3 className="mb-4 text-sm font-medium text-text-muted">检索参数</h3>
+            <h3 className="mb-4 text-sm font-medium text-text-muted">{t('rag.params')}</h3>
             <div className="space-y-4">
               {/* 检索类型切换 */}
               <div>
-                <Label>检索类型</Label>
+                <Label>{t('rag.searchType')}</Label>
                 <div className="flex gap-2">
                   <SilverButton
                     variant={mode === 'question' ? 'primary' : 'ghost'}
                     onClick={() => setMode('question')}
                     className="flex-1"
                   >
-                    题库检索
+                    {t('rag.questionMode')}
                   </SilverButton>
                   <SilverButton
                     variant={mode === 'resume' ? 'primary' : 'ghost'}
                     onClick={() => setMode('resume')}
                     className="flex-1"
                   >
-                    简历检索
+                    {t('rag.resumeMode')}
                   </SilverButton>
                 </div>
               </div>
 
               {/* 查询文本 */}
               <div>
-                <Label>查询文本</Label>
+                <Label>{t('rag.queryLabel')}</Label>
                 <Textarea
                   rows={5}
-                  placeholder="请输入检索内容..."
+                  placeholder={t('rag.queryPlaceholder')}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                 />
@@ -130,7 +129,7 @@ export function RagDebugPage() {
               {mode === 'resume' && (
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <Label>最低相似度</Label>
+                    <Label>{t('rag.minScore')}</Label>
                     <span className="text-xs text-text-secondary">
                       {minScore.toFixed(2)}
                     </span>
@@ -151,29 +150,29 @@ export function RagDebugPage() {
               {mode === 'question' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>分类</Label>
+                    <Label>{t('rag.categoryLabel')}</Label>
                     <Select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
-                      <option value="">全部分类</option>
+                      <option value="">{t('rag.allCategories')}</option>
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
-                          {CATEGORY_LABELS[c]}
+                          {enumLabel('category', c)}
                         </option>
                       ))}
                     </Select>
                   </div>
                   <div>
-                    <Label>难度</Label>
+                    <Label>{t('rag.difficultyLabel')}</Label>
                     <Select
                       value={difficulty}
                       onChange={(e) => setDifficulty(e.target.value)}
                     >
-                      <option value="">全部难度</option>
+                      <option value="">{t('rag.allDifficulties')}</option>
                       {DIFFICULTIES.map((d) => (
                         <option key={d} value={d}>
-                          {DIFFICULTY_LABELS[d]}
+                          {enumLabel('difficulty', d)}
                         </option>
                       ))}
                     </Select>
@@ -183,7 +182,7 @@ export function RagDebugPage() {
 
               {/* 检索按钮 */}
               <SilverButton onClick={handleSearch} className="w-full">
-                检索
+                {t('rag.search')}
               </SilverButton>
             </div>
           </GlassCard>
@@ -194,10 +193,10 @@ export function RagDebugPage() {
           <GlassCard className="p-6 min-h-[400px]">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-medium text-text-muted">
-                检索结果
+                {t('rag.results')}
                 {(mode === 'resume' ? sortedResumeResults : sortedQuestionResults).length > 0 && (
                   <span className="ml-2 text-text-muted">
-                    ({(mode === 'resume' ? sortedResumeResults : sortedQuestionResults).length} 条)
+                    ({t('rag.resultCount', { num: (mode === 'resume' ? sortedResumeResults : sortedQuestionResults).length })})
                   </span>
                 )}
               </h3>
@@ -209,7 +208,7 @@ export function RagDebugPage() {
             )}
 
             {!searchText ? (
-              <EmptyState message="输入查询内容后点击检索查看结果" />
+              <EmptyState message={t('rag.emptyHint')} />
             ) : isLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -217,10 +216,10 @@ export function RagDebugPage() {
                 ))}
               </div>
             ) : isError ? (
-              <ErrorState message={(error as Error)?.message || '检索失败'} />
+              <ErrorState message={(error as Error)?.message || t('rag.searchFailed')} />
             ) : mode === 'question' ? (
               sortedQuestionResults.length === 0 ? (
-                <EmptyState message="未检索到相关结果" />
+                <EmptyState message={t('rag.noResults')} />
               ) : (
                 <div className="space-y-3">
                   {sortedQuestionResults.map((item) => (
@@ -228,16 +227,16 @@ export function RagDebugPage() {
                       <p className="text-sm text-text-primary">{item.content}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Badge variant="category">
-                          {CATEGORY_LABELS[item.category] ?? item.category}
+                          {enumLabel('category', item.category, item.category)}
                         </Badge>
                         <Badge variant="difficulty">
-                          {DIFFICULTY_LABELS[item.difficulty] ?? item.difficulty}
+                          {enumLabel('difficulty', item.difficulty, item.difficulty)}
                         </Badge>
                         <ScoreBar score={item.score} />
                       </div>
                       {item.standardAnswer && (
                         <p className="mt-2 text-xs text-text-muted">
-                          参考答案：{item.standardAnswer}
+                          {t('rag.standardAnswer', { answer: item.standardAnswer })}
                         </p>
                       )}
                     </GlassCard>
@@ -267,24 +266,24 @@ export function RagDebugPage() {
                         )}
                         {item.yearsOfExperience != null && (
                           <span className="text-xs text-text-muted">
-                            {item.yearsOfExperience}年
+                            {t('rag.years', { years: item.yearsOfExperience })}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         {item.score < LOW_SCORE_THRESHOLD && (
-                          <Badge variant="difficulty">低相关</Badge>
+                          <Badge variant="difficulty">{t('rag.lowRelevance')}</Badge>
                         )}
                         <ScoreBar score={item.score} />
                       </div>
                     </div>
                     <div className="mt-1 flex gap-3 text-xs text-text-muted">
-                      <span title="向量相似度得分">
-                        向量: {(item.vectorScore * 100).toFixed(0)}%
+                      <span title={t('rag.vectorTitle')}>
+                        {t('rag.vectorScore', { value: (item.vectorScore * 100).toFixed(0) })}
                       </span>
                       {item.keywordScore > 0 && (
-                        <span title="关键词匹配得分" className="text-silver-200">
-                          关键词: {(item.keywordScore * 100).toFixed(0)}%
+                        <span title={t('rag.keywordTitle')} className="text-silver-200">
+                          {t('rag.keywordScore', { value: (item.keywordScore * 100).toFixed(0) })}
                         </span>
                       )}
                     </div>
@@ -308,8 +307,8 @@ export function RagDebugPage() {
                       </p>
                     )}
                     <div className="mt-2 flex gap-4 text-xs text-text-secondary">
-                      <span>手机：{item.phone || '-'}</span>
-                      <span>邮箱：{item.email || '-'}</span>
+                      <span>{t('rag.phone', { value: item.phone || '-' })}</span>
+                      <span>{t('rag.email', { value: item.email || '-' })}</span>
                     </div>
                   </GlassCard>
                 ))}
@@ -323,26 +322,30 @@ export function RagDebugPage() {
 }
 
 function MetricsBar({ metrics }: { metrics: SearchMetrics }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-4 flex flex-wrap gap-4 rounded-lg bg-surface-hover px-3 py-2 text-xs text-text-muted">
       <span>Embedding: {metrics.embeddingMs}ms</span>
       <span>SQL: {metrics.sqlMs}ms</span>
-      <span>总耗时: {metrics.totalMs}ms</span>
-      <span>返回: {metrics.resultCount} 条</span>
+      <span>{t('rag.totalMs', { ms: metrics.totalMs })}</span>
+      <span>{t('rag.returnedCount', { num: metrics.resultCount })}</span>
     </div>
   );
 }
 
 function EmptyResults({ minScore }: { minScore: number }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
-      <EmptyState message="未检索到相关结果" />
+      <EmptyState message={t('rag.noResults')} />
       <div className="rounded-lg bg-surface-hover px-4 py-3 text-xs text-text-muted">
-        <p className="mb-1 font-medium text-text-secondary">可能原因：</p>
+        <p className="mb-1 font-medium text-text-secondary">{t('rag.possibleReasons')}</p>
         <ul className="ml-4 list-disc space-y-1">
-          <li>简历尚未完成向量化（请到简历管理页检查向量状态）</li>
-          {minScore > 0 && <li>最低相似度阈值过高（当前 {minScore.toFixed(2)}），尝试调低</li>}
-          <li>没有与查询内容相关的简历</li>
+          <li>{t('rag.reasonNotVectorized')}</li>
+          {minScore > 0 && (
+            <li>{t('rag.reasonThresholdHigh', { value: minScore.toFixed(2) })}</li>
+          )}
+          <li>{t('rag.reasonNoMatch')}</li>
         </ul>
       </div>
     </div>

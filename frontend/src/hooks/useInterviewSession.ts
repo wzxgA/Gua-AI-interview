@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
 import { useSessionStore } from '@/stores/sessionStore';
+import i18n from '@/i18n';
 import type { WsServerMessage, WsClientMessage } from '@/types/interview';
 
 interface UseInterviewSessionOptions {
@@ -77,7 +78,7 @@ export function useInterviewSession({ sessionId, token }: UseInterviewSessionOpt
           break;
 
         case 'ERROR':
-          store.setError(msg.message || '面试服务异常');
+          store.setError(msg.message || i18n.t('errors.interviewServiceError'));
           break;
       }
     },

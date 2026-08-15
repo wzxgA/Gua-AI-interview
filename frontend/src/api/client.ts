@@ -1,4 +1,5 @@
 import type { Result } from '@/types/common';
+import i18n from '@/i18n';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080';
 
@@ -99,7 +100,7 @@ async function request<T>(url: string, options?: RequestOptions): Promise<T> {
       clearGuestTokens();
       const enterPath = window.location.pathname.replace(/\/room$|\/report$/, '');
       window.location.href = enterPath;
-      throw new ApiError(5001, '会话已过期，请重新输入访问密码', '');
+      throw new ApiError(5001, i18n.t('errors.guestSessionExpired'), '');
     }
     // 管理端：自动刷新 + 重放
     const newToken = await doRefresh();
@@ -111,7 +112,7 @@ async function request<T>(url: string, options?: RequestOptions): Promise<T> {
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
-    throw new ApiError(5001, '未登录或令牌已过期', '');
+    throw new ApiError(5001, i18n.t('errors.notLoggedIn'), '');
   }
 
   if (!res.ok) {

@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SilverButton } from '@/components/ui/silver-button';
@@ -13,6 +14,7 @@ import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 
 /** 候选人报告页：免登录，只读自己的评估报告。 */
 export function CandidateReportPage() {
+  const { t } = useTranslation();
   const { accessToken } = useParams();
   const navigate = useNavigate();
   const sessionIdStr = sessionStorage.getItem('guestSessionId');
@@ -36,7 +38,7 @@ export function CandidateReportPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="评估报告" />
+        <PageHeader title={t('candidate.reportTitle')} />
         <Skeleton className="h-40 w-full" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Skeleton className="h-64 w-full" />
@@ -50,9 +52,9 @@ export function CandidateReportPage() {
   if (isError || !report) {
     return (
       <div className="space-y-6">
-        <PageHeader title="评估报告" />
+        <PageHeader title={t('candidate.reportTitle')} />
         <ErrorState
-          message="报告尚未生成或不存在"
+          message={t('candidate.reportNotFound')}
           onRetry={() => navigate(`/i/${accessToken}/room`)}
         />
       </div>
@@ -64,11 +66,11 @@ export function CandidateReportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="评估报告"
-        subtitle="你的面试评估结果"
+        title={t('candidate.reportTitle')}
+        subtitle={t('candidate.reportSubtitle')}
         action={
           <SilverButton variant="ghost" onClick={() => navigate(`/i/${accessToken}/room`)}>
-            返回面试间
+            {t('candidate.backToRoom')}
           </SilverButton>
         }
       />
@@ -81,7 +83,7 @@ export function CandidateReportPage() {
       </div>
 
       <GlassCard className="p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-primary">轮次评估明细</h3>
+        <h3 className="mb-4 text-sm font-medium text-text-primary">{t('interviews.roundEvaluationTitle')}</h3>
         <RoundEvaluationList evaluations={evaluations ?? []} />
       </GlassCard>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Input, Label } from '@/components/ui/input';
@@ -15,8 +16,11 @@ import {
 } from '@/api/resumes';
 import type { ResumeResponse } from '@/types/resume';
 import { PAGE_SIZE_DEFAULT } from '@/lib/constants';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
 export function ResumeListPage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const [query, setQuery] = useState({ candidateName: '', page: 1 });
   const [searchName, setSearchName] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -53,7 +57,7 @@ export function ResumeListPage() {
 
   const handleFile = (f: File | null) => {
     if (f && !/\.(pdf|txt)$/i.test(f.name)) {
-      toast.error('仅支持 PDF 或 TXT 文件');
+      toast.error(t('resumes.fileTypeError'));
       return;
     }
     setFile(f);
@@ -68,11 +72,11 @@ export function ResumeListPage() {
 
   const handleUpload = () => {
     if (!file) {
-      toast.error('请选择简历文件');
+      toast.error(t('resumes.fileRequired'));
       return;
     }
     if (!candidateName.trim()) {
-      toast.error('请输入候选人姓名');
+      toast.error(t('resumes.nameRequired'));
       return;
     }
     uploadMutation.mutate(
@@ -84,10 +88,10 @@ export function ResumeListPage() {
       },
       {
         onSuccess: () => {
-          toast.success('简历上传成功');
+          toast.success(t('resumes.uploadSuccess'));
           setUploadOpen(false);
         },
-        onError: (err: Error) => toast.error(err.message || '上传失败'),
+        onError: (err: Error) => toast.error(err.message || t('resumes.uploadFailed')),
       },
     );
   };
@@ -96,10 +100,10 @@ export function ResumeListPage() {
     if (!deleteTarget) return;
     deleteMutation.mutate(deleteTarget.id, {
       onSuccess: () => {
-        toast.success('简历已删除');
+        toast.success(t('resumes.deleteSuccess'));
         setDeleteTarget(null);
       },
-      onError: (err: Error) => toast.error(err.message || '删除失败'),
+      onError: (err: Error) => toast.error(err.message || t('resumes.deleteFailed')),
     });
   };
 
@@ -109,25 +113,25 @@ export function ResumeListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="简历管理"
-        subtitle="管理候选人简历、解析与向量化状态"
-        action={<SilverButton onClick={openUpload}>上传简历</SilverButton>}
+        title={t('resumes.title')}
+        subtitle={t('resumes.subtitle')}
+        action={<SilverButton onClick={openUpload}>{t('resumes.upload')}</SilverButton>}
       />
 
       {/* 搜索栏 */}
       <GlassCard className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
-            <Label>候选人姓名</Label>
+            <Label>{t('resumes.candidateName')}</Label>
             <Input
-              placeholder="搜索候选人姓名"
+              placeholder={t('resumes.searchNamePlaceholder')}
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           <SilverButton variant="ghost" onClick={handleSearch}>
-            搜索
+            {t('common.search')}
           </SilverButton>
         </div>
       </GlassCard>
@@ -139,20 +143,20 @@ export function ResumeListPage() {
             <TableSkeleton />
           </div>
         ) : isError ? (
-          <ErrorState message={error?.message || '加载失败'} onRetry={() => refetch()} />
+          <ErrorState message={error?.message || t('resumes.loadFailed')} onRetry={() => refetch()} />
         ) : records.length === 0 ? (
-          <EmptyState message="暂无简历数据" />
+          <EmptyState message={t('resumes.noData')} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-subtle text-text-muted">
-                  <th className="px-4 py-3 text-left font-medium">候选人</th>
-                  <th className="px-4 py-3 text-left font-medium">手机</th>
-                  <th className="px-4 py-3 text-left font-medium">邮箱</th>
-                  <th className="px-4 py-3 text-left font-medium">解析状态</th>
-                  <th className="px-4 py-3 text-left font-medium">向量状态</th>
-                  <th className="px-4 py-3 text-right font-medium">操作</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('resumes.candidateName')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('resumes.phone')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('resumes.email')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('resumes.parseStatus')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('resumes.embeddingStatus')}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('resumes.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,11 +178,7 @@ export function ResumeListPage() {
                     <td className="px-4 py-3">
                       <StatusBadge
                         status={resume.parseStatus}
-                        label={
-                          resume.parseStatus === 'FAILED'
-                            ? '解析失败'
-                            : undefined
-                        }
+                        label={enumLabel('parseStatus', resume.parseStatus)}
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -192,13 +192,13 @@ export function ResumeListPage() {
                           to={`/resumes/${resume.id}`}
                           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
                         >
-                          查看
+                          {t('resumes.view')}
                         </Link>
                         <button
                           onClick={() => setDeleteTarget(resume)}
                           className="text-xs text-danger hover:text-danger/80 transition-colors"
                         >
-                          删除
+                          {t('common.delete')}
                         </button>
                       </div>
                     </td>
@@ -225,7 +225,7 @@ export function ResumeListPage() {
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="mb-4 text-lg font-semibold text-text-primary">上传简历</h3>
+            <h3 className="mb-4 text-lg font-semibold text-text-primary">{t('resumes.upload')}</h3>
             <div className="space-y-4">
               {/* 拖拽区域 */}
               <div
@@ -244,9 +244,9 @@ export function ResumeListPage() {
                 }
               >
                 <p className="text-sm text-text-secondary">
-                  {file ? file.name : '点击或拖拽文件到此处上传'}
+                  {file ? file.name : t('resumes.dropHint')}
                 </p>
-                <p className="mt-1 text-xs text-text-muted">支持 PDF、TXT 格式</p>
+                <p className="mt-1 text-xs text-text-muted">{t('resumes.fileFormats')}</p>
                 <input
                   id="resume-file-input"
                   type="file"
@@ -257,25 +257,25 @@ export function ResumeListPage() {
               </div>
 
               <div>
-                <Label>候选人姓名</Label>
+                <Label>{t('resumes.candidateName')}</Label>
                 <Input
-                  placeholder="请输入候选人姓名"
+                  placeholder={t('resumes.inputNamePlaceholder')}
                   value={candidateName}
                   onChange={(e) => setCandidateName(e.target.value)}
                 />
               </div>
               <div>
-                <Label>手机（可选）</Label>
+                <Label>{t('resumes.phoneOptional')}</Label>
                 <Input
-                  placeholder="请输入手机号"
+                  placeholder={t('resumes.phonePlaceholder')}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
               <div>
-                <Label>邮箱（可选）</Label>
+                <Label>{t('resumes.emailOptional')}</Label>
                 <Input
-                  placeholder="请输入邮箱"
+                  placeholder={t('resumes.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -287,7 +287,7 @@ export function ResumeListPage() {
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
                     <div className="h-full w-1/3 animate-stream bg-gradient-to-r from-silver-300 via-silver-100 to-silver-300" />
                   </div>
-                  <p className="text-xs text-text-muted">上传中...</p>
+                  <p className="text-xs text-text-muted">{t('resumes.uploading')}</p>
                 </div>
               )}
 
@@ -298,14 +298,14 @@ export function ResumeListPage() {
                   onClick={() => setUploadOpen(false)}
                   disabled={uploadMutation.isPending}
                 >
-                  取消
+                  {t('common.cancel')}
                 </SilverButton>
                 <SilverButton
                   type="button"
                   onClick={handleUpload}
                   disabled={uploadMutation.isPending}
                 >
-                  {uploadMutation.isPending ? '上传中...' : '上传'}
+                  {uploadMutation.isPending ? t('resumes.uploading') : t('resumes.upload')}
                 </SilverButton>
               </div>
             </div>
@@ -317,9 +317,9 @@ export function ResumeListPage() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
           <GlassCard className="w-full max-w-sm p-6">
-            <h3 className="mb-2 text-lg font-semibold text-text-primary">确认删除</h3>
+            <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('resumes.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
-              确定要删除候选人「{deleteTarget.candidateName}」的简历吗？此操作不可撤销。
+              {t('resumes.deleteConfirmMessage', { name: deleteTarget.candidateName })}
             </p>
             <div className="flex justify-end gap-2">
               <SilverButton
@@ -327,7 +327,7 @@ export function ResumeListPage() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
               >
-                取消
+                {t('common.cancel')}
               </SilverButton>
               <SilverButton
                 variant="danger"
@@ -335,7 +335,7 @@ export function ResumeListPage() {
                 disabled={deleteMutation.isPending}
                 onClick={confirmDelete}
               >
-                {deleteMutation.isPending ? '删除中...' : '确认删除'}
+                {deleteMutation.isPending ? t('resumes.deleting') : t('resumes.confirmDelete')}
               </SilverButton>
             </div>
           </GlassCard>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { TypewriterCursor } from './TypewriterCursor';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -27,6 +28,7 @@ const FOLLOW_UP_COLORS: Record<string, { stripe: string; badge: string }> = {
 
 /** AI 面试官问题气泡：左侧竖条（主问题银色 / 追问按类型分色），流式文本 + 打字机光标 */
 export function QuestionBubble({ message }: QuestionBubbleProps) {
+  const { t } = useTranslation();
   const isFollowUp = message.parentSeq != null && message.followUpType;
   const color = FOLLOW_UP_COLORS[message.followUpType ?? ''] ?? FOLLOW_UP_COLORS.CLARIFY;
 
@@ -52,7 +54,7 @@ export function QuestionBubble({ message }: QuestionBubbleProps) {
 
         {/* 顶部：AI 面试官 + 序号 */}
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm font-medium text-silver-200">AI 面试官</span>
+          <span className="text-sm font-medium text-silver-200">{t('interviews.aiInterviewer')}</span>
           {seqLabel && (
             <span
               className={`rounded-full border px-2 py-0.5 text-xs ${

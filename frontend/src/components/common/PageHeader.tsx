@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 
 export function PageHeader({
@@ -29,6 +30,7 @@ export function EmptyState({ message }: { message: string }) {
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useTranslation();
   return (
     <GlassCard className="flex flex-col items-center justify-center gap-4 py-16">
       <p className="text-sm text-danger">{message}</p>
@@ -37,7 +39,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
           onClick={onRetry}
           className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
         >
-          重试
+          {t('common.retry')}
         </button>
       )}
     </GlassCard>

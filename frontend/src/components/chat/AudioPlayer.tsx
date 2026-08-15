@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -7,6 +8,7 @@ interface AudioPlayerProps {
 
 /** TTS 音频播放器：播放/暂停 + 进度条 + 时长 */
 export function AudioPlayer({ audioUrl, durationMs }: AudioPlayerProps) {
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -78,7 +80,7 @@ export function AudioPlayer({ audioUrl, durationMs }: AudioPlayerProps) {
       <button
         onClick={toggle}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-overlay text-text-primary transition-colors hover:bg-surface-hover"
-        aria-label={playing ? '暂停' : '播放'}
+        aria-label={playing ? t('interviews.audioPause') : t('interviews.audioPlay')}
       >
         {playing ? (
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">

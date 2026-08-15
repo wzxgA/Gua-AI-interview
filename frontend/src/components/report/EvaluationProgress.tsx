@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 
 interface EvaluationProgressProps {
@@ -11,6 +12,7 @@ export function EvaluationProgress({
   evaluatedRounds,
   totalRoundsToEvaluate,
 }: EvaluationProgressProps) {
+  const { t } = useTranslation();
   const isEvaluating = status === 'EVALUATING';
   const isReporting = status === 'REPORTING';
 
@@ -28,17 +30,17 @@ export function EvaluationProgress({
           {isEvaluating ? (
             <>
               <p className="text-sm font-medium text-text-primary">
-                正在评估...
+                {t('interviews.evaluatingProgress')}
               </p>
               {total > 0 && (
                 <p className="mt-1 text-xs text-text-muted">
-                  已完成 {current} / {total} 轮
+                  {t('interviews.evaluatedRounds', { current, total })}
                 </p>
               )}
             </>
           ) : (
             <p className="text-sm font-medium text-text-primary">
-              报告生成中...
+              {t('interviews.reportingProgress')}
             </p>
           )}
         </div>

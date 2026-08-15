@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Badge } from '@/components/ui/badge';
@@ -12,18 +13,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useQuestion, useUpdateQuestion } from '@/api/questions';
 import { formatDate } from '@/lib/utils';
-import { CATEGORY_LABELS, CATEGORIES, DIFFICULTIES, DIFFICULTY_LABELS } from '@/lib/constants';
+import { CATEGORIES, DIFFICULTIES } from '@/lib/constants';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 
-const editSchema = z.object({
-  category: z.string().min(1, '请选择分类'),
-  topic: z.string().min(1, '请输入主题'),
-  difficulty: z.string().min(1, '请选择难度'),
-  content: z.string().min(1, '请输入题干'),
-  standardAnswer: z.string(),
-  tags: z.string(),
-});
-
-type EditFormValues = z.infer<typeof editSchema>;
+interface EditFormValues {
+  category: string;
+  topic: string;
+  difficulty: string;
+  content: string;
+  standardAnswer: string;
+  tags: string;
+}
 
 const emptyForm: EditFormValues = {
   category: 'TECHNICAL',
@@ -35,11 +35,22 @@ const emptyForm: EditFormValues = {
 };
 
 export function QuestionDetailPage() {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
   const { id } = useParams();
   const navigate = useNavigate();
   const questionId = id ? Number(id) : undefined;
   const { data: question, isLoading, isError, error } = useQuestion(questionId);
   const updateMutation = useUpdateQuestion();
+
+  const editSchema = z.object({
+    category: z.string().min(1, t('questions.validation.categoryRequired')),
+    topic: z.string().min(1, t('questions.validation.topicRequired')),
+    difficulty: z.string().min(1, t('questions.validation.difficultyRequired')),
+    content: z.string().min(1, t('questions.validation.contentRequired')),
+    standardAnswer: z.string(),
+    tags: z.string(),
+  });
 
   const {
     register,
@@ -81,8 +92,8 @@ export function QuestionDetailPage() {
         },
       },
       {
-        onSuccess: () => toast.success('题目更新成功'),
-        onError: (err: Error) => toast.error(err.message || '更新失败'),
+        onSuccess: () => toast.success(t('questions.updateSuccess')),
+        onError: (err: Error) => toast.error(err.message || t('questions.updateFailed')),
       },
     );
   };
@@ -90,7 +101,7 @@ export function QuestionDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="题目详情" />
+        <PageHeader title={t('questions.detail')} />
         <GlassCard className="p-6">
           <Skeleton className="h-8 w-48" />
           <div className="mt-4 space-y-3">
@@ -109,9 +120,9 @@ export function QuestionDetailPage() {
   if (isError || !question) {
     return (
       <div className="space-y-6">
-        <PageHeader title="题目详情" />
+        <PageHeader title={t('questions.detail')} />
         <ErrorState
-          message={error?.message || '题目不存在'}
+          message={error?.message || t('questions.notFound')}
           onRetry={() => navigate('/questions')}
         />
       </div>
@@ -123,70 +134,72 @@ export function QuestionDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="题目详情"
+        title={t('questions.detail')}
         subtitle={question.topic || question.content}
         action={
           <SilverButton variant="ghost" onClick={() => navigate('/questions')}>
-            返回列表
+            {t('questions.backToList')}
           </SilverButton>
         }
       />
 
       <GlassCard className="p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-muted">基本信息</h3>
+        <h3 className="mb-4 text-sm font-medium text-text-muted">{t('questions.basicInfo')}</h3>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-text-muted">分类</p>
+            <p className="text-xs text-text-muted">{t('questions.category')}</p>
             <div className="mt-1">
               <Badge variant="category">
-                {CATEGORY_LABELS[question.category] ?? question.category}
+                {enumLabel('category', question.category)}
               </Badge>
             </div>
           </div>
           <div>
-            <p className="text-xs text-text-muted">难度</p>
+            <p className="text-xs text-text-muted">{t('questions.difficulty')}</p>
             <div className="mt-1">
               <Badge variant="difficulty">
-                {DIFFICULTY_LABELS[question.difficulty] ?? question.difficulty}
+                {enumLabel('difficulty', question.difficulty)}
               </Badge>
             </div>
           </div>
           <div>
-            <p className="text-xs text-text-muted">主题</p>
+            <p className="text-xs text-text-muted">{t('questions.topic')}</p>
             <p className="mt-1 text-sm text-text-primary">{question.topic || '-'}</p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">向量状态</p>
+            <p className="text-xs text-text-muted">{t('questions.embeddingStatus')}</p>
             <p className="mt-1 text-sm">
               <span className={question.hasEmbedding ? 'text-success' : 'text-text-muted'}>
-                {question.hasEmbedding ? '✓ 已向量化' : '✗ 未向量化'}
+                {question.hasEmbedding ? t('questions.embedded') : t('questions.notEmbedded')}
               </span>
             </p>
           </div>
         </div>
-        <p className="mt-4 text-xs text-text-muted">创建于 {formatDate(question.createdAt)}</p>
+        <p className="mt-4 text-xs text-text-muted">
+          {t('questions.createdAt', { date: formatDate(question.createdAt) })}
+        </p>
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h3 className="mb-3 text-sm font-medium text-text-muted">题干</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-muted">{t('questions.content')}</h3>
         <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
           {question.content}
         </pre>
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h3 className="mb-3 text-sm font-medium text-text-muted">标准答案</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-muted">{t('questions.standardAnswer')}</h3>
         {question.standardAnswer ? (
           <pre className="whitespace-pre-wrap break-words rounded-md bg-surface-overlay p-4 text-sm text-text-secondary">
             {question.standardAnswer}
           </pre>
         ) : (
-          <p className="text-sm text-text-muted">暂无标准答案</p>
+          <p className="text-sm text-text-muted">{t('questions.noStandardAnswer')}</p>
         )}
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h3 className="mb-3 text-sm font-medium text-text-muted">标签</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-muted">{t('questions.tags')}</h3>
         {tags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -196,31 +209,31 @@ export function QuestionDetailPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-text-muted">暂无标签</p>
+          <p className="text-sm text-text-muted">{t('questions.noTags')}</p>
         )}
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-muted">编辑题目</h3>
+        <h3 className="mb-4 text-sm font-medium text-text-muted">{t('questions.edit')}</h3>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>分类</Label>
+              <Label>{t('questions.category')}</Label>
               <Select {...register('category')}>
                 {CATEGORIES.map((category) => (
                   <option key={category} value={category}>
-                    {CATEGORY_LABELS[category]}
+                    {enumLabel('category', category)}
                   </option>
                 ))}
               </Select>
               {errors.category && <p className="mt-1 text-xs text-danger">{errors.category.message}</p>}
             </div>
             <div>
-              <Label>难度</Label>
+              <Label>{t('questions.difficulty')}</Label>
               <Select {...register('difficulty')}>
                 {DIFFICULTIES.map((difficulty) => (
                   <option key={difficulty} value={difficulty}>
-                    {DIFFICULTY_LABELS[difficulty]}
+                    {enumLabel('difficulty', difficulty)}
                   </option>
                 ))}
               </Select>
@@ -228,26 +241,26 @@ export function QuestionDetailPage() {
             </div>
           </div>
           <div>
-            <Label>主题</Label>
-            <Input placeholder="请输入主题" {...register('topic')} />
+            <Label>{t('questions.topic')}</Label>
+            <Input placeholder={t('questions.inputTopicPlaceholder')} {...register('topic')} />
             {errors.topic && <p className="mt-1 text-xs text-danger">{errors.topic.message}</p>}
           </div>
           <div>
-            <Label>题干</Label>
-            <Textarea rows={5} placeholder="请输入题干" {...register('content')} />
+            <Label>{t('questions.content')}</Label>
+            <Textarea rows={5} placeholder={t('questions.inputContentPlaceholder')} {...register('content')} />
             {errors.content && <p className="mt-1 text-xs text-danger">{errors.content.message}</p>}
           </div>
           <div>
-            <Label>标准答案</Label>
-            <Textarea rows={4} placeholder="请输入标准答案（可选）" {...register('standardAnswer')} />
+            <Label>{t('questions.standardAnswer')}</Label>
+            <Textarea rows={4} placeholder={t('questions.inputStandardAnswerPlaceholder')} {...register('standardAnswer')} />
           </div>
           <div>
-            <Label>标签</Label>
-            <Input placeholder="多个标签用逗号分隔（可选）" {...register('tags')} />
+            <Label>{t('questions.tags')}</Label>
+            <Input placeholder={t('questions.inputTagsPlaceholder')} {...register('tags')} />
           </div>
           <div className="flex justify-end">
             <SilverButton type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? '保存中...' : '保存修改'}
+              {updateMutation.isPending ? t('questions.saving') : t('questions.saveChanges')}
             </SilverButton>
           </div>
         </form>

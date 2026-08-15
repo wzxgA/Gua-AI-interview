@@ -1,19 +1,21 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, Briefcase, FileQuestion, FileText, Users, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/constants';
 
 const menuItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/positions', label: '岗位管理', icon: Briefcase },
-  { to: '/questions', label: '题库管理', icon: FileQuestion },
-  { to: '/resumes', label: '简历管理', icon: FileText },
-  { to: '/interviews', label: '面试管理', icon: Users },
-  { to: '/rag', label: 'RAG 调试', icon: Search },
-  { to: '/settings', label: '设置', icon: Settings },
+  { to: '/', labelKey: 'sidebar.menu.dashboard', icon: LayoutDashboard },
+  { to: '/positions', labelKey: 'sidebar.menu.positions', icon: Briefcase },
+  { to: '/questions', labelKey: 'sidebar.menu.questions', icon: FileQuestion },
+  { to: '/resumes', labelKey: 'sidebar.menu.resumes', icon: FileText },
+  { to: '/interviews', labelKey: 'sidebar.menu.interviews', icon: Users },
+  { to: '/rag', labelKey: 'sidebar.menu.rag', icon: Search },
+  { to: '/settings', labelKey: 'sidebar.menu.settings', icon: Settings },
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
 
   return (
@@ -41,7 +43,7 @@ export function Sidebar() {
             <ellipse cx="16" cy="11.6" rx="0.9" ry="1.5" fill="#1f2937" />
           </g>
         </svg>
-        <span className="text-lg font-semibold text-text-primary">瓜分Offer</span>
+        <span className="text-lg font-semibold text-text-primary">{t('common.appName')}</span>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -62,7 +64,7 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              {t(item.labelKey)}
             </NavLink>
           );
         })}

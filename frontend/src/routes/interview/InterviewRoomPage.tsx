@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +17,7 @@ import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
 
 export function InterviewRoomPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const interviewId = id ? Number(id) : undefined;
@@ -73,18 +75,18 @@ export function InterviewRoomPage() {
     if (!interviewId) return;
     resumeMutation.mutate(interviewId, {
       onSuccess: () => {
-        toast.success('面试已恢复');
+        toast.success(t('interviews.resumed'));
         setStatus('IN_PROGRESS');
         queryClient.invalidateQueries({ queryKey: ['interviews', interviewId] });
       },
-      onError: (err: Error) => toast.error(err.message || '恢复失败'),
+      onError: (err: Error) => toast.error(err.message || t('interviews.resumeFailed')),
     });
   };
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="面试间" />
+        <PageHeader title={t('interviews.roomTitle')} />
         <Skeleton className="h-96 w-full" />
       </div>
     );
@@ -93,9 +95,9 @@ export function InterviewRoomPage() {
   if (isError || !interview) {
     return (
       <div className="space-y-6">
-        <PageHeader title="面试间" />
+        <PageHeader title={t('interviews.roomTitle')} />
         <ErrorState
-          message={error?.message || '面试不存在'}
+          message={error?.message || t('interviews.notFound')}
           onRetry={() => navigate('/interviews')}
         />
       </div>
@@ -107,18 +109,18 @@ export function InterviewRoomPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="面试间"
-          subtitle={`面试 #${interview.id}`}
+          title={t('interviews.roomTitle')}
+          subtitle={t('interviews.interviewIdSubtitle', { id: interview.id })}
           action={
             <SilverButton variant="ghost" onClick={() => navigate(`/interviews/${interview.id}`)}>
-              返回控制台
+              {t('interviews.backToConsole')}
             </SilverButton>
           }
         />
         <GlassCard className="p-8 text-center">
-          <p className="text-sm text-amber-400">该面试已设为候选端面试</p>
+          <p className="text-sm text-amber-400">{t('interviews.roomCandidateOnlyTitle')}</p>
           <p className="mt-2 text-xs text-text-muted">
-            候选人需通过面试链接进入，管理端无法直接操作面试间
+            {t('interviews.roomCandidateOnlyHint')}
           </p>
         </GlassCard>
       </div>
@@ -137,10 +139,10 @@ export function InterviewRoomPage() {
             onClick={() => navigate(`/interviews/${interview.id}`)}
             className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
           >
-            ← 控制台
+            {t('interviews.backToConsoleShort')}
           </button>
           <span className="text-sm font-medium text-text-primary">
-            面试间 #{interview.id}
+            {t('interviews.roomIdLabel', { id: interview.id })}
           </span>
           <StatusBadge status={status} />
         </div>

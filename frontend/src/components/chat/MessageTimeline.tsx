@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QuestionBubble } from './QuestionBubble';
 import { AnswerBubble } from './AnswerBubble';
 import type { ChatMessage } from '@/types/interview';
@@ -9,6 +10,7 @@ interface MessageTimelineProps {
 
 /** 消息时间线：渲染 ChatMessage 列表，自动滚动到底部 */
 export function MessageTimeline({ messages }: MessageTimelineProps) {
+  const { t } = useTranslation();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // 消息变化时自动滚动到底部
@@ -19,7 +21,7 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
   if (messages.length === 0) {
     return (
       <div className="flex min-h-full items-center justify-center">
-        <p className="text-sm text-text-muted">等待面试开始...</p>
+        <p className="text-sm text-text-muted">{t('interviews.waitingToStart')}</p>
       </div>
     );
   }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 interface PaginationProps {
@@ -8,6 +9,7 @@ interface PaginationProps {
 }
 
 export function Pagination({ current, total, size, onPageChange }: PaginationProps) {
+  const { t } = useTranslation();
   const totalPages = Math.ceil(total / size);
   if (totalPages <= 1) return null;
 
@@ -28,7 +30,7 @@ export function Pagination({ current, total, size, onPageChange }: PaginationPro
             : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
         )}
       >
-        上一页
+        {t('pagination.prev')}
       </button>
       {visiblePages.map((p, i) => {
         const prev = visiblePages[i - 1];
@@ -60,10 +62,10 @@ export function Pagination({ current, total, size, onPageChange }: PaginationPro
             : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
         )}
       >
-        下一页
+        {t('pagination.next')}
       </button>
       <span className="ml-2 text-xs text-text-muted">
-        共 {total} 条
+        {t('pagination.total', { total })}
       </span>
     </div>
   );

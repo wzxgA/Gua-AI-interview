@@ -1,28 +1,31 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useHealth } from '@/api/health';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { LogOut } from 'lucide-react';
 
-const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
-  '/positions': '岗位管理',
-  '/questions': '题库管理',
-  '/resumes': '简历管理',
-  '/rag': 'RAG 检索调试',
-  '/settings': '设置',
-};
-
 export function TopBar() {
+  const { t } = useTranslation();
   const { data: health } = useHealth();
   const isUp = health?.status === 'UP';
   const location = useLocation();
   const path = location.pathname;
-  const title = pageTitles[path] ?? pageTitles[Object.keys(pageTitles).find((k) => path.startsWith(k) && k !== '/') ?? '/'] ?? '瓜分Offer';
+
+  const pageTitles: Record<string, string> = {
+    '/': t('topBar.pageTitle./'),
+    '/positions': t('topBar.pageTitle./positions'),
+    '/questions': t('topBar.pageTitle./questions'),
+    '/resumes': t('topBar.pageTitle./resumes'),
+    '/rag': t('topBar.pageTitle./rag'),
+    '/settings': t('topBar.pageTitle./settings'),
+  };
+  const title = pageTitles[path] ?? pageTitles[Object.keys(pageTitles).find((k) => path.startsWith(k) && k !== '/') ?? '/'] ?? t('common.appName');
   const { user, logout } = useAuth();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
@@ -31,6 +34,7 @@ export function TopBar() {
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-subtle bg-space-800/50 px-8 backdrop-blur-xl">
       <h1 className="text-base font-semibold text-text-primary">{title}</h1>
       <div className="flex items-center gap-4">
+        <LanguageSwitcher />
         <ThemeToggle />
         <span className="flex items-center gap-2 text-xs text-text-secondary">
           <span
@@ -39,7 +43,7 @@ export function TopBar() {
               isUp ? 'bg-success animate-pulse-slow' : 'bg-danger',
             )}
           />
-          {isUp ? '服务在线' : '服务离线'}
+          {isUp ? t('topBar.serviceOnline') : t('topBar.serviceOffline')}
         </span>
         {user && (
           <div className="flex items-center gap-3 border-l border-border-subtle pl-4">
@@ -52,7 +56,7 @@ export function TopBar() {
             <button
               onClick={() => setLogoutConfirmOpen(true)}
               className="text-text-muted transition-colors hover:text-text-primary"
-              title="退出登录"
+              title={t('topBar.logout')}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -69,14 +73,14 @@ export function TopBar() {
         >
           <div className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <GlassCard className="p-6">
-              <h2 className="mb-1 text-lg font-semibold text-text-primary">退出登录</h2>
-              <p className="mb-6 text-sm text-text-muted">确定要退出当前账号吗？</p>
+              <h2 className="mb-1 text-lg font-semibold text-text-primary">{t('topBar.logout')}</h2>
+              <p className="mb-6 text-sm text-text-muted">{t('topBar.logoutConfirm')}</p>
               <div className="flex justify-end gap-3">
                 <SilverButton variant="ghost" onClick={() => setLogoutConfirmOpen(false)}>
-                  取消
+                  {t('common.cancel')}
                 </SilverButton>
                 <SilverButton variant="danger" onClick={logout}>
-                  退出登录
+                  {t('topBar.logout')}
                 </SilverButton>
               </div>
             </GlassCard>

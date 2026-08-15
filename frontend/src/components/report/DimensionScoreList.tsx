@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
 
@@ -6,11 +7,12 @@ interface DimensionScoreListProps {
 }
 
 export function DimensionScoreList({ scores }: DimensionScoreListProps) {
+  const { t } = useTranslation();
   const dimensions = Object.keys(DIMENSION_CONFIG) as EvaluationDimension[];
 
   return (
     <GlassCard className="p-6">
-      <h3 className="mb-4 text-sm font-medium text-text-muted">维度评分明细</h3>
+      <h3 className="mb-4 text-sm font-medium text-text-muted">{t('interviews.dimensionScoreTitle')}</h3>
       <div className="space-y-3">
         {dimensions.map((dim) => {
           const config = DIMENSION_CONFIG[dim];
@@ -20,7 +22,7 @@ export function DimensionScoreList({ scores }: DimensionScoreListProps) {
             <div key={dim} className="flex items-center gap-4">
               <div className="w-24 shrink-0">
                 <span className="text-sm text-text-secondary">
-                  {config.label}
+                  {t(`interviews.dimension.${dim}`)}
                 </span>
               </div>
               <div className="flex-1">

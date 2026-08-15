@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Textarea } from '@/components/ui/input';
@@ -12,6 +13,7 @@ const MAX_LENGTH = 10000;
 
 /** 回答输入区：多行文本域、字数统计、Ctrl+Enter 快捷发送 */
 export function AnswerInput({ onSend, disabled = false }: AnswerInputProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
 
   const handleSend = () => {
@@ -33,7 +35,7 @@ export function AnswerInput({ onSend, disabled = false }: AnswerInputProps) {
         value={text}
         onChange={(e) => setText(e.target.value.slice(0, MAX_LENGTH))}
         onKeyDown={handleKeyDown}
-        placeholder="输入你的回答...（Ctrl+Enter 发送）"
+        placeholder={t('interviews.answerPlaceholder')}
         rows={3}
         disabled={disabled}
         className="resize-none"
@@ -46,7 +48,7 @@ export function AnswerInput({ onSend, disabled = false }: AnswerInputProps) {
           onClick={handleSend}
           disabled={disabled || !text.trim()}
         >
-          发送
+          {t('interviews.send')}
         </SilverButton>
       </div>
     </GlassCard>

@@ -6,6 +6,7 @@ import {
   PolarRadiusAxis,
   ResponsiveContainer,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 import { GlassCard } from '@/components/ui/glass-card';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,6 +16,7 @@ interface DimensionRadarChartProps {
 }
 
 export function DimensionRadarChart({ scores }: DimensionRadarChartProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
@@ -26,14 +28,14 @@ export function DimensionRadarChart({ scores }: DimensionRadarChartProps) {
 
   const data = (Object.keys(DIMENSION_CONFIG) as EvaluationDimension[]).map(
     (dim) => ({
-      dimension: DIMENSION_CONFIG[dim].label,
+      dimension: t(`interviews.dimension.${dim}`),
       score: scores[dim] ?? 0,
     }),
   );
 
   return (
     <GlassCard className="p-6">
-      <h3 className="mb-4 text-sm font-medium text-text-muted">维度雷达图</h3>
+      <h3 className="mb-4 text-sm font-medium text-text-muted">{t('interviews.radarChartTitle')}</h3>
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data}>

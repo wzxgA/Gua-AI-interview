@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import type { StartPlanBody } from '@/api/interview';
@@ -9,16 +10,17 @@ interface PlanConfigDialogProps {
   onConfirm: (params: StartPlanBody) => void;
 }
 
-const DIFFICULTY_OPTIONS = [
-  { value: 'BASIC', label: '基础', desc: '侧重核心概念和基本功', minutes: 2 },
-  { value: 'BALANCED', label: '均衡', desc: '基础与进阶合理搭配', minutes: 3 },
-  { value: 'ADVANCED', label: '深入', desc: '侧重系统设计和底层原理', minutes: 5 },
-] as const;
-
 /** 面试计划生成参数配置对话框 */
 export function PlanConfigDialog({ open, onClose, onConfirm }: PlanConfigDialogProps) {
+  const { t } = useTranslation();
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'BASIC' | 'BALANCED' | 'ADVANCED'>('BALANCED');
+
+  const DIFFICULTY_OPTIONS = [
+    { value: 'BASIC', labelKey: 'interviews.planDifficultyBasic', descKey: 'interviews.planDifficultyDescBasic', minutes: 2 },
+    { value: 'BALANCED', labelKey: 'interviews.planDifficultyBalanced', descKey: 'interviews.planDifficultyDescBalanced', minutes: 3 },
+    { value: 'ADVANCED', labelKey: 'interviews.planDifficultyAdvanced', descKey: 'interviews.planDifficultyDescAdvanced', minutes: 5 },
+  ] as const;
 
   if (!open) return null;
 
@@ -45,14 +47,14 @@ export function PlanConfigDialog({ open, onClose, onConfirm }: PlanConfigDialogP
     >
       <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <GlassCard className="p-6">
-          <h2 className="mb-1 text-lg font-semibold text-text-primary">生成面试计划</h2>
-          <p className="mb-5 text-sm text-text-muted">配置面试参数，AI 将据此生成结构化面试计划</p>
+          <h2 className="mb-1 text-lg font-semibold text-text-primary">{t('interviews.planDialogTitle')}</h2>
+          <p className="mb-5 text-sm text-text-muted">{t('interviews.planDialogSubtitle')}</p>
 
           {/* 题数输入框 */}
           <div className="mb-5">
             <label className="mb-2 block text-sm font-medium text-text-secondary">
-              面试题数
-              <span className="ml-2 text-xs text-text-muted">（1-30 题）</span>
+              {t('interviews.questionCount')}
+              <span className="ml-2 text-xs text-text-muted">{t('interviews.questionCountRange')}</span>
             </label>
             <input
               type="number"
@@ -66,7 +68,7 @@ export function PlanConfigDialog({ open, onClose, onConfirm }: PlanConfigDialogP
 
           {/* 难度偏好 */}
           <div className="mb-5">
-            <label className="mb-2 block text-sm font-medium text-text-secondary">难度偏好</label>
+            <label className="mb-2 block text-sm font-medium text-text-secondary">{t('interviews.difficultyPreference')}</label>
             <div className="space-y-2">
               {DIFFICULTY_OPTIONS.map((opt) => (
                 <button
@@ -79,10 +81,10 @@ export function PlanConfigDialog({ open, onClose, onConfirm }: PlanConfigDialogP
                   }`}
                 >
                   <div>
-                    <span className="text-sm font-medium text-text-primary">{opt.label}</span>
-                    <span className="ml-2 text-xs text-text-muted">{opt.desc}</span>
+                    <span className="text-sm font-medium text-text-primary">{t(opt.labelKey)}</span>
+                    <span className="ml-2 text-xs text-text-muted">{t(opt.descKey)}</span>
                   </div>
-                  <span className="text-xs text-text-muted">{opt.minutes}min/题</span>
+                  <span className="text-xs text-text-muted">{t('interviews.minutesPerQuestion', { minutes: opt.minutes })}</span>
                 </button>
               ))}
             </div>
@@ -90,17 +92,17 @@ export function PlanConfigDialog({ open, onClose, onConfirm }: PlanConfigDialogP
 
           {/* 预计时长（自动推算） */}
           <div className="mb-6 rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
-            <span className="text-sm text-text-muted">预计时长</span>
-            <span className="ml-2 text-sm font-semibold text-text-primary">约 {estimatedMinutes} 分钟</span>
-            <span className="ml-2 text-xs text-text-muted">（{questionCount} 题 × {selectedDiff.minutes} 分钟/题）</span>
+            <span className="text-sm text-text-muted">{t('interviews.estimatedDuration')}</span>
+            <span className="ml-2 text-sm font-semibold text-text-primary">{t('interviews.estimatedMinutes', { minutes: estimatedMinutes })}</span>
+            <span className="ml-2 text-xs text-text-muted">{t('interviews.estimatedDetail', { count: questionCount, minutes: selectedDiff.minutes })}</span>
           </div>
 
           {/* 操作按钮 */}
           <div className="flex justify-end gap-3">
             <SilverButton variant="ghost" onClick={onClose}>
-              取消
+              {t('common.cancel')}
             </SilverButton>
-            <SilverButton onClick={handleConfirm}>确认生成</SilverButton>
+            <SilverButton onClick={handleConfirm}>{t('interviews.confirmGenerate')}</SilverButton>
           </div>
         </GlassCard>
       </div>
