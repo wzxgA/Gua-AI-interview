@@ -7,11 +7,14 @@ import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAccessInfo, verifyPassword, type AccessInfo } from '@/api/access';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
+import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 /** 候选人进入页：展示面试信息 + 输入访问密码（无需登录）。 */
 export function CandidateAccessPage() {
   const { t } = useTranslation();
   const enumLabel = useEnumLabel();
+  useUrlLanguageInit();
   const { accessToken } = useParams();
   const navigate = useNavigate();
   const [info, setInfo] = useState<AccessInfo | null>(null);
@@ -62,9 +65,14 @@ export function CandidateAccessPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-text-primary">{t('common.appName')}</h1>
-          <p className="mt-2 text-sm text-text-muted">{t('candidate.slogan')}</p>
+        <div className="mb-6">
+          <div className="flex justify-end">
+            <LanguageSwitcher />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-text-primary">{t('common.appName')}</h1>
+            <p className="mt-2 text-sm text-text-muted">{t('candidate.slogan')}</p>
+          </div>
         </div>
 
         {loading ? (

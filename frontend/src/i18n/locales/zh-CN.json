@@ -408,6 +408,7 @@
     "accessDisabled": "候选人入口已作废",
     "operationFailed": "操作失败",
     "linkGenerated": "候选人面试链接已生成",
+    "candidateLanguage": "候选人语言",
     "passwordDialogTitle": "候选人面试密码",
     "passwordDialogHint": "请将此密码告知候选人，候选人进入面试间时需要输入。",
     "passwordCopied": "密码已复制",

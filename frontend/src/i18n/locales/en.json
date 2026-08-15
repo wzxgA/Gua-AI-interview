@@ -408,6 +408,7 @@
     "accessDisabled": "Candidate entry invalidated",
     "operationFailed": "Operation failed",
     "linkGenerated": "Candidate interview link generated",
+    "candidateLanguage": "Candidate Language",
     "passwordDialogTitle": "Candidate Interview Password",
     "passwordDialogHint": "Share this password with the candidate; it is required to enter the interview room.",
     "passwordCopied": "Password copied",

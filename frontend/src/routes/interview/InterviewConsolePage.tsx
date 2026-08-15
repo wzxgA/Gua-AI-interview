@@ -27,9 +27,12 @@ import {
   useGenerateAccess,
 } from '@/api/interview';
 import type { StartPlanBody } from '@/api/interview';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/i18n';
 
 export function InterviewConsolePage() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const interviewId = id ? Number(id) : undefined;
@@ -51,6 +54,8 @@ export function InterviewConsolePage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [showGenerate, setShowGenerate] = useState(false);
   const [generatePassword, setGeneratePassword] = useState('');
+  const [generateLang, setGenerateLang] = useState<LanguageCode>(language);
+  const [linkLang, setLinkLang] = useState<LanguageCode | null>(null);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
 
   const handleStart = () => {
@@ -110,7 +115,7 @@ export function InterviewConsolePage() {
   };
 
   const candidateLink = accessConfig?.accessToken
-    ? `${window.location.origin}/i/${accessConfig.accessToken}`
+    ? `${window.location.origin}/i/${accessConfig.accessToken}${linkLang ? `?lang=${linkLang}` : ''}`
     : null;
 
   // 生成中 = 本地请求进行中 ∪ 服务端仍处于生成窗口（切页/刷新后 mutation 状态丢失，靠 2s 轮询兜底）
@@ -174,6 +179,7 @@ export function InterviewConsolePage() {
           toast.success(t('interviews.linkGenerated'));
           setShowGenerate(false);
           setGeneratePassword('');
+          setLinkLang(generateLang); // 记录生成时选择的候选人语言，链接带 ?lang=
           if (data.accessPassword) {
             // 密码仅弹窗展示一次（明文不持久存储/显示）
             setRevealedPassword(data.accessPassword);
@@ -294,6 +300,16 @@ export function InterviewConsolePage() {
                     </SilverButton>
                     {showGenerate && (
                       <div className="flex items-center gap-2 pt-1">
+                        <select
+                          value={generateLang}
+                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          title={t('interviews.candidateLanguage')}
+                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
+                        >
+                          {SUPPORTED_LANGUAGES.map((l) => (
+                            <option key={l.code} value={l.code}>{l.label}</option>
+                          ))}
+                        </select>
                         <input
                           type="text"
                           value={generatePassword}
@@ -366,6 +382,16 @@ export function InterviewConsolePage() {
                     </SilverButton>
                     {showGenerate && (
                       <div className="flex items-center gap-2 pt-1">
+                        <select
+                          value={generateLang}
+                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          title={t('interviews.candidateLanguage')}
+                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
+                        >
+                          {SUPPORTED_LANGUAGES.map((l) => (
+                            <option key={l.code} value={l.code}>{l.label}</option>
+                          ))}
+                        </select>
                         <input
                           type="text"
                           value={generatePassword}

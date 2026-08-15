@@ -408,6 +408,7 @@
     "accessDisabled": "候選人入口已作廢",
     "operationFailed": "操作失敗",
     "linkGenerated": "候選人面試連結已生成",
+    "candidateLanguage": "候選人語言",
     "passwordDialogTitle": "候選人面試密碼",
     "passwordDialogHint": "請將此密碼告知候選人，候選人進入面試間時需要輸入。",
     "passwordCopied": "密碼已複製",
