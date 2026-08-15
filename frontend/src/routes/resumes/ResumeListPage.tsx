@@ -223,8 +223,14 @@ export function ResumeListPage() {
 
       {/* 上传弹窗 */}
       {uploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setUploadOpen(false)}
+        >
+          <GlassCard
+            className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-4 text-lg font-semibold text-text-primary">{t('resumes.upload')}</h3>
             <div className="space-y-4">
               {/* 拖拽区域 */}
@@ -315,8 +321,14 @@ export function ResumeListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-sm p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('resumes.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
               {t('resumes.deleteConfirmMessage', { name: deleteTarget.candidateName })}

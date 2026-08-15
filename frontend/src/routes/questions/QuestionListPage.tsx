@@ -319,8 +319,14 @@ export function QuestionListPage() {
 
       {/* 创建/编辑弹窗 */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setModalOpen(false)}
+        >
+          <GlassCard
+            className="w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-4 text-lg font-semibold text-text-primary">
               {editingQuestion ? t('questions.edit') : t('questions.create')}
             </h3>
@@ -394,8 +400,14 @@ export function QuestionListPage() {
 
       {/* 删除确认弹窗 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim backdrop-blur-sm p-4">
-          <GlassCard className="w-full max-w-sm p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="mb-2 text-lg font-semibold text-text-primary">{t('questions.deleteConfirmTitle')}</h3>
             <p className="mb-4 text-sm text-text-secondary">
               {t('questions.deleteConfirmMessage')}
