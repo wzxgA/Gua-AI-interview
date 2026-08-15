@@ -48,7 +48,6 @@ ai-ms/
 ├── frontend/             # 前端工程（React 19 + TypeScript + Vite 6 + Tailwind CSS）
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
 ├── scripts/              # 各类数据清理脚本（按业务域）
-├── plans/                # 技术方案、分期状态文档、前端实现计划书、RAG/LangGraph4j 优化与修复记录
 ├── dev.ps1               # 一键管理本地基础设施
 ├── pom.xml               # 父 POM（版本锁定 + 依赖管理）
 └── .env.example          # 应用环境变量模板

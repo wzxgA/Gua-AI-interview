@@ -568,5 +568,17 @@
     "guestSessionExpired": "Session expired, please re-enter the access password",
     "notLoggedIn": "Not logged in or token expired",
     "interviewServiceError": "Interview service error"
+  },
+  "speech": {
+    "voiceInput": "Voice input",
+    "listening": "Listening...",
+    "stop": "Stop recording",
+    "notSupported": "Speech input is not supported in this browser",
+    "permissionDenied": "Microphone permission denied. Please allow it in your browser settings",
+    "noSpeech": "No speech detected, please retry",
+    "audioCapture": "No microphone device found",
+    "networkError": "Speech recognition network error",
+    "serviceNotAllowed": "Speech recognition service is blocked by the browser",
+    "genericError": "Speech recognition failed, please retry"
   }
 }

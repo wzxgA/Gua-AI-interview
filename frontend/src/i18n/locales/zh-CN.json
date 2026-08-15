@@ -568,5 +568,17 @@
     "guestSessionExpired": "会话已过期，请重新输入访问密码",
     "notLoggedIn": "未登录或令牌已过期",
     "interviewServiceError": "面试服务异常"
+  },
+  "speech": {
+    "voiceInput": "语音输入",
+    "listening": "正在聆听…",
+    "stop": "停止录音",
+    "notSupported": "当前浏览器不支持语音输入",
+    "permissionDenied": "未获得麦克风权限，请在浏览器设置中允许",
+    "noSpeech": "未检测到语音，请重试",
+    "audioCapture": "未检测到麦克风设备",
+    "networkError": "语音识别网络异常",
+    "serviceNotAllowed": "浏览器禁止语音识别服务",
+    "genericError": "语音识别失败，请重试"
   }
 }
