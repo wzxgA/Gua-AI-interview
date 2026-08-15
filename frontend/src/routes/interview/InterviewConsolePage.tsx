@@ -51,6 +51,7 @@ export function InterviewConsolePage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [showGenerate, setShowGenerate] = useState(false);
   const [generatePassword, setGeneratePassword] = useState('');
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
 
   const handleStart = () => {
     setPlanDialogOpen(true);
@@ -129,6 +130,14 @@ export function InterviewConsolePage() {
       .catch(() => toast.error(t('interviews.copyFailed')));
   };
 
+  const handleCopyPassword = () => {
+    if (!revealedPassword) return;
+    navigator.clipboard
+      .writeText(revealedPassword)
+      .then(() => toast.success(t('interviews.passwordCopied')))
+      .catch(() => toast.error(t('interviews.copyFailed')));
+  };
+
   const handleResetPassword = () => {
     if (!interviewId) return;
     resetPasswordMutation.mutate(
@@ -139,7 +148,8 @@ export function InterviewConsolePage() {
           setShowResetPassword(false);
           setPasswordInput('');
           if (data.accessPassword) {
-            toast.info(t('interviews.newPasswordInfo', { password: data.accessPassword }));
+            // 密码仅弹窗展示一次（明文不持久存储/显示）
+            setRevealedPassword(data.accessPassword);
           }
         },
         onError: (err: Error) => toast.error(err.message || t('interviews.resetFailed')),
@@ -165,7 +175,8 @@ export function InterviewConsolePage() {
           setShowGenerate(false);
           setGeneratePassword('');
           if (data.accessPassword) {
-            toast.info(t('interviews.accessPasswordInfo', { password: data.accessPassword }));
+            // 密码仅弹窗展示一次（明文不持久存储/显示）
+            setRevealedPassword(data.accessPassword);
           }
         },
         onError: (err: Error) => toast.error(err.message || t('interviews.generateFailed')),
@@ -391,6 +402,35 @@ export function InterviewConsolePage() {
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-silver-300/30 border-t-silver-300" />
           <p className="text-sm text-text-secondary">{t('interviews.generatingPlan')}</p>
         </motion.div>
+      )}
+
+      {/* 密码展示弹窗（生成/重置时仅展示一次，明文不持久存储） */}
+      {revealedPassword !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setRevealedPassword(null)}
+        >
+          <GlassCard
+            className="w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-lg font-semibold text-text-primary">{t('interviews.passwordDialogTitle')}</h3>
+            <p className="mb-4 text-sm text-text-muted">{t('interviews.passwordDialogHint')}</p>
+            <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-overlay px-3 py-2.5">
+              <code className="min-w-0 flex-1 truncate text-sm font-mono text-silver-300">
+                {revealedPassword}
+              </code>
+              <SilverButton variant="ghost" onClick={handleCopyPassword}>
+                {t('interviews.copy')}
+              </SilverButton>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <SilverButton onClick={() => setRevealedPassword(null)}>
+                {t('common.confirm')}
+              </SilverButton>
+            </div>
+          </GlassCard>
+        </div>
       )}
     </div>
   );
