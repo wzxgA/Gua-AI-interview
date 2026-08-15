@@ -12,6 +12,7 @@
 | 面试官人设      | 温和型 / 压力面型 / 深度技术型，并可联动 TTS 音色                                                                        |
 | TTS 语音播报   | 火山引擎豆包 TTS 2.0，问题生成后异步合成，前端音频播放（可选开关）                                                                 |
 | 五维评估与报告    | 专业能力 / 逻辑思维 / 沟通表达 / 岗位匹配 / 学习与潜力，逐轮 AI 评分 + 综合报告 + 录用建议，Kafka 异步处理                                   |
+| 面试防作弊      | 生成候选人链接时可选开启：切屏检测（标签页/窗口失焦）+ 眼神检测（MediaPipe 本地 WASM 人脸/视线偏离，帧不出浏览器）；控制台实时面板 + 报告页专注度参考 |
 | 多模型路由      | FLAGSHIP / STANDARD / ECONOMY / EMBEDDING 四档位，失败自动降级换模型，带指数退避重试、token/延迟/成本指标统计                       |
 | 鉴权与安全      | JWT + RefreshToken 轮换，基于角色的接口权限（仅 ADMIN 可执行全量重向量化等操作）                                                 |
 
@@ -233,6 +234,18 @@ CREATED → PLANNING → IN_PROGRESS ⇄ PAUSED → EVALUATING → REPORTING →
 | GET    | `/interviews/{id}/rounds` | 轮次列表（用于重连恢复历史消息）              |
 | DELETE | `/interviews/{id}`        | 删除会话（级联删除轮次）                  |
 
+### 候选人访问与防作弊（`/api/v1/interviews` + `/api/v1/access`）
+
+| 方法     | 路径                                                    | 说明                                       |
+| ------ | ----------------------------------------------------- | ---------------------------------------- |
+| POST   | `/interviews/{id}/access/generate`                    | 生成候选人面试链接（可选密码 + 防作弊配置 `{tabSwitch, gaze}`） |
+| GET    | `/interviews/{id}/access`                             | 查询候选人访问配置（含防作弊开关）                      |
+| POST   | `/interviews/{id}/access/password`                    | 重置访问密码（明文仅返回一次）                        |
+| POST   | `/interviews/{id}/access/disable`                     | 作废候选人入口（管理端恢复可进面试间）                    |
+| GET    | `/interviews/{id}/proctor/events?after=&limit=`       | 防作弊事件增量查询（控制台 5s 轮询用）                  |
+| GET    | `/interviews/{id}/proctor/summary`                    | 防作弊聚合摘要（各类型次数/总偏离时长）                   |
+| POST   | `/api/v1/access/interviews/{sessionId}/proctor/events` | 候选端批量上报防作弊事件（GUEST 权限 + 同会话校验）         |
+
 ### 评估报告（`/api/v1/interviews`）
 
 | 方法  | 路径                                       | 说明                          |
@@ -255,17 +268,18 @@ CREATED → PLANNING → IN_PROGRESS ⇄ PAUSED → EVALUATING → REPORTING →
 
 ## 数据库
 
-由 Flyway 版本化管理（`interview-infra/src/main/resources/db/migration/`，当前 V2\_0\_11），核心表：
+由 Flyway 版本化管理（`interview-infra/src/main/resources/db/migration/`，当前 V2\_0\_15），核心表：
 
 | 表                      | 说明                                       |
 | ---------------------- | ---------------------------------------- |
 | `position`             | 岗位（含 JD、halfvec 向量、HNSW 索引）              |
 | `question_bank`        | 题库（分类/难度/主题/标签、halfvec 向量）               |
 | `resume`               | 简历（原始文本、解析结果、解析/向量状态与重试、向量模型版本）          |
-| `interview_session`    | 面试会话（状态机、计划、人设、评估进度）                     |
+| `interview_session`    | 面试会话（状态机、计划、人设、评估进度、防作弊配置 proctor\_json）         |
 | `interview_round`      | 面试轮次（追问通过 parentSeq/followUpIndex 关联主问题） |
 | `interview_evaluation` | 逐轮五维评估结果                                 |
 | `interview_report`     | 综合报告（session 唯一约束）                       |
+| `interview_proctor_event` | 面试防作弊事件（切屏/失焦/眼神偏离/摄像头状态，按会话聚合展示）       |
 | `sys_user`             | 用户表（用户名/密码/角色/启用状态）                      |
 
 ## 测试
