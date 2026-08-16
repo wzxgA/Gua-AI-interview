@@ -51,7 +51,9 @@ public record AiModelProperties(
             Double temperature,
             Integer maxTokens,
             Integer dimensions,
-            String fallback) {}
+            String fallback,
+            String thinking,
+            String reasoningEffort) {}
 
     /** 价目表：元/千 tokens（成本估算用，Counter aims.llm.cost）。 */
     public record Pricing(BigDecimal input, BigDecimal output) {}

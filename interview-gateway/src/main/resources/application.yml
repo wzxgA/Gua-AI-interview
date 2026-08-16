@@ -81,17 +81,25 @@ aims:
         model: ${AIMS_FLAGSHIP_MODEL:qwen-max}
         temperature: ${AIMS_FLAGSHIP_TEMPERATURE:0.7}
         max-tokens: ${AIMS_FLAGSHIP_MAX_TOKENS:2048}
+        # DeepSeek 推理模型思考模式：enabled/disabled（或 true/false），留空走模型默认
+        thinking: ${AIMS_FLAGSHIP_THINKING:}
+        # 思考强度：low/high/max（仅思考开启时生效）
+        reasoning-effort: ${AIMS_FLAGSHIP_REASONING_EFFORT:}
         fallback: deepseek:deepseek-chat
       STANDARD:
         provider: ${AIMS_STANDARD_PROVIDER:deepseek}
         model: ${AIMS_STANDARD_MODEL:deepseek-chat}
         temperature: ${AIMS_STANDARD_TEMPERATURE:0.2}
         max-tokens: ${AIMS_STANDARD_MAX_TOKENS:2048}
+        thinking: ${AIMS_STANDARD_THINKING:}
+        reasoning-effort: ${AIMS_STANDARD_REASONING_EFFORT:}
       ECONOMY:
         provider: ${AIMS_ECONOMY_PROVIDER:dashscope}
         model: ${AIMS_ECONOMY_MODEL:qwen-turbo}
         temperature: ${AIMS_ECONOMY_TEMPERATURE:0.3}
         max-tokens: ${AIMS_ECONOMY_MAX_TOKENS:1024}
+        thinking: ${AIMS_ECONOMY_THINKING:}
+        reasoning-effort: ${AIMS_ECONOMY_REASONING_EFFORT:}
       EMBEDDING:
         provider: ${AIMS_EMBEDDING_PROVIDER:dashscope}
         model: ${AIMS_EMBEDDING_MODEL:text-embedding-v4}

@@ -193,12 +193,27 @@ public class ChatClientConfig {
             LoggingAdvisor loggingAdvisor,
             TokenMeterAdvisor tokenMeterAdvisor,
             RetryAdvisor retryAdvisor) {
-        OpenAiChatOptions options =
+        OpenAiChatOptions.Builder optionsBuilder =
                 OpenAiChatOptions.builder()
                         .model(model)
                         .temperature(tierConfig.temperature())
-                        .maxTokens(tierConfig.maxTokens())
-                        .build();
+                        .maxTokens(tierConfig.maxTokens());
+
+        // DeepSeek 推理模型思考模式控制（OpenAI 兼容 extra_body）：
+        //   thinking: enabled/disabled（或 true/false），留空则不设置走模型默认
+        //   reasoning-effort: low/high/max（仅思考开启时生效）
+        if (tierConfig.reasoningEffort() != null && !tierConfig.reasoningEffort().isBlank()) {
+            optionsBuilder.reasoningEffort(tierConfig.reasoningEffort());
+        }
+        if (tierConfig.thinking() != null && !tierConfig.thinking().isBlank()) {
+            boolean enabled =
+                    tierConfig.thinking().equalsIgnoreCase("enabled")
+                            || tierConfig.thinking().equalsIgnoreCase("true");
+            optionsBuilder.extraBody(
+                    Map.of("thinking", Map.of("type", enabled ? "enabled" : "disabled")));
+        }
+
+        OpenAiChatOptions options = optionsBuilder.build();
         ChatModel chatModel =
                 OpenAiChatModel.builder().openAiApi(api).defaultOptions(options).build();
         // 三个基础 Advisor 作为默认 Advisor 装配进每个档位的 ChatClient，业务调用零感知

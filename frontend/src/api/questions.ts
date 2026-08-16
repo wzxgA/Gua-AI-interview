@@ -7,6 +7,8 @@ import type {
   UpdateQuestionRequest,
   QuestionImportRequest,
   QuestionQuery,
+  InterviewNoteParseRequest,
+  InterviewNoteParseTask,
 } from '@/types/question';
 
 const KEY = 'questions';
@@ -67,6 +69,25 @@ export function useImportQuestions() {
     mutationFn: (req: QuestionImportRequest) =>
       http.post<QuestionResponse[]>('/api/v1/questions/import', req),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+/** 面经解析（异步提交）：立即返回任务 ID，结果经 useInterviewNoteTask 轮询获取 */
+export function useSubmitInterviewNote() {
+  return useMutation({
+    mutationFn: (req: InterviewNoteParseRequest) =>
+      http.post<InterviewNoteParseTask>('/api/v1/questions/interview-notes/parse', req),
+  });
+}
+
+/** 面经解析任务轮询：taskId 为空时禁用，每 2s 拉取 */
+export function useInterviewNoteTask(taskId: string | null) {
+  return useQuery({
+    queryKey: ['interview-note-task', taskId],
+    queryFn: () =>
+      http.get<InterviewNoteParseTask>(`/api/v1/questions/interview-notes/parse/${taskId}`),
+    enabled: !!taskId,
+    refetchInterval: 2000,
   });
 }
 

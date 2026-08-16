@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/components/ui/pagination';
 import { PageHeader, EmptyState, ErrorState } from '@/components/common/PageHeader';
+import { NoteParseTaskPanel } from '@/components/questions/NoteParseTaskPanel';
 import {
   useQuestionList,
   useCreateQuestion,
@@ -169,6 +170,12 @@ export function QuestionListPage() {
         action={
           <div className="flex items-center gap-2">
             <Link
+              to="/questions/note-import"
+              className="text-sm text-silver-300 hover:text-silver-100 transition-colors"
+            >
+              {t('questions.noteImport.entry')}
+            </Link>
+            <Link
               to="/questions/import"
               className="text-sm text-silver-300 hover:text-silver-100 transition-colors"
             >
@@ -178,6 +185,9 @@ export function QuestionListPage() {
           </div>
         }
       />
+
+      {/* 面经解析任务卡片区（异步解析状态，F5 刷新保留） */}
+      <NoteParseTaskPanel />
 
       {/* 筛选栏 */}
       <GlassCard className="p-4">
