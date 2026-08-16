@@ -327,6 +327,16 @@ export function RagDebugPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            item.recallSource === 'HYBRID' ? 'category' : 'difficulty'
+                          }
+                          className="shrink-0"
+                        >
+                          {item.recallSource === 'HYBRID'
+                            ? t('rag.hybridSource')
+                            : t('rag.vectorSource')}
+                        </Badge>
                         {item.score < LOW_SCORE_THRESHOLD && (
                           <Badge variant="difficulty">{t('rag.lowRelevance')}</Badge>
                         )}
@@ -361,6 +371,30 @@ export function RagDebugPage() {
                       <p className="mt-2 text-xs text-text-muted">
                         {item.matchedSnippet}
                       </p>
+                    )}
+                    {item.matchedTerms && item.matchedTerms.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1">
+                        <span className="text-xs text-text-muted">
+                          {t('rag.matchedTermsLabel')}:
+                        </span>
+                        {item.matchedTerms.map((term) => (
+                          <Badge key={term} variant="category">
+                            {term}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {item.matchedFields && item.matchedFields.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-xs text-text-muted">
+                          {t('rag.matchedFieldsLabel')}:
+                        </span>
+                        {item.matchedFields.map((field) => (
+                          <span key={field} className="text-xs text-silver-200">
+                            {field}
+                          </span>
+                        ))}
+                      </div>
                     )}
                     <div className="mt-2 flex gap-4 text-xs text-text-secondary">
                       <span>{t('rag.phone', { value: item.phone || '-' })}</span>

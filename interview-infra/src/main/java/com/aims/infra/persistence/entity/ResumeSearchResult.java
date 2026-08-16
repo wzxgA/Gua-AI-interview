@@ -15,8 +15,11 @@ import java.util.List;
  * @param score 混合最终得分（vectorScore * 0.7 + keywordScore * 0.3）
  * @param vectorScore 向量相似度得分（1 - 余弦距离，越大越相关）
  * @param keywordScore 关键词匹配得分（0-1，命中 raw_text=1.0、skills=0.9、candidate_name=0.8）
- * @param matchedSnippet 匹配片段（从结构化字段生成，用于解释匹配原因）
+ * @param matchedSnippet 命中高亮片段（命中词 ±30 字符；关键词未命中时回退为职位/技能摘要）
  * @param embeddingModel 向量化使用的模型
+ * @param matchedTerms 命中的查询关键词（关键词检索启用时按查询分词判定）
+ * @param matchedFields 命中字段（raw_text / skills / name）
+ * @param recallSource 召回来源：VECTOR（纯向量） / HYBRID（混合检索）
  */
 public record ResumeSearchResult(
         Long id,
@@ -30,4 +33,7 @@ public record ResumeSearchResult(
         double vectorScore,
         double keywordScore,
         String matchedSnippet,
-        String embeddingModel) {}
+        String embeddingModel,
+        List<String> matchedTerms,
+        List<String> matchedFields,
+        String recallSource) {}
