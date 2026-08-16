@@ -51,13 +51,15 @@ export function RagDebugPage() {
     setSearchText(inputText.trim());
   };
 
-  // 简历模式返回 RagSearchResponse，题库模式返回数组
+  // 简历模式返回 RagSearchResponse，题库模式同样返回 RagSearchResponse
   const resumeData = resumesQuery.data;
   const resumeResults = resumeData?.results ?? [];
   const resumeMetrics = resumeData?.metrics;
   const sortedResumeResults = [...resumeResults].sort((a, b) => b.score - a.score);
 
-  const questionResults = questionsQuery.data ?? [];
+  const questionData = questionsQuery.data;
+  const questionResults = questionData?.results ?? [];
+  const questionMetrics = questionData?.metrics;
   const sortedQuestionResults = [...questionResults].sort((a, b) => b.score - a.score);
 
   const isLoading = mode === 'question' ? questionsQuery.isLoading : resumesQuery.isLoading;
@@ -203,9 +205,8 @@ export function RagDebugPage() {
             </div>
 
             {/* 检索过程指标 */}
-            {mode === 'resume' && resumeMetrics && (
-              <MetricsBar metrics={resumeMetrics} />
-            )}
+            {mode === 'resume' && resumeMetrics && <MetricsBar metrics={resumeMetrics} />}
+            {mode === 'question' && questionMetrics && <MetricsBar metrics={questionMetrics} />}
 
             {!searchText ? (
               <EmptyState message={t('rag.emptyHint')} />
@@ -224,7 +225,19 @@ export function RagDebugPage() {
                 <div className="space-y-3">
                   {sortedQuestionResults.map((item) => (
                     <GlassCard key={item.id} hover className="p-4">
-                      <p className="text-sm text-text-primary">{item.content}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm text-text-primary">{item.content}</p>
+                        <Badge
+                          variant={
+                            item.recallSource === 'HYBRID' ? 'category' : 'difficulty'
+                          }
+                          className="shrink-0"
+                        >
+                          {item.recallSource === 'HYBRID'
+                            ? t('rag.hybridSource')
+                            : t('rag.vectorSource')}
+                        </Badge>
+                      </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Badge variant="category">
                           {enumLabel('category', item.category, item.category)}
@@ -234,6 +247,49 @@ export function RagDebugPage() {
                         </Badge>
                         <ScoreBar score={item.score} />
                       </div>
+                      <div className="mt-1 flex gap-3 text-xs text-text-muted">
+                        <span title={t('rag.vectorTitle')}>
+                          {t('rag.vectorScore', {
+                            value: (item.vectorScore * 100).toFixed(0),
+                          })}
+                        </span>
+                        {item.keywordScore > 0 && (
+                          <span title={t('rag.keywordTitle')} className="text-silver-200">
+                            {t('rag.keywordScore', {
+                              value: (item.keywordScore * 100).toFixed(0),
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      {item.matchedTerms && item.matchedTerms.length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1">
+                          <span className="text-xs text-text-muted">
+                            {t('rag.matchedTermsLabel')}:
+                          </span>
+                          {item.matchedTerms.map((term) => (
+                            <Badge key={term} variant="category">
+                              {term}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {item.matchedFields && item.matchedFields.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          <span className="text-xs text-text-muted">
+                            {t('rag.matchedFieldsLabel')}:
+                          </span>
+                          {item.matchedFields.map((field) => (
+                            <span key={field} className="text-xs text-silver-200">
+                              {field}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {item.highlightSnippet && (
+                        <p className="mt-2 text-xs text-text-muted">
+                          {t('rag.highlightLabel')}: {item.highlightSnippet}
+                        </p>
+                      )}
                       {item.standardAnswer && (
                         <p className="mt-2 text-xs text-text-muted">
                           {t('rag.standardAnswer', { answer: item.standardAnswer })}

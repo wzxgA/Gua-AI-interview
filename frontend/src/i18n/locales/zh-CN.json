@@ -573,7 +573,12 @@
     "possibleReasons": "可能原因：",
     "reasonNotVectorized": "简历尚未完成向量化（请到简历管理页检查向量状态）",
     "reasonThresholdHigh": "最低相似度阈值过高（当前 {{value}}），尝试调低",
-    "reasonNoMatch": "没有与查询内容相关的简历"
+    "reasonNoMatch": "没有与查询内容相关的简历",
+    "matchedTermsLabel": "命中关键词",
+    "matchedFieldsLabel": "命中字段",
+    "highlightLabel": "命中片段",
+    "hybridSource": "混合检索",
+    "vectorSource": "纯向量"
   },
   "candidate": {
     "slogan": "AI 智能面试",

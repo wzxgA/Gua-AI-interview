@@ -135,6 +135,14 @@ aims:
     speech-rate: 0
     persona-voice-link: true
 
+rag:
+  # 题库 RAG 检索缓存（均可关闭，Redis 异常自动降级直查）
+  cache:
+    # 检索结果缓存（同 query+过滤，TTL 60s）
+    result-enabled: ${AIMS_RAG_RESULT_CACHE_ENABLED:true}
+    # 查询向量缓存（同 query，TTL 30min，近似 JD 更新粒度）
+    embedding-enabled: ${AIMS_RAG_EMBEDDING_CACHE_ENABLED:true}
+
 logging:
   # Phase 6: 注入 MDC 上下文（sessionId/node/round），统一面试流程日志格式
   pattern:

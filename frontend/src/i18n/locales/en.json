@@ -573,7 +573,12 @@
     "possibleReasons": "Possible reasons:",
     "reasonNotVectorized": "Resume embedding not completed (check embedding status on the Resumes page)",
     "reasonThresholdHigh": "Minimum similarity threshold too high (current {{value}}), try lowering it",
-    "reasonNoMatch": "No resumes match the query"
+    "reasonNoMatch": "No resumes match the query",
+    "matchedTermsLabel": "Matched terms",
+    "matchedFieldsLabel": "Matched fields",
+    "highlightLabel": "Highlight",
+    "hybridSource": "Hybrid",
+    "vectorSource": "Vector"
   },
   "candidate": {
     "slogan": "AI Smart Interview",
