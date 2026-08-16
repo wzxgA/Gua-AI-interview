@@ -1,7 +1,10 @@
 package com.aims.gateway.controller.question;
 
 import com.aims.core.common.Result;
+import com.aims.core.question.ParsedQuestion;
 import com.aims.core.question.Question;
+import com.aims.infra.persistence.dto.InterviewNoteParseTask;
+import com.aims.infra.persistence.dto.QuestionParseResult;
 import com.aims.infra.persistence.service.QuestionService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,6 +95,34 @@ public class QuestionController {
         return Result.ok(count);
     }
 
+    @Operation(
+            summary = "解析面经为题目（异步）",
+            description = "提交后立即返回任务 ID，结果通过 GET /interview-notes/parse/{taskId} 轮询获取（不落库）")
+    @PostMapping("/interview-notes/parse")
+    public Result<InterviewNoteParseTaskResponse> submitParseInterviewNote(
+            @Valid @RequestBody InterviewNoteParseRequest request) {
+        String taskId =
+                questionService.parseInterviewNoteAsync(request.text(), request.categoryHint());
+        return Result.ok(new InterviewNoteParseTaskResponse(taskId, "RUNNING", null, null));
+    }
+
+    @Operation(summary = "查询面经解析任务", description = "轮询异步面经解析任务状态与结果（预览编辑后复用 /import 入库）")
+    @GetMapping("/interview-notes/parse/{taskId}")
+    public Result<InterviewNoteParseTaskResponse> getNoteParseTask(@PathVariable String taskId) {
+        InterviewNoteParseTask task = questionService.getNoteParseTask(taskId);
+        if (task == null) {
+            return Result.ok(
+                    new InterviewNoteParseTaskResponse(taskId, "NOT_FOUND", "任务不存在", null));
+        }
+        List<ParsedQuestionResponse> results =
+                task.results() == null
+                        ? null
+                        : task.results().stream().map(this::toParsedResponse).toList();
+        return Result.ok(
+                new InterviewNoteParseTaskResponse(
+                        task.taskId(), task.status(), task.message(), results));
+    }
+
     // ---- DTO <-> 领域模型转换 ----
 
     private Question toDomain(CreateQuestionRequest req) {
@@ -134,5 +165,17 @@ public class QuestionController {
                 q.embedding() != null,
                 q.createdAt(),
                 q.updatedAt());
+    }
+
+    private ParsedQuestionResponse toParsedResponse(QuestionParseResult result) {
+        ParsedQuestion parsed = result.parsed();
+        return new ParsedQuestionResponse(
+                parsed.category(),
+                parsed.topic(),
+                parsed.difficulty(),
+                parsed.content(),
+                parsed.standardAnswer(),
+                parsed.tags(),
+                result.matchedExistingId());
     }
 }

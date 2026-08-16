@@ -24,7 +24,14 @@ class ModelRouterTest {
     private ModelHandle handleWithFallback(ChatClient primary, ChatClient fallback) {
         AiModelProperties.TierConfig config =
                 new AiModelProperties.TierConfig(
-                        "dashscope", "qwen-max", 0.7, 2048, null, "deepseek:deepseek-chat");
+                        "dashscope",
+                        "qwen-max",
+                        0.7,
+                        2048,
+                        null,
+                        "deepseek:deepseek-chat",
+                        null,
+                        null);
         return ModelHandle.chat(
                 ModelTier.FLAGSHIP, config, primary, fallback, "deepseek-chat", new Semaphore(32));
     }
@@ -32,7 +39,7 @@ class ModelRouterTest {
     private ModelHandle handleWithoutFallback(ChatClient primary) {
         AiModelProperties.TierConfig config =
                 new AiModelProperties.TierConfig(
-                        "deepseek", "deepseek-chat", 0.2, 2048, null, null);
+                        "deepseek", "deepseek-chat", 0.2, 2048, null, null, null, null);
         return ModelHandle.chat(ModelTier.STANDARD, config, primary, null, null, new Semaphore(32));
     }
 
@@ -42,7 +49,7 @@ class ModelRouterTest {
                 mock(org.springframework.ai.embedding.EmbeddingModel.class);
         AiModelProperties.TierConfig config =
                 new AiModelProperties.TierConfig(
-                        "dashscope", "text-embedding-v4", null, null, 2048, null);
+                        "dashscope", "text-embedding-v4", null, null, 2048, null, null, null);
         ModelHandle handle =
                 ModelHandle.embedding(
                         ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));
@@ -62,7 +69,7 @@ class ModelRouterTest {
                 mock(org.springframework.ai.embedding.EmbeddingModel.class);
         AiModelProperties.TierConfig config =
                 new AiModelProperties.TierConfig(
-                        "dashscope", "text-embedding-v4", null, null, 2048, null);
+                        "dashscope", "text-embedding-v4", null, null, 2048, null, null, null);
         ModelHandle handle =
                 ModelHandle.embedding(
                         ModelTier.EMBEDDING, config, embeddingModel, new Semaphore(32));

@@ -9,6 +9,7 @@ import { PositionDetailPage } from '@/routes/positions/PositionDetailPage';
 import { QuestionListPage } from '@/routes/questions/QuestionListPage';
 import { QuestionDetailPage } from '@/routes/questions/QuestionDetailPage';
 import { QuestionImportPage } from '@/routes/questions/QuestionImportPage';
+import { QuestionNoteImportPage } from '@/routes/questions/QuestionNoteImportPage';
 import { ResumeListPage } from '@/routes/resumes/ResumeListPage';
 import { ResumeDetailPage } from '@/routes/resumes/ResumeDetailPage';
 import { InterviewListPage } from '@/routes/interview/InterviewListPage';
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="questions" element={<QuestionListPage />} />
           <Route path="questions/:id" element={<QuestionDetailPage />} />
           <Route path="questions/import" element={<QuestionImportPage />} />
+          <Route path="questions/note-import" element={<QuestionNoteImportPage />} />
           <Route path="resumes" element={<ResumeListPage />} />
           <Route path="resumes/:id" element={<ResumeDetailPage />} />
           <Route path="interviews" element={<InterviewListPage />} />

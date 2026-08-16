@@ -1,6 +1,8 @@
 package com.aims.infra.persistence.service;
 
 import com.aims.core.question.Question;
+import com.aims.infra.persistence.dto.InterviewNoteParseTask;
+import com.aims.infra.persistence.dto.QuestionParseResult;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import java.util.List;
@@ -30,6 +32,15 @@ public interface QuestionService {
 
     /** 批量导入题目（落库后异步向量化）。 */
     List<Question> batchImport(List<Question> questions);
+
+    /** 解析面经文本为规范化题目列表（AI 结构化输出，不落库），并标记与现有题目的精确重复。 */
+    List<QuestionParseResult> parseInterviewNote(String text, String categoryHint);
+
+    /** 异步解析面经（虚拟线程），立即返回任务 ID，结果经 {@link #getNoteParseTask} 轮询获取。 */
+    String parseInterviewNoteAsync(String text, String categoryHint);
+
+    /** 查询面经解析任务状态；任务不存在返回 null。 */
+    InterviewNoteParseTask getNoteParseTask(String taskId);
 
     /** 单条向量化。 */
     void embed(Long id);
