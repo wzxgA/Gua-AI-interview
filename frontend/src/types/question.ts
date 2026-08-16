@@ -71,6 +71,12 @@ export interface QuestionSearchResult {
   content: string;
   standardAnswer: string | null;
   score: number;
+  vectorScore: number;
+  keywordScore: number;
+  matchedTerms: string[] | null;
+  matchedFields: string[] | null;
+  highlightSnippet: string | null;
+  recallSource: string; // VECTOR / HYBRID
 }
 
 /** 列表查询参数 */

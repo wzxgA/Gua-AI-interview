@@ -14,7 +14,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,9 +37,9 @@ public class RagController {
         this.resumeRagService = resumeRagService;
     }
 
-    @Operation(summary = "题库检索", description = "按查询文本语义检索 Top-K 相关题目，支持按分类/难度过滤")
+    @Operation(summary = "题库检索", description = "向量+关键词混合检索 Top-K 相关题目，返回评分拆解与可解释性字段，支持按分类/难度过滤")
     @GetMapping("/questions")
-    public Result<List<QuestionSearchResult>> questions(
+    public Result<RagSearchResponse<QuestionSearchResult>> questions(
             @RequestParam @NotBlank(message = "query 不能为空") String query,
             @RequestParam(defaultValue = "5") @Min(1) @Max(50) int topK,
             @RequestParam(required = false) String category,

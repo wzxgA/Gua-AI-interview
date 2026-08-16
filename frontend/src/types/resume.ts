@@ -64,6 +64,9 @@ export interface ResumeSearchResult {
   keywordScore: number;
   matchedSnippet: string | null;
   embeddingModel: string | null;
+  matchedTerms: string[] | null;
+  matchedFields: string[] | null;
+  recallSource: string; // VECTOR / HYBRID
 }
 
 /** 列表查询参数 */

@@ -27,7 +27,9 @@ export function useRagQuestions(
   return useQuery({
     queryKey: ['rag', 'questions', query, topK, category, difficulty],
     queryFn: () =>
-      http.get<QuestionSearchResult[]>(`/api/v1/rag/questions?${params}`),
+      http.get<RagSearchResponse<QuestionSearchResult>>(
+        `/api/v1/rag/questions?${params}`,
+      ),
     enabled: query.length > 0,
   });
 }

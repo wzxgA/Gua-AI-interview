@@ -292,7 +292,7 @@ public class InterviewController {
             ResumeEntity resume = resumeService.getById(session.getCandidateId());
             // 6. RAG 检索
             List<QuestionSearchResult> ragResults =
-                    questionRagService.search(position.getJdText(), RAG_TOP_K);
+                    questionRagService.search(position.getJdText(), RAG_TOP_K).results();
             String ragQuestions = formatRagQuestions(ragResults);
             // 7. 生成面试计划
             InterviewPlan plan =

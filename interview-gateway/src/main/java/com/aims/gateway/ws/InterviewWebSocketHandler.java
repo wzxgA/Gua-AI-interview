@@ -1054,7 +1054,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         // RAG 检索参考题目
         List<QuestionSearchResult> ragResults =
-                questionRagService.search(position.getJdText(), RAG_TOP_K);
+                questionRagService.search(position.getJdText(), RAG_TOP_K).results();
         String ragQuestions = formatRagQuestions(ragResults);
 
         int currentRound = roundService.countAnswered(sessionId) + 1;

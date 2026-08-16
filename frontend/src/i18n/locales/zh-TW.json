@@ -573,7 +573,12 @@
     "possibleReasons": "可能原因：",
     "reasonNotVectorized": "簡歷尚未完成向量化（請到簡歷管理頁檢查向量狀態）",
     "reasonThresholdHigh": "最低相似度閾值過高（當前 {{value}}），嘗試調低",
-    "reasonNoMatch": "沒有與查詢內容相關的簡歷"
+    "reasonNoMatch": "沒有與查詢內容相關的簡歷",
+    "matchedTermsLabel": "命中關鍵詞",
+    "matchedFieldsLabel": "命中欄位",
+    "highlightLabel": "命中片段",
+    "hybridSource": "混合檢索",
+    "vectorSource": "純向量"
   },
   "candidate": {
     "slogan": "AI 智能面試",
