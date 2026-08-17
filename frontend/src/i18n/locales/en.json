@@ -384,7 +384,7 @@
     "loadFailed": "Failed to load",
     "noData": "No interview data",
     "idColumn": "ID",
-    "candidateIdColumn": "Candidate ID",
+    "resumeIdColumn": "Resume ID",
     "positionIdColumn": "Position ID",
     "statusColumn": "Status",
     "createdAtColumn": "Created At",

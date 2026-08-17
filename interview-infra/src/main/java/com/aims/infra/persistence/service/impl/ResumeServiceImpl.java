@@ -13,8 +13,10 @@ import com.aims.core.resume.ResumeStatus;
 import com.aims.core.resume.WorkExperience;
 import com.aims.infra.persistence.PgVectorSupport;
 import com.aims.infra.persistence.dto.BatchReembedTask;
+import com.aims.infra.persistence.entity.CandidateEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.ResumeMapper;
+import com.aims.infra.persistence.service.CandidateService;
 import com.aims.infra.persistence.service.ResumeExperienceService;
 import com.aims.infra.persistence.service.ResumeService;
 import com.aims.infra.storage.ResumeTextExtractor;
@@ -67,6 +69,7 @@ public class ResumeServiceImpl implements ResumeService {
     private final ModelRouter modelRouter;
     private final ObjectMapper objectMapper;
     private final ResumeExperienceService resumeExperienceService;
+    private final CandidateService candidateService;
 
     public ResumeServiceImpl(
             ResumeMapper resumeMapper,
@@ -74,13 +77,15 @@ public class ResumeServiceImpl implements ResumeService {
             AiChatFacade aiChatFacade,
             ModelRouter modelRouter,
             ObjectMapper objectMapper,
-            ResumeExperienceService resumeExperienceService) {
+            ResumeExperienceService resumeExperienceService,
+            CandidateService candidateService) {
         this.resumeMapper = resumeMapper;
         this.minioClient = minioClient;
         this.aiChatFacade = aiChatFacade;
         this.modelRouter = modelRouter;
         this.objectMapper = objectMapper;
         this.resumeExperienceService = resumeExperienceService;
+        this.candidateService = candidateService;
     }
 
     @Override
@@ -88,9 +93,11 @@ public class ResumeServiceImpl implements ResumeService {
             MultipartFile file, String candidateName, String phone, String email) {
         validateUploadFile(file);
 
-        // 1. 先入库拿 ID
+        // 1. 先入库拿 ID（v1.1-C：按姓名归集候选人，写 resume.candidate_id）
+        CandidateEntity candidate = candidateService.findOrCreate(candidateName, phone, email);
         ResumeEntity entity = new ResumeEntity();
         entity.setCandidateName(candidateName);
+        entity.setCandidateId(candidate != null ? candidate.getId() : null);
         entity.setPhone(phone);
         entity.setEmail(email);
         entity.setParseStatus(ResumeStatus.PENDING.name());

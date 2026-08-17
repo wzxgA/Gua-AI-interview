@@ -23,7 +23,7 @@ export function InterviewCreatePage() {
   const { t } = useTranslation();
   const enumLabel = useEnumLabel();
   const navigate = useNavigate();
-  const [candidateId, setCandidateId] = useState<number | ''>('');
+  const [resumeId, setResumeId] = useState<number | ''>('');
   const [positionId, setPositionId] = useState<number | ''>('');
   const [persona, setPersona] = useState<InterviewerPersona>('FRIENDLY');
 
@@ -42,13 +42,13 @@ export function InterviewCreatePage() {
   const positions = positionData?.records ?? [];
 
   const handleSubmit = () => {
-    if (!candidateId) {
+    if (!resumeId) {
       toast.error(t('interviews.validation.resumeRequired'));
       return;
     }
     createMutation.mutate(
       {
-        candidateId,
+        resumeId,
         positionId: positionId || null,
         persona,
       },
@@ -95,9 +95,9 @@ export function InterviewCreatePage() {
               <Skeleton className="h-10 w-full" />
             ) : (
               <Select
-                value={candidateId}
+                value={resumeId}
                 onChange={(e) =>
-                  setCandidateId(e.target.value ? Number(e.target.value) : '')
+                  setResumeId(e.target.value ? Number(e.target.value) : '')
                 }
               >
                 <option value="">{t('interviews.selectResumePlaceholder')}</option>
@@ -172,7 +172,7 @@ export function InterviewCreatePage() {
             <SilverButton
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !candidateId}
+              disabled={createMutation.isPending || !resumeId}
             >
               {createMutation.isPending ? t('interviews.creating') : t('interviews.create')}
             </SilverButton>

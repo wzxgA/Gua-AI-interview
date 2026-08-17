@@ -94,7 +94,7 @@ public class ReportServiceImpl implements ReportService {
         // 加载会话信息
         InterviewSessionEntity session = sessionService.getById(sessionId);
         PositionEntity position = positionService.getById(session.getPositionId());
-        ResumeEntity resume = resumeService.getById(session.getCandidateId());
+        ResumeEntity resume = resumeService.getById(session.getResumeId());
 
         // 构建对话摘要
         String conversationSummary = buildConversationSummary(sessionId);

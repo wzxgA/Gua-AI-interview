@@ -11,6 +11,7 @@ import com.aims.infra.persistence.mapper.ProjectHighlightMapper;
 import com.aims.infra.persistence.mapper.WorkExperienceMapper;
 import com.aims.infra.persistence.service.ResumeExperienceService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -118,6 +119,28 @@ public class ResumeExperienceServiceImpl implements ResumeExperienceService {
         projectMapper.delete(
                 Wrappers.<ProjectExperienceEntity>lambdaQuery()
                         .eq(ProjectExperienceEntity::getResumeId, resumeId));
+    }
+
+    @Override
+    public List<WorkExperienceEntity> listWork(Long resumeId) {
+        if (resumeId == null) {
+            return List.of();
+        }
+        return workMapper.selectList(
+                Wrappers.<WorkExperienceEntity>lambdaQuery()
+                        .eq(WorkExperienceEntity::getResumeId, resumeId)
+                        .orderByAsc(WorkExperienceEntity::getId));
+    }
+
+    @Override
+    public List<ProjectExperienceEntity> listProject(Long resumeId) {
+        if (resumeId == null) {
+            return List.of();
+        }
+        return projectMapper.selectList(
+                Wrappers.<ProjectExperienceEntity>lambdaQuery()
+                        .eq(ProjectExperienceEntity::getResumeId, resumeId)
+                        .orderByAsc(ProjectExperienceEntity::getId));
     }
 
     /** 拆分 period "2020.06 - 2022.05" → [start, end]；无分隔时 end=null。 */

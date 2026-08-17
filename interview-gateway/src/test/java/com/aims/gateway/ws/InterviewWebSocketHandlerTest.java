@@ -61,6 +61,7 @@ class InterviewWebSocketHandlerTest {
     @Mock private FollowUpAgent followUpAgent;
     @Mock private PositionService positionService;
     @Mock private ResumeService resumeService;
+    @Mock private com.aims.infra.persistence.service.ResumeSummaryBuilder resumeSummaryBuilder;
     @Mock private QuestionRagService questionRagService;
     @Mock private ConversationMemory conversationMemory;
     @Mock private EvaluationMessageProducer evaluationMessageProducer;
@@ -84,6 +85,7 @@ class InterviewWebSocketHandlerTest {
                         followUpAgent,
                         positionService,
                         resumeService,
+                        resumeSummaryBuilder,
                         questionRagService,
                         conversationMemory,
                         evaluationMessageProducer,

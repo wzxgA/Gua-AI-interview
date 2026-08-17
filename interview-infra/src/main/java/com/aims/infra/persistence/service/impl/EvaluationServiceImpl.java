@@ -85,7 +85,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         // 加载岗位和简历
         InterviewSessionEntity session = sessionService.getById(sessionId);
         PositionEntity position = positionService.getById(session.getPositionId());
-        ResumeEntity resume = resumeService.getById(session.getCandidateId());
+        ResumeEntity resume = resumeService.getById(session.getResumeId());
         String resumeSummary = resumeSummaryBuilder.build(resume);
 
         // 逐轮评估

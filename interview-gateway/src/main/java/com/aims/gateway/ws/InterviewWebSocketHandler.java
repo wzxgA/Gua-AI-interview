@@ -962,7 +962,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     /** 构建追问上下文。 */
     private FollowUpContext buildFollowUpContext(
             Long sessionId, InterviewSessionEntity entity, InterviewRoundEntity currentRound) {
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
 
         // 从计划中获取当前题目的 followUpHints
@@ -1025,7 +1025,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 加载简历和岗位
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
 
         // 加载轮次历史

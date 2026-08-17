@@ -38,7 +38,9 @@ export type InterviewerPersona = 'FRIENDLY' | 'PRESSURE' | 'TECHNICAL';
 /** 对齐 InterviewResponse */
 export interface InterviewResponse {
   id: number;
-  candidateId: number;
+  candidateId: number | null;
+  /** 本场面试所用简历 ID（v1.1-C TD2） */
+  resumeId: number | null;
   positionId: number | null;
   status: SessionStatus;
   persona: InterviewerPersona;
@@ -59,9 +61,9 @@ export interface InterviewResponse {
   accessMode?: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED';
 }
 
-/** 对齐 CreateInterviewRequest */
+/** 对齐 CreateInterviewRequest（v1.1-C TD2：入参为简历 ID） */
 export interface CreateInterviewRequest {
-  candidateId: number;
+  resumeId: number;
   positionId?: number | null;
   persona?: InterviewerPersona;
 }

@@ -3,7 +3,9 @@ package com.aims.infra.persistence.service;
 import com.aims.core.resume.ParsedResume;
 import com.aims.core.resume.ProjectExperience;
 import com.aims.core.resume.WorkExperience;
+import com.aims.infra.persistence.entity.ProjectExperienceEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.entity.WorkExperienceEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.slf4j.Logger;
@@ -14,8 +16,9 @@ import org.springframework.stereotype.Service;
  * 简历摘要统一构建服务（v1.1-C，TD1）：收敛 InterviewController / InterviewWebSocketHandler /
  * StatePersistenceService / EvaluationServiceImpl / ReportServiceImpl 五处重复的 buildResumeSummary。
  *
- * <p>输出<b>结构化精简摘要</b>（姓名/职位/年限/技能/工作经历/项目经历），替代原"parsed_json 全文透传"，减少 Prompt 上下文占用。数据源为 {@code
- * ParsedResume}（与经历表双写一致，等效于查经历表且免额外查询）；解析失败或缺失时回退 rawText 截断。
+ * <p>输出<b>结构化精简摘要</b>（姓名/职位/年限/技能/工作经历/项目经历），替代原"parsed_json 全文透传"，减少 Prompt 上下文占用。v1.1-C
+ * §3.3：经历部分优先读经历表（拆表后 SSOT），经历表为空（旧数据/双写失败）时回退 parsed_json；头部字段（姓名/职位/年限/技能）仍来自
+ * parsed_json；两者皆缺失时回退 rawText 截断。
  */
 @Service
 public class ResumeSummaryBuilder {
@@ -29,9 +32,12 @@ public class ResumeSummaryBuilder {
     private static final int DESC_MAX = 80;
 
     private final ObjectMapper objectMapper;
+    private final ResumeExperienceService experienceService;
 
-    public ResumeSummaryBuilder(ObjectMapper objectMapper) {
+    public ResumeSummaryBuilder(
+            ObjectMapper objectMapper, ResumeExperienceService experienceService) {
         this.objectMapper = objectMapper;
+        this.experienceService = experienceService;
     }
 
     /** 构建简历摘要；resume 为 null 或内容缺失时返回 "未提供"。 */
@@ -40,8 +46,16 @@ public class ResumeSummaryBuilder {
             return "未提供";
         }
         ParsedResume parsed = tryParse(resume);
-        if (parsed != null) {
-            String structured = buildStructured(parsed);
+        List<WorkExperienceEntity> workRows = List.of();
+        List<ProjectExperienceEntity> projectRows = List.of();
+        if (resume.getId() != null) {
+            workRows = experienceService.listWork(resume.getId());
+            projectRows = experienceService.listProject(resume.getId());
+        }
+        boolean hasExperienceRows = !workRows.isEmpty() || !projectRows.isEmpty();
+
+        if (parsed != null || hasExperienceRows) {
+            String structured = buildStructured(parsed, workRows, projectRows);
             if (!structured.isBlank()) {
                 return structured;
             }
@@ -68,20 +82,33 @@ public class ResumeSummaryBuilder {
         }
     }
 
-    private String buildStructured(ParsedResume p) {
+    private String buildStructured(
+            ParsedResume p,
+            List<WorkExperienceEntity> workRows,
+            List<ProjectExperienceEntity> projectRows) {
         StringBuilder sb = new StringBuilder();
-        if (notBlank(p.candidateName())) {
-            sb.append("姓名：").append(p.candidateName()).append('\n');
+        if (p != null) {
+            if (notBlank(p.candidateName())) {
+                sb.append("姓名：").append(p.candidateName()).append('\n');
+            }
+            if (notBlank(p.currentTitle())) {
+                sb.append("当前职位：").append(p.currentTitle()).append('\n');
+            }
+            if (p.yearsOfExperience() != null) {
+                sb.append("工作年限：").append(p.yearsOfExperience()).append(" 年\n");
+            }
+            appendSkills(sb, p.skills());
         }
-        if (notBlank(p.currentTitle())) {
-            sb.append("当前职位：").append(p.currentTitle()).append('\n');
+        if (!workRows.isEmpty()) {
+            appendWorkRows(sb, workRows);
+        } else if (p != null) {
+            appendWorkExperiences(sb, p.workExperiences());
         }
-        if (p.yearsOfExperience() != null) {
-            sb.append("工作年限：").append(p.yearsOfExperience()).append(" 年\n");
+        if (!projectRows.isEmpty()) {
+            appendProjectRows(sb, projectRows);
+        } else if (p != null) {
+            appendProjectExperiences(sb, p.projectExperiences());
         }
-        appendSkills(sb, p.skills());
-        appendWorkExperiences(sb, p.workExperiences());
-        appendProjectExperiences(sb, p.projectExperiences());
         return sb.toString();
     }
 
@@ -92,6 +119,34 @@ public class ResumeSummaryBuilder {
         sb.append("技能：").append(String.join("、", skills)).append('\n');
     }
 
+    /** 经历表数据源（v1.1-C §3.3）。 */
+    private void appendWorkRows(StringBuilder sb, List<WorkExperienceEntity> rows) {
+        sb.append("工作经历：\n");
+        for (WorkExperienceEntity w : rows) {
+            sb.append("- ")
+                    .append(nz(w.getCompany()))
+                    .append(' ')
+                    .append(nz(w.getPosition()))
+                    .append(periodSuffix(w.getStartDate(), w.getEndDate()))
+                    .append(descSuffix(w.getDescription()))
+                    .append('\n');
+        }
+    }
+
+    /** 经历表数据源（v1.1-C §3.3）。 */
+    private void appendProjectRows(StringBuilder sb, List<ProjectExperienceEntity> rows) {
+        sb.append("项目经历：\n");
+        for (ProjectExperienceEntity p : rows) {
+            sb.append("- ")
+                    .append(nz(p.getName()))
+                    .append(' ')
+                    .append(nz(p.getRole()))
+                    .append(periodSuffix(p.getStartDate(), p.getEndDate()))
+                    .append('\n');
+        }
+    }
+
+    /** parsed_json 回退数据源（经历表为空的旧数据）。 */
     private void appendWorkExperiences(StringBuilder sb, List<WorkExperience> list) {
         if (list == null || list.isEmpty()) {
             return;
@@ -111,6 +166,7 @@ public class ResumeSummaryBuilder {
         }
     }
 
+    /** parsed_json 回退数据源（经历表为空的旧数据）。 */
     private void appendProjectExperiences(StringBuilder sb, List<ProjectExperience> list) {
         if (list == null || list.isEmpty()) {
             return;
@@ -127,6 +183,19 @@ public class ResumeSummaryBuilder {
                     .append(periodSuffix(p.period()))
                     .append('\n');
         }
+    }
+
+    private static String periodSuffix(String startDate, String endDate) {
+        if (notBlank(startDate) && notBlank(endDate)) {
+            return "（" + startDate + " - " + endDate + "）";
+        }
+        if (notBlank(startDate)) {
+            return "（" + startDate + "）";
+        }
+        if (notBlank(endDate)) {
+            return "（" + endDate + "）";
+        }
+        return "";
     }
 
     private static String periodSuffix(String period) {

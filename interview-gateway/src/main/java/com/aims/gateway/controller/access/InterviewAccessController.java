@@ -241,8 +241,7 @@ public class InterviewAccessController {
     }
 
     private String resolveCandidateName(InterviewSessionEntity session) {
-        Long resumeId =
-                session.getResumeId() != null ? session.getResumeId() : session.getCandidateId();
+        Long resumeId = session.getResumeId();
         if (resumeId == null) {
             return "候选人";
         }

@@ -54,27 +54,42 @@ public class ResumeRagServiceImpl implements ResumeRagService {
     /** 与题库侧共用：向量仅取决于 query。 */
     private static final String EMBED_CACHE_PREFIX = "rag:embed:";
 
-    /** 命中字段标签（与 SQL CASE 分级一致）。 */
-    private static final String[] FIELD_LABELS = {"raw_text", "skills", "name"};
+    /** 命中字段标签（与 SQL CASE 分级、Java 侧字段顺序一致；v1.1-C §6：经历表优先）。 */
+    private static final String[] FIELD_LABELS = {"work", "project", "raw_text", "skills", "name"};
 
     private static final TypeReference<List<ResumeSearchResult>> RESULT_LIST_TYPE =
             new TypeReference<>() {};
 
     private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {};
 
+    /**
+     * v1.1-C §6：经历文本经 LATERAL 聚合（company+position / project name+role），关键词判定分级为 work(1.0) >
+     * project(0.95) > raw_text(0.9) > skills(0.85) > name(0.8)。
+     */
     private static final String BASE_SQL =
-            "SELECT id, candidate_name, phone, email, "
-                    + "parsed_json->>'currentTitle' AS current_title, "
-                    + "(parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
-                    + "parsed_json->'skills' AS skills_json, "
-                    + "raw_text, "
-                    + "embedding_model, "
-                    + "1 - (embedding <=> ?::halfvec) AS vector_score, "
-                    + "CASE WHEN raw_text ILIKE '%' || ? || '%' THEN 1.0 "
-                    + "WHEN COALESCE(parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN 0.9 "
-                    + "WHEN candidate_name ILIKE '%' || ? || '%' THEN 0.8 "
+            "SELECT r.id, r.candidate_name, r.phone, r.email, "
+                    + "r.parsed_json->>'currentTitle' AS current_title, "
+                    + "(r.parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
+                    + "r.parsed_json->'skills' AS skills_json, "
+                    + "r.raw_text, "
+                    + "COALESCE(w.work_text, '') AS work_text, "
+                    + "COALESCE(p.project_text, '') AS project_text, "
+                    + "r.embedding_model, "
+                    + "1 - (r.embedding <=> ?::halfvec) AS vector_score, "
+                    + "CASE WHEN COALESCE(w.work_text, '') ILIKE '%' || ? || '%' THEN 1.0 "
+                    + "WHEN COALESCE(p.project_text, '') ILIKE '%' || ? || '%' THEN 0.95 "
+                    + "WHEN r.raw_text ILIKE '%' || ? || '%' THEN 0.9 "
+                    + "WHEN COALESCE(r.parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN 0.85 "
+                    + "WHEN r.candidate_name ILIKE '%' || ? || '%' THEN 0.8 "
                     + "ELSE 0.0 END AS keyword_score "
-                    + "FROM resume WHERE embedding IS NOT NULL";
+                    + "FROM resume r "
+                    + "LEFT JOIN LATERAL (SELECT string_agg(COALESCE(we.company, '') || ' ' "
+                    + "|| COALESCE(we.position, ''), ' ') AS work_text "
+                    + "FROM resume_work_experience we WHERE we.resume_id = r.id) w ON TRUE "
+                    + "LEFT JOIN LATERAL (SELECT string_agg(COALESCE(pe.name, '') || ' ' "
+                    + "|| COALESCE(pe.role, ''), ' ') AS project_text "
+                    + "FROM resume_project_experience pe WHERE pe.resume_id = r.id) p ON TRUE "
+                    + "WHERE r.embedding IS NOT NULL";
 
     private final ModelRouter modelRouter;
     private final JdbcTemplate jdbcTemplate;
@@ -199,28 +214,32 @@ public class ResumeRagServiceImpl implements ResumeRagService {
         List<Object> params = new ArrayList<>();
         // SELECT 中的向量参数（计算 vector_score）
         params.add(vectorStr);
-        // CASE WHEN 中的关键词参数（3 个 ILIKE 占位符）
-        params.add(keyword);
-        params.add(keyword);
-        params.add(keyword);
+        // CASE WHEN 中的关键词参数（5 个 ILIKE 占位符，与分级顺序一致）
+        for (int i = 0; i < 5; i++) {
+            params.add(keyword);
+        }
 
         if (resumeId != null) {
-            sql.append(" AND id = ?");
+            sql.append(" AND r.id = ?");
             params.add(resumeId);
         }
 
         // ORDER BY 按混合得分排序（PostgreSQL 内计算），LIMIT 取 3 倍 topK 供 Java 侧重排
-        sql.append(" ORDER BY (1 - (embedding <=> ?::halfvec)) * ")
+        sql.append(" ORDER BY (1 - (r.embedding <=> ?::halfvec)) * ")
                 .append(VECTOR_WEIGHT)
-                .append(" + CASE WHEN raw_text ILIKE '%' || ? || '%' THEN 1.0")
-                .append(" WHEN COALESCE(parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN 0.9")
-                .append(" WHEN candidate_name ILIKE '%' || ? || '%' THEN 0.8 ELSE 0.0 END * ")
+                .append(" + CASE WHEN COALESCE(w.work_text, '') ILIKE '%' || ? || '%' THEN 1.0")
+                .append(" WHEN COALESCE(p.project_text, '') ILIKE '%' || ? || '%' THEN 0.95")
+                .append(" WHEN r.raw_text ILIKE '%' || ? || '%' THEN 0.9")
+                .append(
+                        " WHEN COALESCE(r.parsed_json->>'skills', '') ILIKE '%' || ? || '%' THEN"
+                                + " 0.85")
+                .append(" WHEN r.candidate_name ILIKE '%' || ? || '%' THEN 0.8 ELSE 0.0 END * ")
                 .append(KEYWORD_WEIGHT)
                 .append(" DESC LIMIT ?");
         params.add(vectorStr);
-        params.add(keyword);
-        params.add(keyword);
-        params.add(keyword);
+        for (int i = 0; i < 5; i++) {
+            params.add(keyword);
+        }
         params.add(topK * 3);
 
         return jdbcTemplate.query(
@@ -230,24 +249,33 @@ public class ResumeRagServiceImpl implements ResumeRagService {
     /** 纯向量检索 fallback。 */
     private List<ResumeSearchResult> vectorOnlySearch(String vectorStr, Long resumeId, int topK) {
         String sql =
-                "SELECT id, candidate_name, phone, email, "
-                        + "parsed_json->>'currentTitle' AS current_title, "
-                        + "(parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
-                        + "parsed_json->'skills' AS skills_json, "
-                        + "raw_text, "
-                        + "embedding_model, "
-                        + "1 - (embedding <=> ?::halfvec) AS vector_score, "
+                "SELECT r.id, r.candidate_name, r.phone, r.email, "
+                        + "r.parsed_json->>'currentTitle' AS current_title, "
+                        + "(r.parsed_json->>'yearsOfExperience')::int AS years_of_experience, "
+                        + "r.parsed_json->'skills' AS skills_json, "
+                        + "r.raw_text, "
+                        + "COALESCE(w.work_text, '') AS work_text, "
+                        + "COALESCE(p.project_text, '') AS project_text, "
+                        + "r.embedding_model, "
+                        + "1 - (r.embedding <=> ?::halfvec) AS vector_score, "
                         + "0.0 AS keyword_score "
-                        + "FROM resume WHERE embedding IS NOT NULL";
+                        + "FROM resume r "
+                        + "LEFT JOIN LATERAL (SELECT string_agg(COALESCE(we.company, '') || ' ' "
+                        + "|| COALESCE(we.position, ''), ' ') AS work_text "
+                        + "FROM resume_work_experience we WHERE we.resume_id = r.id) w ON TRUE "
+                        + "LEFT JOIN LATERAL (SELECT string_agg(COALESCE(pe.name, '') || ' ' "
+                        + "|| COALESCE(pe.role, ''), ' ') AS project_text "
+                        + "FROM resume_project_experience pe WHERE pe.resume_id = r.id) p ON TRUE "
+                        + "WHERE r.embedding IS NOT NULL";
         List<Object> params = new ArrayList<>();
         params.add(vectorStr);
 
         StringBuilder fullSql = new StringBuilder(sql);
         if (resumeId != null) {
-            fullSql.append(" AND id = ?");
+            fullSql.append(" AND r.id = ?");
             params.add(resumeId);
         }
-        fullSql.append(" ORDER BY embedding <=> ?::halfvec LIMIT ?");
+        fullSql.append(" ORDER BY r.embedding <=> ?::halfvec LIMIT ?");
         params.add(vectorStr);
         params.add(topK);
 
@@ -266,14 +294,32 @@ public class ResumeRagServiceImpl implements ResumeRagService {
             String currentTitle = rs.getString("current_title");
             String candidateName = rs.getString("candidate_name");
             String rawText = rs.getString("raw_text");
+            // v1.1-C §6：经历表聚合文本参与命中判定与高亮（work/project 标签优先于 raw_text）
+            String workText = rs.getString("work_text");
+            String projectText = rs.getString("project_text");
 
             List<String> matchedFields = new ArrayList<>();
             List<String> matchedTerms =
                     terms.stream()
-                            .filter(t -> matchesAnyField(rawText, skillsText, candidateName, t))
+                            .filter(
+                                    t ->
+                                            matchesAnyField(
+                                                    workText,
+                                                    projectText,
+                                                    rawText,
+                                                    skillsText,
+                                                    candidateName,
+                                                    t))
                             .toList();
             String highlight =
-                    buildHighlight(rawText, skillsText, candidateName, terms, matchedFields);
+                    buildHighlight(
+                            workText,
+                            projectText,
+                            rawText,
+                            skillsText,
+                            candidateName,
+                            terms,
+                            matchedFields);
             // 命中时用高亮片段解释"为什么命中"；未命中回退职位/技能摘要
             String matchedSnippet =
                     highlight != null ? highlight : buildMatchedSnippet(currentTitle, skills);
@@ -325,9 +371,17 @@ public class ResumeRagServiceImpl implements ResumeRagService {
         return sb.isEmpty() ? null : sb.toString();
     }
 
-    private boolean matchesAnyField(String rawText, String skillsText, String name, String term) {
+    private boolean matchesAnyField(
+            String workText,
+            String projectText,
+            String rawText,
+            String skillsText,
+            String name,
+            String term) {
         if (term == null || term.length() < 2) return false;
-        return containsIgnoreCase(rawText, term)
+        return containsIgnoreCase(workText, term)
+                || containsIgnoreCase(projectText, term)
+                || containsIgnoreCase(rawText, term)
                 || containsIgnoreCase(skillsText, term)
                 || containsIgnoreCase(name, term);
     }
@@ -338,12 +392,14 @@ public class ResumeRagServiceImpl implements ResumeRagService {
 
     /** 从命中的字段中截取高亮片段（首个命中词附近 ±30 字符），并记录命中字段。 */
     private String buildHighlight(
+            String workText,
+            String projectText,
             String rawText,
             String skillsText,
             String name,
             List<String> terms,
             List<String> matchedFields) {
-        String[] fields = {rawText, skillsText, name};
+        String[] fields = {workText, projectText, rawText, skillsText, name};
         for (int i = 0; i < fields.length; i++) {
             String text = fields[i];
             if (text == null || text.isBlank()) continue;

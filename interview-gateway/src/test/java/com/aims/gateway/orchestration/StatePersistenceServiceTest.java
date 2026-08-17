@@ -52,6 +52,7 @@ class StatePersistenceServiceTest {
     @Mock private InterviewRoundService roundService;
     @Mock private ResumeService resumeService;
     @Mock private PositionService positionService;
+    @Mock private com.aims.infra.persistence.service.ResumeSummaryBuilder resumeSummaryBuilder;
 
     private StatePersistenceService service;
 
@@ -61,13 +62,19 @@ class StatePersistenceServiceTest {
         objectMapper.findAndRegisterModules();
         service =
                 new StatePersistenceService(
-                        sessionService, roundService, resumeService, positionService, objectMapper);
+                        sessionService,
+                        roundService,
+                        resumeService,
+                        positionService,
+                        resumeSummaryBuilder,
+                        objectMapper);
     }
 
     private InterviewSessionEntity mockSessionEntity(Long id) {
         InterviewSessionEntity entity = new InterviewSessionEntity();
         entity.setId(id);
         entity.setCandidateId(10L);
+        entity.setResumeId(10L);
         entity.setPositionId(20L);
         entity.setPersona("FRIENDLY");
         return entity;

@@ -84,7 +84,7 @@ public class StatePersistenceService {
             throw new IllegalArgumentException("Session 不存在: " + sessionId);
         }
 
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
         // P5 防御：plan 缺失/解析失败 -> 启动即失败，不进入 0 题评估（totalRounds=0 时 endCheck 恒真）
@@ -245,7 +245,7 @@ public class StatePersistenceService {
             throw new IllegalArgumentException("Session 不存在: " + sessionId);
         }
 
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
 

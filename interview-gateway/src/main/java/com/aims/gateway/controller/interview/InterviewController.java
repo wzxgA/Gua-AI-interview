@@ -6,6 +6,7 @@ import com.aims.core.common.Result;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.session.SessionStatus;
+import com.aims.infra.persistence.entity.CandidateEntity;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
@@ -13,6 +14,7 @@ import com.aims.infra.persistence.entity.ProctorEventEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
+import com.aims.infra.persistence.service.CandidateService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.InterviewSessionStore;
@@ -74,6 +76,7 @@ public class InterviewController {
     private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final CandidateService candidateService;
     private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final QuestionRagService questionRagService;
     private final InterviewPlanGenerator planGenerator;
@@ -88,6 +91,7 @@ public class InterviewController {
             InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
+            CandidateService candidateService,
             ResumeSummaryBuilder resumeSummaryBuilder,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
@@ -100,6 +104,7 @@ public class InterviewController {
         this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.candidateService = candidateService;
         this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
@@ -121,11 +126,20 @@ public class InterviewController {
         return Result.ok(mapped);
     }
 
-    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED（不自动生成候选人链接）")
+    @Operation(summary = "创建面试会话", description = "创建面试会话（入参简历 ID），状态默认为 CREATED（不自动生成候选人链接）")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
+        ResumeEntity resume = resumeService.getById(req.resumeId());
+        Long candidateId = resume.getCandidateId();
+        if (candidateId == null) {
+            // 兜底：简历未归集候选人（如历史无姓名数据），按姓名建档；姓名仍为空则留空
+            CandidateEntity candidate =
+                    candidateService.findOrCreate(
+                            resume.getCandidateName(), resume.getPhone(), resume.getEmail());
+            candidateId = candidate != null ? candidate.getId() : null;
+        }
         InterviewSessionEntity entity =
-                sessionService.create(req.candidateId(), req.positionId(), req.persona());
+                sessionService.create(candidateId, req.resumeId(), req.positionId(), req.persona());
         return Result.ok(InterviewResponse.from(entity));
     }
 
@@ -290,7 +304,7 @@ public class InterviewController {
             // 4. 查岗位
             PositionEntity position = positionService.getById(session.getPositionId());
             // 5. 查简历
-            ResumeEntity resume = resumeService.getById(session.getCandidateId());
+            ResumeEntity resume = resumeService.getById(session.getResumeId());
             // 6. RAG 检索
             List<QuestionSearchResult> ragResults =
                     questionRagService.search(position.getJdText(), RAG_TOP_K).results();

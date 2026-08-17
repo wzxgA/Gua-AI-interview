@@ -9,6 +9,7 @@ import java.time.Instant;
 public record InterviewResponse(
         Long id,
         Long candidateId,
+        Long resumeId,
         Long positionId,
         SessionStatus status,
         String persona,
@@ -41,6 +42,7 @@ public record InterviewResponse(
         return new InterviewResponse(
                 entity.getId(),
                 entity.getCandidateId(),
+                entity.getResumeId(),
                 entity.getPositionId(),
                 sessionStatus,
                 entity.getPersona(),

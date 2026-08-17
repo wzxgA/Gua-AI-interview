@@ -384,7 +384,7 @@
     "loadFailed": "載入失敗",
     "noData": "暫無面試資料",
     "idColumn": "ID",
-    "candidateIdColumn": "候選人 ID",
+    "resumeIdColumn": "履歷 ID",
     "positionIdColumn": "崗位 ID",
     "statusColumn": "狀態",
     "createdAtColumn": "建立時間",

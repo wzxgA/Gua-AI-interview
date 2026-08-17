@@ -384,7 +384,7 @@
     "loadFailed": "加载失败",
     "noData": "暂无面试数据",
     "idColumn": "ID",
-    "candidateIdColumn": "候选人 ID",
+    "resumeIdColumn": "简历 ID",
     "positionIdColumn": "岗位 ID",
     "statusColumn": "状态",
     "createdAtColumn": "创建时间",
