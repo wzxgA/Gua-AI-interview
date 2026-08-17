@@ -25,6 +25,7 @@ import com.aims.infra.persistence.service.InterviewSessionStore;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,7 +70,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private static final String ATTR_CONNECTION_ID = "connectionId";
 
     // ---- 业务常量 ----
-    private static final int RESUME_SUMMARY_MAX = 2000;
     private static final int RAG_TOP_K = 10;
     private static final int MAX_ANSWER_LENGTH = 10000;
     private static final int RECENT_HISTORY_LIMIT = 5;
@@ -83,6 +83,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private final FollowUpAgent followUpAgent;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final QuestionRagService questionRagService;
     private final ConversationMemory conversationMemory;
     private final EvaluationMessageProducer evaluationMessageProducer;
@@ -101,6 +102,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
             FollowUpAgent followUpAgent,
             PositionService positionService,
             ResumeService resumeService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             QuestionRagService questionRagService,
             ConversationMemory conversationMemory,
             EvaluationMessageProducer evaluationMessageProducer,
@@ -116,6 +118,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         this.followUpAgent = followUpAgent;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.questionRagService = questionRagService;
         this.conversationMemory = conversationMemory;
         this.evaluationMessageProducer = evaluationMessageProducer;
@@ -1001,7 +1004,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 resume.getCandidateName(),
                 position.getTitle(),
                 position.getJdText(),
-                buildResumeSummary(resume),
+                resumeSummaryBuilder.build(resume),
                 followUpHints,
                 recentQuestions,
                 InterviewerPersona.fromString(entity.getPersona()));
@@ -1067,7 +1070,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 currentRound,
                 recentQuestions,
                 recentAnswers,
-                buildResumeSummary(resume),
+                resumeSummaryBuilder.build(resume),
                 ragQuestions,
                 InterviewerPersona.fromString(entity.getPersona()),
                 runningSummary,
@@ -1093,20 +1096,6 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     }
 
     /** 构建简历摘要：优先使用 parsedJson，否则使用 rawText 截断。 */
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        if (rawText.length() > RESUME_SUMMARY_MAX) {
-            return rawText.substring(0, RESUME_SUMMARY_MAX);
-        }
-        return rawText;
-    }
-
     /** 格式化 RAG 检索结果为文本。 */
     private String formatRagQuestions(List<QuestionSearchResult> results) {
         if (results == null || results.isEmpty()) {

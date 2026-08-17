@@ -17,6 +17,8 @@ import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +49,7 @@ class EvaluationServiceImplTest {
                         roundService,
                         positionService,
                         resumeService,
+                        new ResumeSummaryBuilder(new ObjectMapper()),
                         evaluatorAgent);
     }
 

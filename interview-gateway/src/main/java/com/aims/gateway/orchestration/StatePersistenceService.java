@@ -14,6 +14,7 @@ import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -46,12 +47,12 @@ import org.springframework.stereotype.Component;
 public class StatePersistenceService {
 
     private static final Logger log = LoggerFactory.getLogger(StatePersistenceService.class);
-    private static final int RESUME_SUMMARY_MAX = 2000;
 
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
     private final ResumeService resumeService;
     private final PositionService positionService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final ObjectMapper objectMapper;
 
     public StatePersistenceService(
@@ -59,11 +60,13 @@ public class StatePersistenceService {
             InterviewRoundService roundService,
             ResumeService resumeService,
             PositionService positionService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.resumeService = resumeService;
         this.positionService = positionService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.objectMapper = objectMapper;
     }
 
@@ -99,7 +102,7 @@ public class StatePersistenceService {
         data.put(InterviewState.CANDIDATE_NAME, resume != null ? resume.getCandidateName() : "");
         data.put(InterviewState.POSITION_TITLE, position != null ? position.getTitle() : "");
         data.put(InterviewState.JD_TEXT, position != null ? position.getJdText() : "");
-        data.put(InterviewState.RESUME_SUMMARY, buildResumeSummary(resume));
+        data.put(InterviewState.RESUME_SUMMARY, resumeSummaryBuilder.build(resume));
         data.put(InterviewState.PERSONA, InterviewerPersona.fromString(entity.getPersona()));
         data.put(InterviewState.TOTAL_ROUNDS, totalRounds);
         data.put(InterviewState.CURRENT_SEQ, 0);
@@ -273,7 +276,7 @@ public class StatePersistenceService {
         data.put(InterviewState.CANDIDATE_NAME, resume != null ? resume.getCandidateName() : "");
         data.put(InterviewState.POSITION_TITLE, position != null ? position.getTitle() : "");
         data.put(InterviewState.JD_TEXT, position != null ? position.getJdText() : "");
-        data.put(InterviewState.RESUME_SUMMARY, buildResumeSummary(resume));
+        data.put(InterviewState.RESUME_SUMMARY, resumeSummaryBuilder.build(resume));
         data.put(InterviewState.PERSONA, InterviewerPersona.fromString(entity.getPersona()));
         data.put(InterviewState.TOTAL_ROUNDS, getTotalRounds(plan));
         data.put(InterviewState.CURRENT_SEQ, currentSeq);
@@ -304,22 +307,5 @@ public class StatePersistenceService {
             return 0;
         }
         return plan.questions().size();
-    }
-
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume == null) {
-            return "未提供";
-        }
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        if (rawText.length() > RESUME_SUMMARY_MAX) {
-            return rawText.substring(0, RESUME_SUMMARY_MAX);
-        }
-        return rawText;
     }
 }

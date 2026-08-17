@@ -20,6 +20,7 @@ import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,7 @@ class ReportServiceImplTest {
                         roundService,
                         positionService,
                         resumeService,
+                        new ResumeSummaryBuilder(new ObjectMapper()),
                         reportAgent,
                         new ObjectMapper());
     }

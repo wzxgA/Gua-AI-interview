@@ -21,6 +21,7 @@ import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ReportService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -35,7 +36,6 @@ import org.springframework.stereotype.Service;
 public class ReportServiceImpl implements ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportServiceImpl.class);
-    private static final int RESUME_SUMMARY_MAX = 2000;
 
     private final ReportMapper reportMapper;
     private final EvaluationService evaluationService;
@@ -43,6 +43,7 @@ public class ReportServiceImpl implements ReportService {
     private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final DefaultReportAgent reportAgent;
     private final ObjectMapper objectMapper;
 
@@ -53,6 +54,7 @@ public class ReportServiceImpl implements ReportService {
             InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             DefaultReportAgent reportAgent,
             ObjectMapper objectMapper) {
         this.reportMapper = reportMapper;
@@ -61,6 +63,7 @@ public class ReportServiceImpl implements ReportService {
         this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.reportAgent = reportAgent;
         this.objectMapper = objectMapper;
     }
@@ -116,7 +119,7 @@ public class ReportServiceImpl implements ReportService {
                         resume.getCandidateName(),
                         position.getTitle(),
                         position.getJdText(),
-                        buildResumeSummary(resume),
+                        resumeSummaryBuilder.build(resume),
                         evalSummaries,
                         conversationSummary);
         ReportResult result = reportAgent.generate(context, aggregate, weightedScore);
@@ -194,19 +197,6 @@ public class ReportServiceImpl implements ReportService {
             }
         }
         return sb.toString();
-    }
-
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        return rawText.length() > RESUME_SUMMARY_MAX
-                ? rawText.substring(0, RESUME_SUMMARY_MAX)
-                : rawText;
     }
 
     private String truncate(String text, int max) {

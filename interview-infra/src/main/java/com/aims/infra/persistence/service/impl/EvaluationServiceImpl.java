@@ -17,6 +17,7 @@ import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,13 +30,13 @@ import org.springframework.stereotype.Service;
 public class EvaluationServiceImpl implements EvaluationService {
 
     private static final Logger log = LoggerFactory.getLogger(EvaluationServiceImpl.class);
-    private static final int RESUME_SUMMARY_MAX = 2000;
 
     private final EvaluationMapper evaluationMapper;
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final DefaultEvaluatorAgent evaluatorAgent;
 
     public EvaluationServiceImpl(
@@ -44,12 +45,14 @@ public class EvaluationServiceImpl implements EvaluationService {
             InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             DefaultEvaluatorAgent evaluatorAgent) {
         this.evaluationMapper = evaluationMapper;
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.evaluatorAgent = evaluatorAgent;
     }
 
@@ -83,7 +86,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         InterviewSessionEntity session = sessionService.getById(sessionId);
         PositionEntity position = positionService.getById(session.getPositionId());
         ResumeEntity resume = resumeService.getById(session.getCandidateId());
-        String resumeSummary = buildResumeSummary(resume);
+        String resumeSummary = resumeSummaryBuilder.build(resume);
 
         // 逐轮评估
         for (int i = 0; i < answered.size(); i++) {
@@ -162,18 +165,5 @@ public class EvaluationServiceImpl implements EvaluationService {
             aggregate.add(dim, eval.getScore());
         }
         return aggregate;
-    }
-
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        return rawText.length() > RESUME_SUMMARY_MAX
-                ? rawText.substring(0, RESUME_SUMMARY_MAX)
-                : rawText;
     }
 }

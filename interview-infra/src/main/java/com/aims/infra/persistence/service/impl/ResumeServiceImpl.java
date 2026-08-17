@@ -15,6 +15,7 @@ import com.aims.infra.persistence.PgVectorSupport;
 import com.aims.infra.persistence.dto.BatchReembedTask;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.ResumeMapper;
+import com.aims.infra.persistence.service.ResumeExperienceService;
 import com.aims.infra.persistence.service.ResumeService;
 import com.aims.infra.storage.ResumeTextExtractor;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -65,18 +66,21 @@ public class ResumeServiceImpl implements ResumeService {
     private final AiChatFacade aiChatFacade;
     private final ModelRouter modelRouter;
     private final ObjectMapper objectMapper;
+    private final ResumeExperienceService resumeExperienceService;
 
     public ResumeServiceImpl(
             ResumeMapper resumeMapper,
             MinioClient minioClient,
             AiChatFacade aiChatFacade,
             ModelRouter modelRouter,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ResumeExperienceService resumeExperienceService) {
         this.resumeMapper = resumeMapper;
         this.minioClient = minioClient;
         this.aiChatFacade = aiChatFacade;
         this.modelRouter = modelRouter;
         this.objectMapper = objectMapper;
+        this.resumeExperienceService = resumeExperienceService;
     }
 
     @Override
@@ -171,6 +175,8 @@ public class ResumeServiceImpl implements ResumeService {
             String parsedJson = objectMapper.writeValueAsString(parsed);
             resumeMapper.markParsed(id, parsedJson);
             resumeMapper.invalidateEmbedding(id);
+            // v1.1-C：双写经历表（工作/项目/亮点拆行入库），与 parsed_json 保持一致
+            resumeExperienceService.syncFromParsed(id, parsed);
             // 解析成功后自动异步触发向量化
             Thread.startVirtualThread(
                     () -> {
@@ -202,6 +208,8 @@ public class ResumeServiceImpl implements ResumeService {
             String parsedJson = objectMapper.writeValueAsString(parsed);
             resumeMapper.updateParsedJson(id, parsedJson);
             resumeMapper.invalidateEmbedding(id);
+            // v1.1-C：人工修改后同步重建经历表
+            resumeExperienceService.syncFromParsed(id, parsed);
             Thread.startVirtualThread(
                     () -> {
                         try {
@@ -258,7 +266,8 @@ public class ResumeServiceImpl implements ResumeService {
             }
         }
 
-        // 再删数据库记录
+        // 先删经历表（项目删除级联项目亮点），再删数据库记录
+        resumeExperienceService.deleteByResumeId(id);
         resumeMapper.deleteById(id);
     }
 

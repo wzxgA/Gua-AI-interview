@@ -20,6 +20,7 @@ import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ProctorEventService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,9 +49,6 @@ public class InterviewController {
 
     private static final Logger log = LoggerFactory.getLogger(InterviewController.class);
 
-    /** 简历摘要最大长度。 */
-    private static final int RESUME_SUMMARY_MAX = 2000;
-
     /** RAG 检索 Top-K。 */
     private static final int RAG_TOP_K = 10;
 
@@ -76,6 +74,7 @@ public class InterviewController {
     private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final QuestionRagService questionRagService;
     private final InterviewPlanGenerator planGenerator;
     private final InterviewSessionStore sessionStore;
@@ -89,6 +88,7 @@ public class InterviewController {
             InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
             InterviewSessionStore sessionStore,
@@ -100,6 +100,7 @@ public class InterviewController {
         this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
         this.sessionStore = sessionStore;
@@ -300,7 +301,7 @@ public class InterviewController {
                             resume.getCandidateName(),
                             position.getTitle(),
                             position.getJdText(),
-                            buildResumeSummary(resume),
+                            resumeSummaryBuilder.build(resume),
                             ragQuestions,
                             questionCount,
                             difficulty,
@@ -422,21 +423,6 @@ public class InterviewController {
                             secureRandom.nextInt(ACCESS_PASSWORD_CHARS.length())));
         }
         return sb.toString();
-    }
-
-    /** 构建简历摘要：优先使用 parsedJson，否则使用 rawText 截断。 */
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        if (rawText.length() > RESUME_SUMMARY_MAX) {
-            return rawText.substring(0, RESUME_SUMMARY_MAX);
-        }
-        return rawText;
     }
 
     /** 格式化 RAG 检索结果为文本。 */
