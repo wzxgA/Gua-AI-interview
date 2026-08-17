@@ -30,6 +30,11 @@ public final class FollowUpPromptBuilder {
 - 如果回答完整且有具体细节，应进入下一题（NEXT）
 - 追问问题应基于预设的追问方向（followUpHints），不脱离面试主线
 
+工具（简历交叉验证）：
+- 如需验证回答与简历是否一致（尤其怀疑简历矛盾或夸大经历时），可调用 resumeCrossCheck 工具查证。
+- 工具返回的 score 为回答与简历的匹配度：score < 0.5 表示回答内容在简历中缺乏对应支持（疑似简历未提及或夸大），应倾向 CLARIFY 追问；score >= 0.7 表示与简历一致，可信任回答。
+- 工具结果仅作证据参考，最终判断仍由你做出；工具不可用（无结果）时按常规判断，不要臆造证据。
+
 只输出 JSON，不要额外说明：
 {"action":"NEXT|CLARIFY|DEEPEN|REDIRECT","reason":"决策理由（一句话）","followUpQuestion":"追问问题文本（action=NEXT 时为null）"}
 """;

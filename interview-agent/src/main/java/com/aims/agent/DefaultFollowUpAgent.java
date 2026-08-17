@@ -9,12 +9,13 @@ import com.aims.core.interview.InterviewerPersona;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
-/** 默认追问 Agent 实现：STANDARD 档决策 + FLAGSHIP 档流式生成。 */
+/** 默认追问 Agent 实现：STANDARD 档决策（F2 起注册简历交叉验证工具）+ FLAGSHIP 档流式生成。 */
 @Service
 public class DefaultFollowUpAgent implements FollowUpAgent {
 
@@ -22,20 +23,27 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
 
     private final AiChatFacade aiChatFacade;
     private final ObjectMapper objectMapper;
+    private final ResumeCrossCheckTool resumeCrossCheckTool;
 
-    public DefaultFollowUpAgent(AiChatFacade aiChatFacade, ObjectMapper objectMapper) {
+    public DefaultFollowUpAgent(
+            AiChatFacade aiChatFacade,
+            ObjectMapper objectMapper,
+            ResumeCrossCheckTool resumeCrossCheckTool) {
         this.aiChatFacade = aiChatFacade;
         this.objectMapper = objectMapper;
+        this.resumeCrossCheckTool = resumeCrossCheckTool;
     }
 
     @Override
     public FollowUpDecision evaluate(FollowUpContext context) {
         try {
+            // F2：注册简历交叉验证工具，模型判定"需查证回答与简历一致性"时自主调用，工具结果仅作证据
             String result =
-                    aiChatFacade.call(
+                    aiChatFacade.callWithTools(
                             ModelTier.STANDARD,
                             FollowUpPromptBuilder.decisionSystem(),
-                            FollowUpPromptBuilder.decisionUser(context));
+                            FollowUpPromptBuilder.decisionUser(context),
+                            List.of(resumeCrossCheckTool));
             if (result == null || result.isBlank()) {
                 log.warn("追问决策返回空，默认不追问 sessionId={}", context.sessionId());
                 return FollowUpDecision.noFollowUp("决策返回空");
