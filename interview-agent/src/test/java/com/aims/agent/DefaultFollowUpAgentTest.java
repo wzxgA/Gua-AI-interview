@@ -97,4 +97,30 @@ class DefaultFollowUpAgentTest {
 
         assertTrue(!decision.shouldFollowUp());
     }
+
+    @Test
+    void evaluate_bareQuoteInReason_lenientlyExtractsAction() {
+        // reason 值内带未转义双引号 → 标准 JSON 解析失败，宽松提取应保住 action=CLARIFY + 追问问题
+        String raw =
+                "{\"action\":\"CLARIFY\",\"reason\":\"与简历中\"未提及内容\"不符\","
+                        + "\"followUpQuestion\":\"请说明这段经历\"}";
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn(raw);
+
+        FollowUpDecision decision = agent.evaluate(ctx());
+
+        assertEquals(FollowUpType.CLARIFY, decision.followUpType());
+        assertEquals("请说明这段经历", decision.followUpQuestion());
+        assertTrue(decision.shouldFollowUp());
+    }
+
+    @Test
+    void evaluate_unparseableWithoutAction_defaultsToNoFollowUp() {
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn("{\"broken\": true}");
+
+        FollowUpDecision decision = agent.evaluate(ctx());
+
+        assertTrue(!decision.shouldFollowUp());
+    }
 }

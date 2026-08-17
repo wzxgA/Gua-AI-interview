@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -85,9 +87,44 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
             }
             return FollowUpDecision.of(type, question.trim(), dto.reason());
         } catch (Exception e) {
-            log.warn("追问决策 JSON 解析失败，默认不追问 sessionId={} raw={}", sessionId, json, e);
-            return FollowUpDecision.noFollowUp("JSON 解析失败");
+            // 模型 JSON 偶发在 reason/追问问题里带未转义双引号导致标准解析失败：
+            // 宽松提取 action 保住关键决策（NEXT vs CLARIFY/DEEPEN），避免追问被静默丢弃
+            log.warn(
+                    "追问决策 JSON 解析失败，尝试宽松提取 sessionId={} raw={}", sessionId, truncate(json, 300), e);
+            return parseLeniently(json, sessionId);
         }
+    }
+
+    /** 宽松解析：标准 JSON 失败时，用正则至少提取 action 字段；追问类型还需要 followUpQuestion。 */
+    private FollowUpDecision parseLeniently(String raw, Long sessionId) {
+        Matcher actionMatcher = Pattern.compile("\"action\"\\s*:\\s*\"([A-Za-z]+)\"").matcher(raw);
+        if (!actionMatcher.find()) {
+            log.warn("追问决策宽松提取失败，默认不追问 sessionId={} raw={}", sessionId, truncate(raw, 300));
+            return FollowUpDecision.noFollowUp("JSON 解析失败且无法提取 action");
+        }
+        FollowUpType type = parseAction(actionMatcher.group(1));
+        if (type == FollowUpType.NONE) {
+            return FollowUpDecision.noFollowUp("模型判定不追问（宽松解析）");
+        }
+        // 追问类型需要问题文本：尽力从原始输出提取（可能同样被裸引号截断）
+        String question = extractQuestionLeniently(raw);
+        if (question == null || question.isBlank() || "null".equals(question)) {
+            log.warn("追问决策宽松提取缺 followUpQuestion，默认不追问 sessionId={} type={}", sessionId, type);
+            return FollowUpDecision.noFollowUp("追问问题为空（宽松解析）");
+        }
+        return FollowUpDecision.of(type, question.trim(), "宽松解析提取");
+    }
+
+    private String extractQuestionLeniently(String raw) {
+        Matcher m = Pattern.compile("\"followUpQuestion\"\\s*:\\s*\"([^\"]*)\"").matcher(raw);
+        return m.find() ? m.group(1) : null;
+    }
+
+    private String truncate(String text, int maxLen) {
+        if (text == null) {
+            return "-";
+        }
+        return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
     }
 
     private FollowUpType parseAction(String action) {
