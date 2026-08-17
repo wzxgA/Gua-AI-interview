@@ -12,6 +12,7 @@ public final class NodeNames {
     public static final String FOLLOW_UP = "followUp";
     public static final String EVALUATE = "evaluate";
     public static final String SUMMARY = "summary";
+    public static final String SUPERVISE = "supervise";
     public static final String END_CHECK = "endCheck";
     public static final String REPORT = "report";
 }

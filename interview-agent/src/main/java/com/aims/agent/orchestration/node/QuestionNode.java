@@ -35,6 +35,13 @@ public class QuestionNode extends AbstractNode<InterviewState> {
         return "ask";
     }
 
+    /** F1 总指挥：上一轮判定 TIGHTEN 时，本轮提问要求收敛话题。 */
+    private boolean isTighten(InterviewState state) {
+        return state.supervisorDecision() != null
+                && state.supervisorDecision().action()
+                        == com.aims.core.interview.SupervisorAction.TIGHTEN;
+    }
+
     @Override
     public Map<String, Object> apply(InterviewState state) throws Exception {
         int nextSeq = state.currentSeq() + 1;
@@ -54,7 +61,8 @@ public class QuestionNode extends AbstractNode<InterviewState> {
                         state.resumeSummary(),
                         state.ragQuestions(),
                         state.persona(),
-                        state.runningSummary());
+                        state.runningSummary(),
+                        isTighten(state));
 
         Long sessionId = state.sessionId();
 

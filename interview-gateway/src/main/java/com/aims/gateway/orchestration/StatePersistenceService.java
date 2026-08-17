@@ -16,6 +16,7 @@ import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -107,6 +108,10 @@ public class StatePersistenceService {
         data.put(InterviewState.ROUND_EVALUATIONS, new ArrayList<>());
         data.put(InterviewState.SESSION_STATUS, SessionStatus.IN_PROGRESS);
         data.put(InterviewState.INTERVIEW_PLAN, plan);
+        // F1 总指挥：注入会话开始时间，供 SuperviseNode 计算已耗时
+        data.put(
+                InterviewState.SESSION_STARTED_AT,
+                entity.getStartedAt() != null ? entity.getStartedAt() : Instant.now());
         log.info("构建初始状态 sessionId={} totalRounds={}", sessionId, totalRounds);
         return new InterviewState(data);
     }

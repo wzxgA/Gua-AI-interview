@@ -27,6 +27,8 @@ interview:
     history-enabled: true
   engine:
     enabled: true  # LangGraph4j 灰度开关：false=旧命令式Handler，true=Engine编排
+  supervisor:
+    enabled: true  # F1-SupervisorAgent 灰度开关：false=纯透传（不参与决策），true=SUPERVISE节点参与决策
 
 logging:
   level:

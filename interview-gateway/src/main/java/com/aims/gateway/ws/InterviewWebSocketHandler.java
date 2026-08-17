@@ -1070,7 +1070,8 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                 buildResumeSummary(resume),
                 ragQuestions,
                 InterviewerPersona.fromString(entity.getPersona()),
-                runningSummary);
+                runningSummary,
+                false); // 旧命令式路径无总指挥决策，TIGHTEN 收敛恒为 false
     }
 
     /** 从 WebSocket URI 路径中提取 sessionId。 */

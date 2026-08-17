@@ -6,8 +6,10 @@ import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.QaPair;
+import com.aims.core.interview.SupervisorDecision;
 import com.aims.core.report.ReportResult;
 import com.aims.core.session.SessionStatus;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,16 @@ public class InterviewState extends AgentState {
     /** FINISH 时设置为 true，routeAfterEndCheck 检测到此值后强制路由到 REPORT。 */
     public static final String FORCE_END = "forceEnd";
 
+    // ===== Key 常量：总指挥监督（Replace）=====
+    /** 会话开始时间（Engine 启动时注入，来源 InterviewSession.startedAt）。 */
+    public static final String SESSION_STARTED_AT = "sessionStartedAt";
+
+    /** 已耗时（毫秒）：由 SuperviseNode 执行时计算并写入。 */
+    public static final String ELAPSED_MS = "elapsedMs";
+
+    /** 总指挥决策：SuperviseNode 写入，供 endCheck 路由与下一轮收敛参考。 */
+    public static final String SUPERVISOR_DECISION = "supervisorDecision";
+
     // ===== Key 常量：RAG 检索（Replace）=====
     public static final String RAG_QUESTIONS = "ragQuestions";
 
@@ -141,6 +153,11 @@ public class InterviewState extends AgentState {
 
                     // 流程控制 — Replace
                     Map.entry(FORCE_END, Channels.base(() -> false)),
+
+                    // 总指挥监督 — Replace
+                    Map.entry(SESSION_STARTED_AT, Channels.base(() -> Instant.now())),
+                    Map.entry(ELAPSED_MS, Channels.base(() -> 0L)),
+                    Map.entry(SUPERVISOR_DECISION, Channels.base((old, v) -> v)),
 
                     // RAG 检索 — Replace
                     Map.entry(RAG_QUESTIONS, Channels.base((old, v) -> v)));
@@ -291,6 +308,22 @@ public class InterviewState extends AgentState {
     /** 是否被外部强制结束（FINISH 消息触发）。 */
     public boolean forceEnd() {
         return this.<Boolean>value(FORCE_END).orElse(false);
+    }
+
+    // ===== Accessor：总指挥监督 =====
+    /** 会话开始时间（Engine 启动时注入）。 */
+    public Instant sessionStartedAt() {
+        return this.<Instant>value(SESSION_STARTED_AT).orElse(Instant.now());
+    }
+
+    /** 已耗时（毫秒）：SuperviseNode 执行时写入。 */
+    public long elapsedMs() {
+        return this.<Long>value(ELAPSED_MS).orElse(0L);
+    }
+
+    /** 总指挥决策：由 SuperviseNode 写入，供 endCheck 路由与下一轮收敛参考。 */
+    public SupervisorDecision supervisorDecision() {
+        return this.<SupervisorDecision>value(SUPERVISOR_DECISION).orElse(null);
     }
 
     // ===== Accessor：RAG 检索 =====

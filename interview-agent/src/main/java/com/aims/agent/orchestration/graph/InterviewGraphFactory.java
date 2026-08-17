@@ -11,9 +11,11 @@ import com.aims.agent.orchestration.node.FollowUpNode;
 import com.aims.agent.orchestration.node.PlanNode;
 import com.aims.agent.orchestration.node.QuestionNode;
 import com.aims.agent.orchestration.node.SummaryNode;
+import com.aims.agent.orchestration.node.SuperviseNode;
 import com.aims.agent.orchestration.observability.GraphMetricsRegistry;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.interview.FollowUpDecision;
+import com.aims.core.interview.SupervisorAction;
 import java.util.Map;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.CompiledGraph;
@@ -42,17 +44,17 @@ import org.springframework.stereotype.Component;
  * <pre>
  *   START → plan → ask → answer → followUpDecision
  *                      ↑      ├─ followUp → answer（追问回环，interruptBefore(ANSWER) 暂停等待追问回答）
- *                      │      └─ summary → endCheck
+ *                      │      └─ summary → supervise → endCheck
  *                      │                        ├─ ask (循环回提问)
  *                      └────────────────────────┘
- *                      endCheck ──（达上限/FINISH/错误）──> END
+ *                      endCheck ──（达上限/FINISH/supervisor=END/错误）──> END
  * </pre>
  *
  * <h2>条件边路由</h2>
  *
  * <ul>
  *   <li>followUpDecision → followUp（shouldFollowUp 且未达上限）| summary（否则）
- *   <li>endCheck → END（达上限、forceEnd 或 lastError）| ask（循环）
+ *   <li>endCheck → END（达上限、forceEnd、supervisor=END 或 lastError）| ask（循环）
  * </ul>
  *
  * @since 1.1.0
@@ -71,6 +73,7 @@ public class InterviewGraphFactory {
     private final FollowUpDecisionNode followUpDecisionNode;
     private final FollowUpNode followUpNode;
     private final SummaryNode summaryNode;
+    private final SuperviseNode superviseNode;
     private final EndCheckNode endCheckNode;
 
     /** Phase 6：注入用于 FaultTolerantNode 重试埋点；可为 null（测试场景）。 */
@@ -91,12 +94,12 @@ public class InterviewGraphFactory {
                 followUpDecisionNode,
                 followUpNode,
                 summaryNode,
+                null,
                 endCheckNode,
                 null);
     }
 
-    /** Phase 6 构造函数：注入 GraphMetricsRegistry 用于 FaultTolerantNode 重试埋点。 */
-    @Autowired
+    /** Phase 6 兼容构造：未注入 SuperviseNode（测试场景或历史调用）。 */
     public InterviewGraphFactory(
             PlanNode planNode,
             QuestionNode questionNode,
@@ -106,12 +109,37 @@ public class InterviewGraphFactory {
             SummaryNode summaryNode,
             EndCheckNode endCheckNode,
             GraphMetricsRegistry metricsRegistry) {
+        this(
+                planNode,
+                questionNode,
+                answerNode,
+                followUpDecisionNode,
+                followUpNode,
+                summaryNode,
+                null,
+                endCheckNode,
+                metricsRegistry);
+    }
+
+    /** 完整构造（含 SuperviseNode）：F1 总指挥节点。 */
+    @Autowired
+    public InterviewGraphFactory(
+            PlanNode planNode,
+            QuestionNode questionNode,
+            AnswerNode answerNode,
+            FollowUpDecisionNode followUpDecisionNode,
+            FollowUpNode followUpNode,
+            SummaryNode summaryNode,
+            SuperviseNode superviseNode,
+            EndCheckNode endCheckNode,
+            GraphMetricsRegistry metricsRegistry) {
         this.planNode = planNode;
         this.questionNode = questionNode;
         this.answerNode = answerNode;
         this.followUpDecisionNode = followUpDecisionNode;
         this.followUpNode = followUpNode;
         this.summaryNode = summaryNode;
+        this.superviseNode = superviseNode;
         this.endCheckNode = endCheckNode;
         this.metricsRegistry = metricsRegistry;
     }
@@ -136,6 +164,14 @@ public class InterviewGraphFactory {
         graph.addNode(NodeNames.FOLLOW_UP, async(wrap(followUpNode, 2, 2000)));
         graph.addNode(NodeNames.SUMMARY, async(wrap(summaryNode, 2, 1000)));
         graph.addNode(NodeNames.END_CHECK, async(wrap(endCheckNode, 1, 0)));
+        // F1 总指挥：注入 SuperviseNode 时插入 SUMMARY→SUPERVISE→END_CHECK；否则直连（兼容测试构造器）
+        if (superviseNode != null) {
+            graph.addNode(NodeNames.SUPERVISE, async(wrap(superviseNode, 2, 1000)));
+            graph.addEdge(NodeNames.SUMMARY, NodeNames.SUPERVISE);
+            graph.addEdge(NodeNames.SUPERVISE, NodeNames.END_CHECK);
+        } else {
+            graph.addEdge(NodeNames.SUMMARY, NodeNames.END_CHECK);
+        }
         // 评估（evaluate）与报告（report）已移至 Kafka 链路（FE.04），不再注册图内
 
         // 2. 固定边
@@ -146,7 +182,6 @@ public class InterviewGraphFactory {
         // 追问回环：followUp 生成追问问题后回到 ANSWER 等待候选人回答
         // （interruptBefore(ANSWER) 为节点级中断，ask→answer 与 followUp→answer 两条入边均会暂停）
         graph.addEdge(NodeNames.FOLLOW_UP, NodeNames.ANSWER);
-        graph.addEdge(NodeNames.SUMMARY, NodeNames.END_CHECK);
         // 结束路径：endCheck 条件路由到 END（评估/报告由 Kafka 异步完成）
 
         // 3. 条件边: 追问决策
@@ -277,6 +312,17 @@ public class InterviewGraphFactory {
             return END;
         }
         if (state.currentSeq() >= state.totalRounds()) {
+            return END;
+        }
+        // F1 总指挥：未达上限但总指挥判定超时严重 → 提前结束
+        if (state.supervisorDecision() != null
+                && state.supervisorDecision().action() == SupervisorAction.END) {
+            log.info(
+                    "总指挥判定提前结束 sessionId={} seq={}/{} reason={}",
+                    state.sessionId(),
+                    state.currentSeq(),
+                    state.totalRounds(),
+                    state.supervisorDecision().reason());
             return END;
         }
         return NodeNames.ASK;
