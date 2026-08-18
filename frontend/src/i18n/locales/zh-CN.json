@@ -69,7 +69,7 @@
       "/positions": "岗位管理",
       "/questions": "题库管理",
       "/resumes": "简历管理",
-      "/rag": "RAG 检索调试",
+      "/rag": "RAG 检索",
       "/settings": "设置"
     },
     "serviceOnline": "服务在线",
@@ -84,7 +84,7 @@
       "questions": "题库管理",
       "resumes": "简历管理",
       "interviews": "面试管理",
-      "rag": "RAG 调试",
+      "rag": "RAG 检索",
       "settings": "设置"
     }
   },
@@ -541,8 +541,8 @@
     }
   },
   "rag": {
-    "title": "RAG 检索调试",
-    "subtitle": "调试向量检索结果与相似度分数",
+    "title": "RAG 检索",
+    "subtitle": "检索向量数据并查看相似度分数",
     "params": "检索参数",
     "searchType": "检索类型",
     "questionMode": "题库检索",

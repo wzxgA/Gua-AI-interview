@@ -69,7 +69,7 @@
       "/positions": "Positions",
       "/questions": "Question Bank",
       "/resumes": "Resumes",
-      "/rag": "RAG Debug",
+      "/rag": "RAG Search",
       "/settings": "Settings"
     },
     "serviceOnline": "Service online",
@@ -84,7 +84,7 @@
       "questions": "Question Bank",
       "resumes": "Resumes",
       "interviews": "Interviews",
-      "rag": "RAG Debug",
+      "rag": "RAG Search",
       "settings": "Settings"
     }
   },
@@ -541,8 +541,8 @@
     }
   },
   "rag": {
-    "title": "RAG Search Debug",
-    "subtitle": "Debug vector search results and similarity scores",
+    "title": "RAG Search",
+    "subtitle": "Search vector data and view similarity scores",
     "params": "Search Parameters",
     "searchType": "Search Type",
     "questionMode": "Question Bank",
