@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
-import { Select } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { StatusBadge } from '@/components/ui/status-dot';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/components/ui/pagination';
@@ -80,20 +80,20 @@ export function InterviewListPage() {
             <label className="mb-1.5 block text-sm text-text-secondary">{t('interviews.statusFilter')}</label>
             <Select
               value={query.status ?? ''}
-              onChange={(e) =>
+              onChange={(v) =>
                 setQuery({
                   page: 1,
-                  status: (e.target.value || undefined) as SessionStatus | undefined,
+                  status: (v || undefined) as SessionStatus | undefined,
                 })
               }
-            >
-              <option value="">{t('interviews.allStatuses')}</option>
-              {SESSION_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {enumLabel('sessionStatus', s)}
-                </option>
-              ))}
-            </Select>
+              options={[
+                { value: '', label: t('interviews.allStatuses') },
+                ...SESSION_STATUSES.map((s) => ({
+                  value: s,
+                  label: enumLabel('sessionStatus', s),
+                })),
+              ]}
+            />
           </div>
         </div>
       </GlassCard>

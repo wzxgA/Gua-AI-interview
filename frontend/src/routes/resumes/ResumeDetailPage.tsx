@@ -7,6 +7,7 @@ import { SilverButton } from '@/components/ui/silver-button';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-dot';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select } from '@/components/ui/select';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useResume, useParseResume, useEmbedResume, useUpdateParsedResume } from '@/api/resumes';
 import { formatDate } from '@/lib/utils';
@@ -445,14 +446,14 @@ export function ResumeDetailPage() {
                 {draft.workExperiences.map((exp, index) => (
                   <div key={index} className="space-y-3 rounded-md border border-border-default p-4">
                     <div className="flex items-center justify-between">
-                      <select
-                        className={inputClass}
+                      <Select
                         value={exp.type}
-                        onChange={(e) => updateWorkExp(index, { type: e.target.value })}
-                      >
-                        <option value="WORK">{t('resumes.workExpType')}</option>
-                        <option value="INTERNSHIP">{t('resumes.internshipType')}</option>
-                      </select>
+                        onChange={(v) => updateWorkExp(index, { type: v })}
+                        options={[
+                          { value: 'WORK', label: t('resumes.workExpType') },
+                          { value: 'INTERNSHIP', label: t('resumes.internshipType') },
+                        ]}
+                      />
                       <SilverButton variant="ghost" onClick={() => removeWorkExp(index)}>
                         {t('common.delete')}
                       </SilverButton>

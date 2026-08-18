@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
-import { Textarea, Select, Label } from '@/components/ui/input';
+import { Textarea, Label } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState, ErrorState } from '@/components/common/PageHeader';
@@ -123,7 +124,7 @@ export function RagDebugPage() {
                   max={50}
                   value={topK}
                   onChange={(e) => setTopK(Number(e.target.value))}
-                  className="w-full accent-silver-300"
+                  className="w-full"
                 />
               </div>
 
@@ -143,7 +144,7 @@ export function RagDebugPage() {
                     step={0.05}
                     value={minScore}
                     onChange={(e) => setMinScore(Number(e.target.value))}
-                    className="w-full accent-silver-300"
+                    className="w-full"
                   />
                 </div>
               )}
@@ -155,29 +156,29 @@ export function RagDebugPage() {
                     <Label>{t('rag.categoryLabel')}</Label>
                     <Select
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      <option value="">{t('rag.allCategories')}</option>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {enumLabel('category', c)}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(v) => setCategory(v)}
+                      options={[
+                        { value: '', label: t('rag.allCategories') },
+                        ...CATEGORIES.map((c) => ({
+                          value: c,
+                          label: enumLabel('category', c),
+                        })),
+                      ]}
+                    />
                   </div>
                   <div>
                     <Label>{t('rag.difficultyLabel')}</Label>
                     <Select
                       value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value)}
-                    >
-                      <option value="">{t('rag.allDifficulties')}</option>
-                      {DIFFICULTIES.map((d) => (
-                        <option key={d} value={d}>
-                          {enumLabel('difficulty', d)}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(v) => setDifficulty(v)}
+                      options={[
+                        { value: '', label: t('rag.allDifficulties') },
+                        ...DIFFICULTIES.map((d) => ({
+                          value: d,
+                          label: enumLabel('difficulty', d),
+                        })),
+                      ]}
+                    />
                   </div>
                 </div>
               )}

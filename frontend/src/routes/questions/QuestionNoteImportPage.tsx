@@ -4,7 +4,9 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
-import { Input, Textarea, Select, Label } from '@/components/ui/input';
+import { Input, Textarea, Label } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useSubmitInterviewNote, useInterviewNoteTask, useImportQuestions } from '@/api/questions';
 import type { ParsedQuestion } from '@/types/question';
@@ -202,12 +204,7 @@ export function QuestionNoteImportPage() {
               <GlassCard key={row.key} className="p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={row.checked}
-                      onChange={() => toggleRow(row.key)}
-                      className="h-4 w-4 accent-silver-400"
-                    />
+                    <Checkbox checked={row.checked} onChange={() => toggleRow(row.key)} />
                     <span className="text-sm font-medium text-text-secondary">
                       {t('questions.import.questionIndex', { index: index + 1 })}
                     </span>
@@ -231,27 +228,17 @@ export function QuestionNoteImportPage() {
                     <Label>{t('questions.category')}</Label>
                     <Select
                       value={row.category}
-                      onChange={(e) => updateRow(row.key, 'category', e.target.value)}
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {enumLabel('category', c)}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(v) => updateRow(row.key, 'category', v)}
+                      options={CATEGORIES.map((c) => ({ value: c, label: enumLabel('category', c) }))}
+                    />
                   </div>
                   <div>
                     <Label>{t('questions.difficulty')}</Label>
                     <Select
                       value={row.difficulty}
-                      onChange={(e) => updateRow(row.key, 'difficulty', e.target.value)}
-                    >
-                      {DIFFICULTIES.map((d) => (
-                        <option key={d} value={d}>
-                          {enumLabel('difficulty', d)}
-                        </option>
-                      ))}
-                    </Select>
+                      onChange={(v) => updateRow(row.key, 'difficulty', v)}
+                      options={DIFFICULTIES.map((d) => ({ value: d, label: enumLabel('difficulty', d) }))}
+                    />
                   </div>
                   <div className="col-span-2">
                     <Label>{t('questions.topic')}</Label>

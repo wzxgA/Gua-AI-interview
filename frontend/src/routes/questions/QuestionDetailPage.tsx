@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Badge } from '@/components/ui/badge';
-import { Input, Textarea, Select, Label } from '@/components/ui/input';
+import { Input, Textarea, Label } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useQuestion, useUpdateQuestion } from '@/api/questions';
@@ -54,6 +55,7 @@ export function QuestionDetailPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -219,24 +221,38 @@ export function QuestionDetailPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>{t('questions.category')}</Label>
-              <Select {...register('category')}>
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {enumLabel('category', category)}
-                  </option>
-                ))}
-              </Select>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={CATEGORIES.map((category) => ({
+                      value: category,
+                      label: enumLabel('category', category),
+                    }))}
+                  />
+                )}
+              />
               {errors.category && <p className="mt-1 text-xs text-danger">{errors.category.message}</p>}
             </div>
             <div>
               <Label>{t('questions.difficulty')}</Label>
-              <Select {...register('difficulty')}>
-                {DIFFICULTIES.map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>
-                    {enumLabel('difficulty', difficulty)}
-                  </option>
-                ))}
-              </Select>
+              <Controller
+                name="difficulty"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={DIFFICULTIES.map((difficulty) => ({
+                      value: difficulty,
+                      label: enumLabel('difficulty', difficulty),
+                    }))}
+                  />
+                )}
+              />
               {errors.difficulty && <p className="mt-1 text-xs text-danger">{errors.difficulty.message}</p>}
             </div>
           </div>

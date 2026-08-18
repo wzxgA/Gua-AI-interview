@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { StatusCard } from '@/components/interview/StatusCard';
 import { PlanViewer } from '@/components/interview/PlanViewer';
@@ -319,31 +321,25 @@ export function InterviewConsolePage() {
                       <div className="pt-1">
                         <div className="mb-2 flex items-center gap-4">
                           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={proctorEnabled}
                               onChange={(e) => setProctorEnabled(e.target.checked)}
-                              className="accent-silver-400"
                             />
                             {t('proctor.enableLabel')}
                           </label>
                           {proctorEnabled && (
                             <>
                               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={proctorTabSwitch}
                                   onChange={(e) => setProctorTabSwitch(e.target.checked)}
-                                  className="accent-silver-400"
                                 />
                                 {t('proctor.tabSwitchLabel')}
                               </label>
                               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={proctorGaze}
                                   onChange={(e) => setProctorGaze(e.target.checked)}
-                                  className="accent-silver-400"
                                 />
                                 {t('proctor.gazeLabel')}
                               </label>
@@ -351,16 +347,16 @@ export function InterviewConsolePage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           value={generateLang}
-                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          onChange={(v) => setGenerateLang(v as LanguageCode)}
                           title={t('interviews.candidateLanguage')}
-                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
-                        >
-                          {SUPPORTED_LANGUAGES.map((l) => (
-                            <option key={l.code} value={l.code}>{l.label}</option>
-                          ))}
-                        </select>
+                          className="shrink-0"
+                          options={SUPPORTED_LANGUAGES.map((l) => ({
+                            value: l.code,
+                            label: l.label,
+                          }))}
+                        />
                         <input
                           type="text"
                           value={generatePassword}
@@ -436,31 +432,25 @@ export function InterviewConsolePage() {
                       <div className="pt-1">
                         <div className="mb-2 flex items-center gap-4">
                           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={proctorEnabled}
                               onChange={(e) => setProctorEnabled(e.target.checked)}
-                              className="accent-silver-400"
                             />
                             {t('proctor.enableLabel')}
                           </label>
                           {proctorEnabled && (
                             <>
                               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={proctorTabSwitch}
                                   onChange={(e) => setProctorTabSwitch(e.target.checked)}
-                                  className="accent-silver-400"
                                 />
                                 {t('proctor.tabSwitchLabel')}
                               </label>
                               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={proctorGaze}
                                   onChange={(e) => setProctorGaze(e.target.checked)}
-                                  className="accent-silver-400"
                                 />
                                 {t('proctor.gazeLabel')}
                               </label>
@@ -468,16 +458,16 @@ export function InterviewConsolePage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           value={generateLang}
-                          onChange={(e) => setGenerateLang(e.target.value as LanguageCode)}
+                          onChange={(v) => setGenerateLang(v as LanguageCode)}
                           title={t('interviews.candidateLanguage')}
-                          className="shrink-0 rounded-lg border border-border-default bg-surface-overlay px-2 py-1.5 text-sm text-text-primary outline-none focus:border-accent-primary"
-                        >
-                          {SUPPORTED_LANGUAGES.map((l) => (
-                            <option key={l.code} value={l.code}>{l.label}</option>
-                          ))}
-                        </select>
+                          className="shrink-0"
+                          options={SUPPORTED_LANGUAGES.map((l) => ({
+                            value: l.code,
+                            label: l.label,
+                          }))}
+                        />
                         <input
                           type="text"
                           value={generatePassword}
