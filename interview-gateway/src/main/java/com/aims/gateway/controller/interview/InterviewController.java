@@ -129,6 +129,11 @@ public class InterviewController {
     @Operation(summary = "创建面试会话", description = "创建面试会话（入参简历 ID），状态默认为 CREATED（不自动生成候选人链接）")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
+        // 岗位必填校验（前端已必选，此处防御绕过前端直接调 API 的场景）
+        PositionEntity position = positionService.getById(req.positionId());
+        if (position == null) {
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "岗位不存在，无法创建面试");
+        }
         ResumeEntity resume = resumeService.getById(req.resumeId());
         Long candidateId = resume.getCandidateId();
         if (candidateId == null) {
@@ -298,11 +303,17 @@ public class InterviewController {
         if (current != SessionStatus.CREATED) {
             throw new BizException(ErrorCode.SESSION_STATUS_CONFLICT);
         }
+        // 3. 岗位判空兜底：存量无岗位或岗位被删除时，不进入 PLANNING，保持 CREATED 不变
+        if (session.getPositionId() == null) {
+            throw new BizException(ErrorCode.POSITION_NOT_SET, "该面试未指定岗位，无法生成计划");
+        }
+        PositionEntity position = positionService.getById(session.getPositionId());
+        if (position == null) {
+            throw new BizException(ErrorCode.POSITION_NOT_SET, "岗位已被删除，无法生成计划");
+        }
         try {
-            // 3. 进入 PLANNING
+            // 4. 进入 PLANNING
             sessionService.updateStatus(id, SessionStatus.PLANNING);
-            // 4. 查岗位
-            PositionEntity position = positionService.getById(session.getPositionId());
             // 5. 查简历
             ResumeEntity resume = resumeService.getById(session.getResumeId());
             // 6. RAG 检索

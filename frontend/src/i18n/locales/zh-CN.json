@@ -69,7 +69,7 @@
       "/positions": "岗位管理",
       "/questions": "题库管理",
       "/resumes": "简历管理",
-      "/rag": "RAG 检索调试",
+      "/rag": "RAG 检索",
       "/settings": "设置"
     },
     "serviceOnline": "服务在线",
@@ -84,7 +84,7 @@
       "questions": "题库管理",
       "resumes": "简历管理",
       "interviews": "面试管理",
-      "rag": "RAG 调试",
+      "rag": "RAG 检索",
       "settings": "设置"
     }
   },
@@ -409,8 +409,8 @@
     "selectResumePlaceholder": "请选择已解析的简历",
     "nameWithId": "{{name}}（#{{id}}）",
     "noParsedResumes": "暂无已解析的简历，请先上传并解析简历",
-    "positionOptional": "面试岗位（可选）",
-    "noPosition": "不指定岗位",
+    "positionRequired": "面试岗位 *",
+    "selectPositionPlaceholder": "请选择岗位",
     "personaLabel": "面试官人设",
     "personaDescFriendly": "鼓励引导，适合初级岗位",
     "personaDescPressure": "直接质疑，考察抗压能力",
@@ -536,12 +536,13 @@
       "POTENTIAL": "学习与潜力"
     },
     "validation": {
-      "resumeRequired": "请选择候选人简历"
+      "resumeRequired": "请选择候选人简历",
+      "positionRequired": "请选择面试岗位"
     }
   },
   "rag": {
-    "title": "RAG 检索调试",
-    "subtitle": "调试向量检索结果与相似度分数",
+    "title": "RAG 检索",
+    "subtitle": "检索向量数据并查看相似度分数",
     "params": "检索参数",
     "searchType": "检索类型",
     "questionMode": "题库检索",

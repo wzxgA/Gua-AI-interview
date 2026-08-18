@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/glass-card';
 import { SilverButton } from '@/components/ui/silver-button';
-import { Select, Label } from '@/components/ui/input';
+import { Label } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { useCreateInterview } from '@/api/interview';
@@ -44,6 +45,10 @@ export function InterviewCreatePage() {
   const handleSubmit = () => {
     if (!resumeId) {
       toast.error(t('interviews.validation.resumeRequired'));
+      return;
+    }
+    if (!positionId) {
+      toast.error(t('interviews.validation.positionRequired'));
       return;
     }
     createMutation.mutate(
@@ -96,17 +101,17 @@ export function InterviewCreatePage() {
             ) : (
               <Select
                 value={resumeId}
-                onChange={(e) =>
-                  setResumeId(e.target.value ? Number(e.target.value) : '')
+                onChange={(v) =>
+                  setResumeId(v ? Number(v) : '')
                 }
-              >
-                <option value="">{t('interviews.selectResumePlaceholder')}</option>
-                {resumes.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {t('interviews.nameWithId', { name: r.candidateName, id: r.id })}
-                  </option>
-                ))}
-              </Select>
+                options={[
+                  { value: '', label: t('interviews.selectResumePlaceholder') },
+                  ...resumes.map((r) => ({
+                    value: String(r.id),
+                    label: t('interviews.nameWithId', { name: r.candidateName, id: r.id }),
+                  })),
+                ]}
+              />
             )}
             {resumes.length === 0 && !resumesLoading && (
               <p className="mt-1 text-xs text-text-muted">
@@ -117,23 +122,23 @@ export function InterviewCreatePage() {
 
           {/* 选择岗位 */}
           <div>
-            <Label>{t('interviews.positionOptional')}</Label>
+            <Label>{t('interviews.positionRequired')}</Label>
             {positionsLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
               <Select
                 value={positionId}
-                onChange={(e) =>
-                  setPositionId(e.target.value ? Number(e.target.value) : '')
+                onChange={(v) =>
+                  setPositionId(v ? Number(v) : '')
                 }
-              >
-                <option value="">{t('interviews.noPosition')}</option>
-                {positions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {t('interviews.nameWithId', { name: p.title, id: p.id })}
-                  </option>
-                ))}
-              </Select>
+                options={[
+                  { value: '', label: t('interviews.selectPositionPlaceholder') },
+                  ...positions.map((p) => ({
+                    value: String(p.id),
+                    label: t('interviews.nameWithId', { name: p.title, id: p.id }),
+                  })),
+                ]}
+              />
             )}
           </div>
 
@@ -172,7 +177,7 @@ export function InterviewCreatePage() {
             <SilverButton
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !resumeId}
+              disabled={createMutation.isPending || !resumeId || !positionId}
             >
               {createMutation.isPending ? t('interviews.creating') : t('interviews.create')}
             </SilverButton>

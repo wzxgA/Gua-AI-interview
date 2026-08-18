@@ -69,7 +69,7 @@
       "/positions": "崗位管理",
       "/questions": "題庫管理",
       "/resumes": "簡歷管理",
-      "/rag": "RAG 檢索調試",
+      "/rag": "RAG 檢索",
       "/settings": "設定"
     },
     "serviceOnline": "服務在線",
@@ -84,7 +84,7 @@
       "questions": "題庫管理",
       "resumes": "簡歷管理",
       "interviews": "面試管理",
-      "rag": "RAG 調試",
+      "rag": "RAG 檢索",
       "settings": "設定"
     }
   },
@@ -409,8 +409,8 @@
     "selectResumePlaceholder": "請選擇已解析的簡歷",
     "nameWithId": "{{name}}（#{{id}}）",
     "noParsedResumes": "暫無已解析的簡歷，請先上傳並解析簡歷",
-    "positionOptional": "面試崗位（可選）",
-    "noPosition": "不指定崗位",
+    "positionRequired": "面試崗位 *",
+    "selectPositionPlaceholder": "請選擇崗位",
     "personaLabel": "面試官人設",
     "personaDescFriendly": "鼓勵引導，適合初級崗位",
     "personaDescPressure": "直接質疑，考察抗壓能力",
@@ -536,12 +536,13 @@
       "POTENTIAL": "學習與潛力"
     },
     "validation": {
-      "resumeRequired": "請選擇候選人簡歷"
+      "resumeRequired": "請選擇候選人簡歷",
+      "positionRequired": "請選擇面試崗位"
     }
   },
   "rag": {
-    "title": "RAG 檢索調試",
-    "subtitle": "調試向量檢索結果與相似度分數",
+    "title": "RAG 檢索",
+    "subtitle": "檢索向量數據並查看相似度分數",
     "params": "檢索參數",
     "searchType": "檢索類型",
     "questionMode": "題庫檢索",

@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, Briefcase, FileQuestion, FileText, Users, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { APP_VERSION } from '@/lib/constants';
 
 const menuItems = [
   { to: '/', labelKey: 'sidebar.menu.dashboard', icon: LayoutDashboard },
@@ -70,9 +69,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-border-subtle px-5 py-4">
-        <p className="text-xs text-text-muted">{APP_VERSION}</p>
-      </div>
     </aside>
   );
 }

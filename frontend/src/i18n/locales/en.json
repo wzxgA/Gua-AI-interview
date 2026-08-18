@@ -69,7 +69,7 @@
       "/positions": "Positions",
       "/questions": "Question Bank",
       "/resumes": "Resumes",
-      "/rag": "RAG Debug",
+      "/rag": "RAG Search",
       "/settings": "Settings"
     },
     "serviceOnline": "Service online",
@@ -84,7 +84,7 @@
       "questions": "Question Bank",
       "resumes": "Resumes",
       "interviews": "Interviews",
-      "rag": "RAG Debug",
+      "rag": "RAG Search",
       "settings": "Settings"
     }
   },
@@ -409,8 +409,8 @@
     "selectResumePlaceholder": "Select a parsed resume",
     "nameWithId": "{{name}} (#{{id}})",
     "noParsedResumes": "No parsed resumes. Please upload and parse a resume first",
-    "positionOptional": "Interview Position (optional)",
-    "noPosition": "No position specified",
+    "positionRequired": "Interview Position *",
+    "selectPositionPlaceholder": "Select a position",
     "personaLabel": "Interviewer Persona",
     "personaDescFriendly": "Encouraging and guiding, suitable for junior positions",
     "personaDescPressure": "Direct challenges, tests stress tolerance",
@@ -536,12 +536,13 @@
       "POTENTIAL": "Learning & Potential"
     },
     "validation": {
-      "resumeRequired": "Please select a candidate resume"
+      "resumeRequired": "Please select a candidate resume",
+      "positionRequired": "Please select an interview position"
     }
   },
   "rag": {
-    "title": "RAG Search Debug",
-    "subtitle": "Debug vector search results and similarity scores",
+    "title": "RAG Search",
+    "subtitle": "Search vector data and view similarity scores",
     "params": "Search Parameters",
     "searchType": "Search Type",
     "questionMode": "Question Bank",
