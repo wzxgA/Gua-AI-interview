@@ -37,6 +37,8 @@ export interface ReportResponse {
   totalScore: number | null;
   reportPdfUrl: string | null;
   createdAt: string;
+  /** v1.1-F4：候选人与简历矛盾点清单（格式化文本，无矛盾为空字符串） */
+  conflictSummary: string;
 }
 
 /** 维度配置 */

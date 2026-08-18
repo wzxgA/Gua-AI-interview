@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelTier;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
@@ -36,6 +37,7 @@ class DefaultFollowUpAgentTest {
     private FollowUpContext ctx() {
         return new FollowUpContext(
                 1L,
+                null,
                 100L,
                 "什么是 IoC？",
                 "控制反转...",
@@ -122,5 +124,56 @@ class DefaultFollowUpAgentTest {
         FollowUpDecision decision = agent.evaluate(ctx());
 
         assertTrue(!decision.shouldFollowUp());
+    }
+
+    @Test
+    void evaluate_conflictProbed_carriedIntoDecisionAndPrompt() {
+        // resumeId 非空时决策前经规则通道探测矛盾点（stub resumeCrossCheckTool）
+        ConflictDetail detail = new ConflictDetail("company", null, "阿里巴巴", "我在阿里巴巴负责电商中台");
+        ResumeCrossCheckResult cross =
+                new ResumeCrossCheckResult(
+                        "张三",
+                        0.3,
+                        0.0,
+                        "片段",
+                        List.of("阿里巴巴"),
+                        List.of("company"),
+                        "ENTITY",
+                        List.of(detail));
+        // F5：companyHint 由提取器从回答提取（"阿里巴巴"），不再恒为 null
+        when(resumeCrossCheckTool.crossCheck(eq(1L), any(), any())).thenReturn(cross);
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn(
+                        "{\"action\":\"CLARIFY\",\"reason\":\"回答与简历矛盾\",\"followUpQuestion\":\"请说明\"}");
+
+        FollowUpContext ctxWithResume =
+                new FollowUpContext(
+                        1L,
+                        1L,
+                        100L,
+                        "什么是 IoC？",
+                        "我在阿里巴巴负责电商中台",
+                        "张三",
+                        "Java 后端工程师",
+                        "岗位要求",
+                        "简历摘要",
+                        List.of(),
+                        List.of(),
+                        null);
+        FollowUpDecision decision = agent.evaluate(ctxWithResume);
+
+        assertEquals(FollowUpType.CLARIFY, decision.followUpType());
+        // 探测到的矛盾点随决策带出
+        assertEquals(1, decision.conflictDetails().size());
+        assertEquals("company", decision.conflictDetails().get(0).conflictField());
+        // 决策 prompt 注入矛盾证据
+        verify(aiChatFacade)
+                .callWithTools(
+                        eq(ModelTier.STANDARD),
+                        any(),
+                        argThat(user -> user.contains("阿里巴巴") && user.contains("简历未提及")),
+                        any());
+        // 探测时 companyHint 由提取器给出（回答含"阿里巴巴"）
+        verify(resumeCrossCheckTool).crossCheck(eq(1L), any(), eq("阿里巴巴"));
     }
 }

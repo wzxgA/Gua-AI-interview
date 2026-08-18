@@ -47,6 +47,14 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
             // parentSeq 补传 qa.seq()、followUpIndex 补传 qa.followUpIndex()，评估 prompt 才能显示
             // Q{parentSeq}.{followUpIndex}
             Integer followUpIndex = qa.followUpIndex();
+            // v1.1-F4：按轮取矛盾点（key=主问题 seq 或 "seq:followUpIndex"）
+            List<com.aims.core.interview.ConflictDetail> roundConflicts =
+                    state.conflictDetailsByRound()
+                            .getOrDefault(
+                                    followUpIndex != null
+                                            ? qa.seq() + ":" + followUpIndex
+                                            : String.valueOf(qa.seq()),
+                                    List.of());
             EvaluationContext ctx =
                     new EvaluationContext(
                             state.sessionId(),
@@ -58,7 +66,8 @@ public class EvaluateNode extends AbstractNode<InterviewState> {
                             qa.answer(),
                             state.positionTitle(),
                             state.jdText(),
-                            state.resumeSummary());
+                            state.resumeSummary(),
+                            roundConflicts);
 
             log.debug("评估轮次 sessionId={} seq={} key={}", state.sessionId(), qa.seq(), key);
 

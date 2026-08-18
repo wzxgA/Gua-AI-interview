@@ -522,6 +522,7 @@
     "candidate": "候选人",
     "radarChartTitle": "维度雷达图",
     "roundEvaluationTitle": "轮次评估明细",
+    "conflictSummaryTitle": "候选人与简历矛盾点",
     "roundNumber": "第 {{index}} 轮",
     "summaryTitle": "综合概览",
     "evaluatingProgress": "正在评估...",

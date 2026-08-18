@@ -36,6 +36,10 @@ public class InterviewRoundEntity {
     @TableField("duration_ms")
     private Integer durationMs;
 
+    /** 简历交叉验证矛盾点 JSONB（v1.1-F4）：ConflictDetail 数组字符串；空列表写 "[]"。 */
+    @TableField("conflict_details")
+    private String conflictDetails;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private Instant createdAt;
 
@@ -117,6 +121,14 @@ public class InterviewRoundEntity {
 
     public void setDurationMs(Integer durationMs) {
         this.durationMs = durationMs;
+    }
+
+    public String getConflictDetails() {
+        return conflictDetails;
+    }
+
+    public void setConflictDetails(String conflictDetails) {
+        this.conflictDetails = conflictDetails;
     }
 
     public Instant getCreatedAt() {

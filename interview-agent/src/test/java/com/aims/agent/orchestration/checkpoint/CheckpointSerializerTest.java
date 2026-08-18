@@ -326,6 +326,76 @@ class CheckpointSerializerTest {
                 CheckpointSerializationException.class, () -> serializer.deserialize("{broken"));
     }
 
+    @Test
+    @DisplayName("F4：RESUME_ID 小整数往返后仍为 Long，不退化 Integer")
+    void serializeDeserialize_resumeId_keepsLong() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.RESUME_ID, 5L);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.RESUME_ID);
+        assertSame(Long.class, value.getClass());
+        assertEquals(5L, value);
+    }
+
+    @Test
+    @DisplayName("F4：CONFLICT_DETAILS_BY_ROUND 元素还原为 ConflictDetail")
+    void serializeDeserialize_conflictDetailsByRound_restoresRecords() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        Map<String, List<com.aims.core.interview.ConflictDetail>> conflicts =
+                Map.of(
+                        "1",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "company", null, "阿里巴巴", "我在阿里巴巴负责电商中台")),
+                        "1:2",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "period", "2020 - 2022", "2016 - 2018", "时间不符")));
+        data.put(InterviewState.CONFLICT_DETAILS_BY_ROUND, conflicts);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.CONFLICT_DETAILS_BY_ROUND);
+        assertTrue(value instanceof Map<?, ?>);
+        @SuppressWarnings("unchecked")
+        Map<String, List<com.aims.core.interview.ConflictDetail>> restored =
+                (Map<String, List<com.aims.core.interview.ConflictDetail>>) value;
+        assertEquals(2, restored.size());
+        com.aims.core.interview.ConflictDetail company = restored.get("1").get(0);
+        assertSame(com.aims.core.interview.ConflictDetail.class, company.getClass());
+        assertEquals("company", company.conflictField());
+        assertEquals("阿里巴巴", company.actual());
+        assertEquals("period", restored.get("1:2").get(0).conflictField());
+    }
+
+    @Test
+    @DisplayName("F4：FollowUpDecision 携带 conflictDetails 往返完整")
+    void serializeDeserialize_followUpDecision_withConflictDetails() {
+        FollowUpDecision decision =
+                FollowUpDecision.of(
+                        FollowUpType.CLARIFY,
+                        "请说明",
+                        "回答与简历矛盾",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "company", null, "阿里巴巴", "简历未提及")));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.FOLLOW_UP_DECISION, decision);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.FOLLOW_UP_DECISION);
+        assertSame(FollowUpDecision.class, value.getClass());
+        FollowUpDecision restored = (FollowUpDecision) value;
+        assertEquals(1, restored.conflictDetails().size());
+        assertSame(
+                com.aims.core.interview.ConflictDetail.class,
+                restored.conflictDetails().get(0).getClass());
+        assertEquals("company", restored.conflictDetails().get(0).conflictField());
+    }
+
     // ─── 测试数据构造 ───
 
     private CheckpointRecord record(Map<String, Object> data) {

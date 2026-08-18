@@ -1,10 +1,12 @@
 package com.aims.infra.persistence.service.impl;
 
 import com.aims.agent.DefaultReportAgent;
+import com.aims.agent.ReportPromptBuilder;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.evaluation.DimensionAggregate;
 import com.aims.core.evaluation.EvaluationDimension;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.report.ReportContext;
 import com.aims.core.report.ReportResult;
 import com.aims.core.session.SessionStatus;
@@ -15,6 +17,7 @@ import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.ReportEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.ReportMapper;
+import com.aims.infra.persistence.service.ConflictDetailsJson;
 import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
@@ -25,7 +28,9 @@ import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +104,21 @@ public class ReportServiceImpl implements ReportService {
         // 构建对话摘要
         String conversationSummary = buildConversationSummary(sessionId);
 
+        // v1.1-F4：从轮次聚合"候选人与简历矛盾点"清单（Kafka 链路从库读）
+        Map<String, List<ConflictDetail>> conflictsByRound = new LinkedHashMap<>();
+        for (InterviewRoundEntity round : roundService.listBySession(sessionId)) {
+            List<ConflictDetail> roundConflicts =
+                    ConflictDetailsJson.parse(round.getConflictDetails());
+            if (!roundConflicts.isEmpty()) {
+                conflictsByRound.put(
+                        round.getSeq() != null
+                                ? String.valueOf(round.getSeq())
+                                : round.getParentSeq() + ":" + round.getFollowUpIndex(),
+                        roundConflicts);
+            }
+        }
+        String conflictSummary = ReportPromptBuilder.formatConflictsByRound(conflictsByRound);
+
         // 构建评分汇总
         List<ReportContext.EvaluationSummary> evalSummaries =
                 evaluations.stream()
@@ -121,7 +141,8 @@ public class ReportServiceImpl implements ReportService {
                         position.getJdText(),
                         resumeSummaryBuilder.build(resume),
                         evalSummaries,
-                        conversationSummary);
+                        conversationSummary,
+                        conflictSummary);
         ReportResult result = reportAgent.generate(context, aggregate, weightedScore);
 
         // 序列化 dimensionsJson

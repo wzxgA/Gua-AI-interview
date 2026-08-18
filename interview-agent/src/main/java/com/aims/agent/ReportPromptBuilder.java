@@ -1,7 +1,10 @@
 package com.aims.agent;
 
 import com.aims.core.evaluation.DimensionAggregate;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.report.ReportContext;
+import java.util.List;
+import java.util.Map;
 
 /** 报告 Prompt 统一构建器：集中管理报告 Agent 的 Prompt 模板。 */
 public final class ReportPromptBuilder {
@@ -26,6 +29,10 @@ public final class ReportPromptBuilder {
     /** 构造报告用户 Prompt。 */
     public static String reportUser(
             ReportContext context, DimensionAggregate aggregate, double weightedScore) {
+        String conflictBlock =
+                context.conflictSummary() == null || context.conflictSummary().isBlank()
+                        ? ""
+                        : "\n" + context.conflictSummary() + "\n";
         return """
 候选人：%s
 岗位：%s
@@ -34,12 +41,12 @@ public final class ReportPromptBuilder {
 各维度评分汇总：
 %s
 综合加权得分：%.2f / 5.0
-
+%s
 对话摘要：
 %s
 
 请输出报告 JSON，字段说明：
-- summary: 综合评述（200-500 字）
+- summary: 综合评述（200-500 字），若存在"候选人与简历矛盾点"，应在评述中说明矛盾对候选人真实性的影响
 - dimensions: 各维度评分明细，key 为维度名（PROFESSIONAL/LOGIC/COMMUNICATION/JOB_MATCH/POTENTIAL），value 含 avgScore 和 count
 - recommendation: STRONGLY_RECOMMEND / RECOMMEND / NEUTRAL / NOT_RECOMMEND
 """
@@ -49,7 +56,29 @@ public final class ReportPromptBuilder {
                         safe(context.jdText()),
                         EvaluationPromptBuilder.formatDimensionSummary(aggregate),
                         weightedScore,
+                        conflictBlock,
                         safe(context.conversationSummary()));
+    }
+
+    /** v1.1-F4：格式化"候选人与简历矛盾点"清单（按轮标注，key=主问题 seq 或 "seq:followUpIndex"）。 无矛盾返回空字符串。 */
+    public static String formatConflictsByRound(
+            Map<String, List<ConflictDetail>> conflictsByRound) {
+        if (conflictsByRound == null || conflictsByRound.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("候选人与简历矛盾点：\n");
+        conflictsByRound.forEach(
+                (key, conflicts) -> {
+                    String roundLabel = key.contains(":") ? "Q" + key.replace(':', '.') : "Q" + key;
+                    for (ConflictDetail c : conflicts) {
+                        sb.append("- ")
+                                .append(roundLabel)
+                                .append(' ')
+                                .append(FollowUpPromptBuilder.formatConflict(c))
+                                .append('\n');
+                    }
+                });
+        return sb.toString();
     }
 
     private static String safe(String value) {

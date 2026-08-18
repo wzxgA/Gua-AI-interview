@@ -2,6 +2,7 @@ package com.aims.agent;
 
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelTier;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
@@ -40,21 +41,55 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
     public FollowUpDecision evaluate(FollowUpContext context) {
         try {
             // F2：注册简历交叉验证工具，模型判定"需查证回答与简历一致性"时自主调用，工具结果仅作证据
+            // F4：决策前先经规则通道探测矛盾点（公司/项目/时间），注入决策 prompt 并随决策返回，供落库/评估/报告引用
+            List<ConflictDetail> conflicts = probeConflicts(context);
             String result =
                     aiChatFacade.callWithTools(
                             ModelTier.STANDARD,
                             FollowUpPromptBuilder.decisionSystem(),
-                            FollowUpPromptBuilder.decisionUser(context),
+                            FollowUpPromptBuilder.decisionUser(context, conflicts),
                             List.of(resumeCrossCheckTool));
             if (result == null || result.isBlank()) {
                 log.warn("追问决策返回空，默认不追问 sessionId={}", context.sessionId());
                 return FollowUpDecision.noFollowUp("决策返回空");
             }
-            return parseDecision(result, context.sessionId());
+            return withConflicts(parseDecision(result, context.sessionId()), conflicts);
         } catch (Exception e) {
             log.warn("追问决策异常，默认不追问 sessionId={}", context.sessionId(), e);
             return FollowUpDecision.noFollowUp("决策异常: " + e.getMessage());
         }
+    }
+
+    /** F4/F5 规则通道探测：简历 ID + 回答 → 经历表实体比对，返回矛盾点（探测失败返回空，不阻断决策）。 */
+    private List<ConflictDetail> probeConflicts(FollowUpContext context) {
+        if (context.resumeId() == null || context.answer() == null || context.answer().isBlank()) {
+            return List.of();
+        }
+        try {
+            // F5：先规则提取回答中的公司名作为 companyHint，使"回答提到简历外公司"也能定向比对"简历是否提及"
+            String companyHint = CompanyNameExtractor.extract(context.answer());
+            ResumeCrossCheckResult r =
+                    resumeCrossCheckTool.crossCheck(
+                            context.resumeId(), context.answer(), companyHint);
+            return r == null ? List.of() : r.conflictDetails();
+        } catch (Exception e) {
+            log.debug("追问决策前矛盾点探测失败 sessionId={} err={}", context.sessionId(), e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** 决策结果回填探测到的矛盾点（决策 JSON 本身不含矛盾点，随决策带出供落库/评估引用）。 */
+    private FollowUpDecision withConflicts(
+            FollowUpDecision decision, List<ConflictDetail> conflicts) {
+        if (conflicts.isEmpty() || decision.conflictDetails().isEmpty() == false) {
+            return decision;
+        }
+        return new FollowUpDecision(
+                decision.shouldFollowUp(),
+                decision.followUpType(),
+                decision.followUpQuestion(),
+                decision.reason(),
+                conflicts);
     }
 
     @Override

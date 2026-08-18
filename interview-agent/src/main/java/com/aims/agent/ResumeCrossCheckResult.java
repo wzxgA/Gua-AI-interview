@@ -1,5 +1,6 @@
 package com.aims.agent;
 
+import com.aims.core.interview.ConflictDetail;
 import java.util.List;
 
 /**

@@ -623,6 +623,11 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
                     decision.shouldFollowUp(),
                     decision.followUpType(),
                     decision.reason());
+            // v1.1-F4：决策阶段矛盾点写回当前回答轮（供评估/报告引用）
+            if (!decision.conflictDetails().isEmpty()) {
+                roundService.updateConflictDetails(
+                        currentRound.getId(), decision.conflictDetails());
+            }
             if (decision.shouldFollowUp()) {
                 generateAndSendFollowUp(
                         session, sessionId, parentSeq, followUpCount, followUpContext, decision);
@@ -998,6 +1003,7 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
 
         return new FollowUpContext(
                 sessionId,
+                entity.getResumeId(),
                 currentRound.getId(),
                 currentRound.getQuestion(),
                 currentRound.getAnswer(),

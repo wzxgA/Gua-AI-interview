@@ -1,8 +1,8 @@
 package com.aims.infra.persistence.service.impl;
 
-import com.aims.agent.ConflictDetail;
 import com.aims.agent.ResumeCrossCheckExecutor;
 import com.aims.agent.ResumeCrossCheckResult;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.infra.persistence.dto.RagSearchResponse;
 import com.aims.infra.persistence.entity.ProjectExperienceEntity;
 import com.aims.infra.persistence.entity.ResumeSearchResult;
@@ -194,10 +194,11 @@ public class ResumeRagCrossCheckExecutor implements ResumeCrossCheckExecutor {
                         .eq(ProjectExperienceEntity::getResumeId, resumeId));
     }
 
+    /** F5：表内经历匹配升级为双向包含匹配（回答"字节跳动"可命中表内"字节"，反之亦然），降低同义公司名漏判/误报。 */
     private WorkExperienceEntity findWorkByCompany(
             List<WorkExperienceEntity> works, String company) {
         for (WorkExperienceEntity w : works) {
-            if (notBlank(w.getCompany()) && w.getCompany().trim().equalsIgnoreCase(company)) {
+            if (notBlank(w.getCompany()) && sameEntity(w.getCompany().trim(), company)) {
                 return w;
             }
         }
@@ -207,11 +208,21 @@ public class ResumeRagCrossCheckExecutor implements ResumeCrossCheckExecutor {
     private ProjectExperienceEntity findProjectByName(
             List<ProjectExperienceEntity> projects, String name) {
         for (ProjectExperienceEntity p : projects) {
-            if (notBlank(p.getName()) && p.getName().trim().equalsIgnoreCase(name)) {
+            if (notBlank(p.getName()) && sameEntity(p.getName().trim(), name)) {
                 return p;
             }
         }
         return null;
+    }
+
+    /** 双向包含匹配：表内名与候选名互相包含（忽略大小写）即视为同一实体。 */
+    private static boolean sameEntity(String resumeValue, String candidate) {
+        if (resumeValue == null || candidate == null) {
+            return false;
+        }
+        String a = resumeValue.toLowerCase();
+        String b = candidate.toLowerCase();
+        return a.equals(b) || a.contains(b) || b.contains(a);
     }
 
     /** 时间线冲突判定：回答中的年份区间与经历 start/end 年份区间完全不交叠才算冲突。 无法从回答提取年份时不判定（避免误报）。 */

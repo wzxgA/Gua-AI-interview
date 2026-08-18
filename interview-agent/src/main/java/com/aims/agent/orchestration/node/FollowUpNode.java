@@ -108,6 +108,7 @@ public class FollowUpNode extends AbstractNode<InterviewState> {
         List<String> hints = extractFollowUpHints(state);
         return new FollowUpContext(
                 state.sessionId(),
+                state.resumeId(),
                 state.currentRoundId(),
                 state.currentQuestion(),
                 state.currentAnswer(),

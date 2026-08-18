@@ -2,9 +2,12 @@ package com.aims.agent.orchestration.node;
 
 import com.aims.agent.FollowUpAgent;
 import com.aims.agent.orchestration.state.InterviewState;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.InterviewPlan;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -37,6 +40,7 @@ public class FollowUpDecisionNode extends AbstractNode<InterviewState> {
         FollowUpContext ctx =
                 new FollowUpContext(
                         state.sessionId(),
+                        state.resumeId(),
                         state.currentRoundId(),
                         state.currentQuestion(),
                         state.currentAnswer(),
@@ -53,13 +57,26 @@ public class FollowUpDecisionNode extends AbstractNode<InterviewState> {
         FollowUpDecision decision = followUpAgent.evaluate(ctx);
 
         log.info(
-                "追问决策完成 sessionId={} shouldFollowUp={} type={}",
+                "追问决策完成 sessionId={} shouldFollowUp={} type={} conflicts={}",
                 state.sessionId(),
                 decision.shouldFollowUp(),
-                decision.followUpType());
+                decision.followUpType(),
+                decision.conflictDetails().size());
 
-        // 计数职责在 FollowUpNode（生成后才 +1），此处只写决策结果
-        return Map.of(InterviewState.FOLLOW_UP_DECISION, decision);
+        Map<String, Object> updates = new HashMap<>();
+        updates.put(InterviewState.FOLLOW_UP_DECISION, decision);
+        // F4：本回答轮矛盾点写入状态（key=主问题 seq 或 "seq:followUpIndex"），供 syncFromState 落库与评估/报告引用
+        if (!decision.conflictDetails().isEmpty()) {
+            String key =
+                    state.followUpIndex() != null
+                            ? state.currentSeq() + ":" + state.followUpIndex()
+                            : String.valueOf(state.currentSeq());
+            Map<String, List<ConflictDetail>> merged =
+                    new LinkedHashMap<>(state.conflictDetailsByRound());
+            merged.put(key, decision.conflictDetails());
+            updates.put(InterviewState.CONFLICT_DETAILS_BY_ROUND, merged);
+        }
+        return updates;
     }
 
     /** 从 plan 按 seq 提取 followUpHints。 */

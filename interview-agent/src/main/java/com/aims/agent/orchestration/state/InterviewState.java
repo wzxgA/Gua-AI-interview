@@ -36,6 +36,7 @@ public class InterviewState extends AgentState {
 
     // ===== Key 常量：会话元数据（Replace）=====
     public static final String SESSION_ID = "sessionId";
+    public static final String RESUME_ID = "resumeId";
     public static final String CANDIDATE_NAME = "candidateName";
     public static final String POSITION_TITLE = "positionTitle";
     public static final String JD_TEXT = "jdText";
@@ -66,6 +67,9 @@ public class InterviewState extends AgentState {
 
     /** true=当前暂停等待的是追问回答（AnswerNode 据此构造追问 QaPair）。QuestionNode 换题时清零。 */
     public static final String PENDING_FOLLOW_UP = "pendingFollowUp";
+
+    /** 各轮简历交叉验证矛盾点：key=主问题 seq 或 "seq:followUpIndex"，value=该轮矛盾点明细（Replace，随轮次累积）。 */
+    public static final String CONFLICT_DETAILS_BY_ROUND = "conflictDetailsByRound";
 
     // ===== Key 常量：评估结果（Append）=====
     public static final String ROUND_EVALUATIONS = "roundEvaluations";
@@ -107,6 +111,7 @@ public class InterviewState extends AgentState {
                     // 会话元数据 — Replace（null 默认值字段用 Reducer 避免
                     // initialDataFromSchema 的 Collectors.toMap NPE）
                     Map.entry(SESSION_ID, Channels.base((old, v) -> v)),
+                    Map.entry(RESUME_ID, Channels.base((old, v) -> v)),
                     Map.entry(CANDIDATE_NAME, Channels.base(() -> "")),
                     Map.entry(POSITION_TITLE, Channels.base(() -> "")),
                     Map.entry(JD_TEXT, Channels.base(() -> "")),
@@ -135,6 +140,8 @@ public class InterviewState extends AgentState {
                     Map.entry(FOLLOW_UP_DECISION, Channels.base((old, v) -> v)),
                     Map.entry(FOLLOW_UP_COUNT, Channels.base(() -> 0)),
                     Map.entry(PENDING_FOLLOW_UP, Channels.base(() -> false)),
+                    // 矛盾点映射：Replace 语义（FollowUpDecisionNode 每次写入最新累积）
+                    Map.entry(CONFLICT_DETAILS_BY_ROUND, Channels.base(() -> Map.of())),
 
                     // 评估结果 — Append
                     Map.entry(ROUND_EVALUATIONS, Channels.appender(ArrayList::new)),
@@ -170,6 +177,11 @@ public class InterviewState extends AgentState {
     // ===== Accessor：会话元数据 =====
     public Long sessionId() {
         return this.<Long>value(SESSION_ID).orElse(null);
+    }
+
+    /** 本场面试所用简历 ID（Engine 启动时注入，追问决策矛盾点探测与评估引用需要）。 */
+    public Long resumeId() {
+        return this.<Long>value(RESUME_ID).orElse(null);
     }
 
     public String candidateName() {
@@ -257,6 +269,14 @@ public class InterviewState extends AgentState {
     /** 当前暂停等待的是否为追问回答。 */
     public boolean pendingFollowUp() {
         return this.<Boolean>value(PENDING_FOLLOW_UP).orElse(false);
+    }
+
+    /** 各轮矛盾点映射（key=seq 或 "seq:followUpIndex"）。 */
+    @SuppressWarnings("unchecked")
+    public Map<String, List<com.aims.core.interview.ConflictDetail>> conflictDetailsByRound() {
+        return this.<Map<String, List<com.aims.core.interview.ConflictDetail>>>value(
+                        CONFLICT_DETAILS_BY_ROUND)
+                .orElse(Map.of());
     }
 
     // ===== Accessor：评估结果 =====

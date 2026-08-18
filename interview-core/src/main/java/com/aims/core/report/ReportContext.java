@@ -12,6 +12,7 @@ import java.util.List;
  * @param resumeSummary 简历摘要
  * @param evaluationSummaries 全部评分汇总（每轮每维度）
  * @param conversationSummary 对话摘要（问题+回答精简）
+ * @param conflictSummary 候选人与简历矛盾点清单（格式化文本，无矛盾为空字符串；v1.1-F4）
  */
 public record ReportContext(
         Long sessionId,
@@ -20,7 +21,8 @@ public record ReportContext(
         String jdText,
         String resumeSummary,
         List<EvaluationSummary> evaluationSummaries,
-        String conversationSummary) {
+        String conversationSummary,
+        String conflictSummary) {
 
     /** 单条评分汇总（传递给 ReportAgent 的精简结构）。 */
     public record EvaluationSummary(

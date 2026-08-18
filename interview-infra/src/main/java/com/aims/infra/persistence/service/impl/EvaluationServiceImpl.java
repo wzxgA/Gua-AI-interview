@@ -12,6 +12,7 @@ import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.mapper.EvaluationMapper;
+import com.aims.infra.persistence.service.ConflictDetailsJson;
 import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
@@ -103,7 +104,9 @@ public class EvaluationServiceImpl implements EvaluationService {
                                 round.getAnswer(),
                                 position.getTitle(),
                                 position.getJdText(),
-                                resumeSummary);
+                                resumeSummary,
+                                // v1.1-F4：该轮矛盾点随上下文注入评估 prompt
+                                ConflictDetailsJson.parse(round.getConflictDetails()));
 
                 List<RoundEvaluation> evaluations = evaluatorAgent.evaluate(context);
 

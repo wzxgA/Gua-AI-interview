@@ -1,6 +1,7 @@
 package com.aims.agent.orchestration.node;
 
 import com.aims.agent.DefaultReportAgent;
+import com.aims.agent.ReportPromptBuilder;
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.evaluation.DimensionAggregate;
 import com.aims.core.evaluation.EvaluationDimension;
@@ -73,7 +74,9 @@ public class ReportNode extends AbstractNode<InterviewState> {
                         state.jdText(),
                         state.resumeSummary(),
                         summaries,
-                        convSummary);
+                        convSummary,
+                        // v1.1-F4：矛盾点清单（Engine 链路从 state 聚合）
+                        ReportPromptBuilder.formatConflictsByRound(state.conflictDetailsByRound()));
 
         log.debug("生成报告 sessionId={} weightedScore={}", state.sessionId(), weightedScore);
 

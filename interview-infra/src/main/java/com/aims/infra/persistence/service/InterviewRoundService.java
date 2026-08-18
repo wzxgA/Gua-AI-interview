@@ -1,5 +1,6 @@
 package com.aims.infra.persistence.service;
 
+import com.aims.core.interview.ConflictDetail;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import java.util.List;
 
@@ -26,6 +27,9 @@ public interface InterviewRoundService {
 
     /** 更新轮次 TTS 音频信息。 */
     void updateAudio(Long roundId, String audioUrl, int durationMs);
+
+    /** v1.1-F4：更新轮次简历交叉验证矛盾点（conflict_details JSONB；无矛盾点写空数组）。 */
+    void updateConflictDetails(Long roundId, List<ConflictDetail> conflicts);
 
     /** 查询会话所有轮次，按业务顺序排序：主问题按 seq 升序，追问紧跟所属主问题后按 followUpIndex 升序（不依赖 createdAt，避免追问与后续主问题交错）。 */
     List<InterviewRoundEntity> listBySession(Long sessionId);

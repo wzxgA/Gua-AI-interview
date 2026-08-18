@@ -5,6 +5,7 @@ import java.util.List;
 /** 追问上下文，传递给 FollowUpAgent。 */
 public record FollowUpContext(
         Long sessionId,
+        Long resumeId,
         Long roundId,
         String question,
         String answer,

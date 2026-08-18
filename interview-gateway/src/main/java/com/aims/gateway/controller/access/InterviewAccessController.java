@@ -183,7 +183,9 @@ public class InterviewAccessController {
         requireSameSession(sessionId);
         ReportEntity report = reportService.getBySession(sessionId);
         InterviewSessionEntity session = sessionService.getById(sessionId);
-        return Result.ok(ReportResponse.from(report, session.getTotalScore()));
+        return Result.ok(
+                ReportResponse.from(
+                        report, session.getTotalScore(), roundService.listBySession(sessionId)));
     }
 
     @Operation(

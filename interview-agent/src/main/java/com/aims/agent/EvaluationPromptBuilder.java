@@ -3,6 +3,7 @@ package com.aims.agent;
 import com.aims.core.evaluation.DimensionAggregate;
 import com.aims.core.evaluation.EvaluationContext;
 import com.aims.core.evaluation.EvaluationDimension;
+import com.aims.core.interview.ConflictDetail;
 
 /** 评估 Prompt 统一构建器：集中管理评估 Agent 的 Prompt 模板。 */
 public final class EvaluationPromptBuilder {
@@ -42,11 +43,13 @@ public final class EvaluationPromptBuilder {
                                 + "."
                                 + (context.followUpIndex() != null ? context.followUpIndex() : 1)
                         : "Q" + (context.seq() != null ? context.seq() : "?");
+        // v1.1-F4：该轮简历交叉验证矛盾点（规则通道，仅作证据供模型裁决）
+        String conflictBlock = buildConflictBlock(context.conflictDetails());
         return """
                岗位名称：%s
                岗位 JD：%s
                简历摘要：%s
-
+               %s
                第 %s 轮问答：
                问题：%s
                回答：%s
@@ -56,15 +59,30 @@ public final class EvaluationPromptBuilder {
                  - dimension: PROFESSIONAL / LOGIC / COMMUNICATION / JOB_MATCH / POTENTIAL
                  - score: 1-5 整数
                  - comment: 评语
-                 - evidenceQuote: 候选人回答中的原话引用
+                 - evidenceQuote: 候选人回答中的原话引用；若本轮存在简历交叉验证矛盾证据，应优先引用矛盾证据并说明
                """
                 .formatted(
                         safe(context.positionTitle()),
                         safe(context.jdText()),
                         safe(context.resumeSummary()),
+                        conflictBlock,
                         roundLabel,
                         safe(context.question()),
                         safe(context.answer()));
+    }
+
+    /** 矛盾证据段落：非空时追加"回答与简历不一致"的交叉验证证据；评分子项含真实性考量。 */
+    private static String buildConflictBlock(java.util.List<ConflictDetail> conflicts) {
+        if (conflicts == null || conflicts.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("本轮简历交叉验证矛盾证据（回答与简历不一致，评估 PROFFESSIONAL 真实性时参考，最终裁决由你做出）：\n");
+        for (ConflictDetail c : conflicts) {
+            sb.append("- ").append(FollowUpPromptBuilder.formatConflict(c)).append('\n');
+        }
+        sb.append('\n');
+        return sb.toString();
     }
 
     /** 构造报告用户 Prompt 中各维度评分汇总部分。 */

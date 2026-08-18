@@ -10,8 +10,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.aims.agent.ConflictDetail;
 import com.aims.agent.ResumeCrossCheckResult;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.infra.persistence.dto.RagSearchResponse;
 import com.aims.infra.persistence.entity.ProjectExperienceEntity;
 import com.aims.infra.persistence.entity.ResumeSearchResult;
@@ -105,6 +105,19 @@ class ResumeRagCrossCheckExecutorTest {
         assertNotNull(r);
         assertTrue(r.conflictDetails().isEmpty());
         assertTrue(r.likelyConsistent());
+    }
+
+    @Test
+    void crossCheck_synonymCompany_containedMatch_noConflict() {
+        // F5 包含匹配：回答"字节跳动"可命中表内"字节"，不误判"未提及"
+        when(workMapper.selectList(any())).thenReturn(List.of(work("字节", "2020.06", "2022.05")));
+
+        ResumeCrossCheckResult r = executor.crossCheck(1L, "2021年我在字节跳动负责订单系统", "字节跳动");
+
+        assertNotNull(r);
+        assertTrue(r.conflictDetails().isEmpty());
+        assertTrue(r.likelyConsistent());
+        assertEquals(List.of("work"), r.matchedFields());
     }
 
     @Test

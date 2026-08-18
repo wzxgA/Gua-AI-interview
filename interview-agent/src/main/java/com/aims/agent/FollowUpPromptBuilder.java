@@ -1,8 +1,10 @@
 package com.aims.agent;
 
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
+import java.util.List;
 
 /** 追问 Prompt 构建器。 */
 public final class FollowUpPromptBuilder {
@@ -51,11 +53,24 @@ JSON 输出约束：
 
     /** 构造追问决策用户 Prompt。 */
     public static String decisionUser(FollowUpContext context) {
+        return decisionUser(context, List.of());
+    }
+
+    /** 构造追问决策用户 Prompt（可带简历交叉验证矛盾证据，F4：注入决策阶段探测的矛盾点）。 */
+    public static String decisionUser(FollowUpContext context, List<ConflictDetail> conflicts) {
         StringBuilder sb = new StringBuilder();
         sb.append("## 面试问题\n").append(safe(context.question())).append("\n\n");
         sb.append("## 候选人回答\n").append(safe(context.answer())).append("\n\n");
         sb.append("## 岗位要求\n").append(safe(context.jdText())).append("\n\n");
         sb.append("## 简历摘要\n").append(safe(context.resumeSummary())).append("\n\n");
+        if (conflicts != null && !conflicts.isEmpty()) {
+            sb.append("## 简历交叉验证矛盾证据\n");
+            sb.append("以下为规则通道检测到的回答与简历经历的不一致，供你判断是否追问（仅作参考，最终裁决由你做出）：\n");
+            for (ConflictDetail c : conflicts) {
+                sb.append("- ").append(formatConflict(c)).append('\n');
+            }
+            sb.append('\n');
+        }
         if (!context.followUpHints().isEmpty()) {
             sb.append("## 预设追问方向\n");
             for (int i = 0; i < context.followUpHints().size(); i++) {
@@ -63,6 +78,22 @@ JSON 输出约束：
             }
         }
         return sb.toString();
+    }
+
+    /** 矛盾点格式化：字段+expected/actual，便于模型一眼理解。 */
+    public static String formatConflict(ConflictDetail c) {
+        return switch (c.conflictField()) {
+            case "company" -> "公司矛盾：回答提到「" + c.actual() + "」，简历未提及该公司";
+            case "project" -> "项目矛盾：回答提到「" + c.actual() + "」，简历未提及该项目";
+            case "period" -> "时间线矛盾：回答称 " + c.actual() + "，简历为 " + c.expected();
+            default ->
+                    "矛盾："
+                            + c.conflictField()
+                            + " expected="
+                            + c.expected()
+                            + " actual="
+                            + c.actual();
+        };
     }
 
     /** 构造追问问题生成用户 Prompt。 */

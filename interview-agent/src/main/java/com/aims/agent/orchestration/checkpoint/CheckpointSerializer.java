@@ -2,6 +2,7 @@ package com.aims.agent.orchestration.checkpoint;
 
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.evaluation.RoundEvaluation;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
@@ -112,6 +113,8 @@ public class CheckpointSerializer {
             Map.of(
                     InterviewState.SESSION_ID,
                     Long.class,
+                    InterviewState.RESUME_ID,
+                    Long.class,
                     InterviewState.CURRENT_ROUND_ID,
                     Long.class,
                     InterviewState.ELAPSED_MS,
@@ -177,7 +180,35 @@ public class CheckpointSerializer {
         if (value instanceof List<?> list) {
             return normalizeList(key, list);
         }
+        // v1.1-F4：CONFLICT_DETAILS_BY_ROUND 为 Map<String, List<ConflictDetail>>，
+        // 反序列化后退化为 Map<String, List<LinkedHashMap>>，需还原元素为 ConflictDetail，
+        // 否则 EvaluateNode/ReportNode 访问 conflictField() 会抛 ClassCastException
+        if (InterviewState.CONFLICT_DETAILS_BY_ROUND.equals(key)
+                && value instanceof Map<?, ?> map) {
+            return normalizeConflictDetailsMap(map);
+        }
         return value;
+    }
+
+    /** 还原矛盾点映射：Map<String, List<ConflictDetail>>（元素由 LinkedHashMap 转回 ConflictDetail）。 */
+    @SuppressWarnings("unchecked")
+    private Map<String, List<ConflictDetail>> normalizeConflictDetailsMap(Map<?, ?> map) {
+        Map<String, List<ConflictDetail>> result = new LinkedHashMap<>(map.size());
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String k = String.valueOf(entry.getKey());
+            if (entry.getValue() instanceof List<?> list) {
+                List<ConflictDetail> details = new ArrayList<>(list.size());
+                for (Object element : list) {
+                    if (element instanceof ConflictDetail cd) {
+                        details.add(cd);
+                    } else if (element instanceof Map) {
+                        details.add(mapper.convertValue(element, ConflictDetail.class));
+                    }
+                }
+                result.put(k, details);
+            }
+        }
+        return result;
     }
 
     /**
