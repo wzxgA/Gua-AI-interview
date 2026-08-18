@@ -10,8 +10,13 @@ import java.util.function.Function;
 /** 面试会话持久化服务。 */
 public interface InterviewSessionService {
 
-    /** 创建面试会话（CREATED）。 */
-    InterviewSessionEntity create(Long candidateId, Long positionId, String persona);
+    /**
+     * 创建面试会话（CREATED）。
+     *
+     * @param candidateId 候选人 ID（指向 candidate 表；TD2 语义归位）
+     * @param resumeId 本场面试所用简历 ID
+     */
+    InterviewSessionEntity create(Long candidateId, Long resumeId, Long positionId, String persona);
 
     /** 按候选人访问令牌查询会话（生成 accessToken），不存在抛 BizException。 */
     InterviewSessionEntity getByAccessToken(String accessToken);

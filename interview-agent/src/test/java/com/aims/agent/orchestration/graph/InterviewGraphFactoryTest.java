@@ -15,6 +15,8 @@ import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.agent.orchestration.state.TestStateBuilder;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
+import com.aims.core.interview.SupervisorAction;
+import com.aims.core.interview.SupervisorDecision;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.StateGraph;
 import org.junit.jupiter.api.BeforeEach;
@@ -184,6 +186,36 @@ class InterviewGraphFactoryTest {
                             .withForceEnd(true)
                             .build();
             assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
+        }
+
+        @Test
+        @DisplayName("supervisorDecision=END → END（未达上限也提前结束）")
+        void supervisorEnd() throws Exception {
+            InterviewState state =
+                    TestStateBuilder.forTesting()
+                            .withCurrentSeq(1)
+                            .withTotalRounds(3)
+                            .with(
+                                    InterviewState.SUPERVISOR_DECISION,
+                                    new SupervisorDecision(
+                                            SupervisorAction.END, "严重超时", null, false))
+                            .build();
+            assertEquals(StateGraph.END, factory.routeAfterEndCheck(state));
+        }
+
+        @Test
+        @DisplayName("supervisorDecision=CONTINUE → ASK（未达上限）")
+        void supervisorContinue() throws Exception {
+            InterviewState state =
+                    TestStateBuilder.forTesting()
+                            .withCurrentSeq(1)
+                            .withTotalRounds(3)
+                            .with(
+                                    InterviewState.SUPERVISOR_DECISION,
+                                    new SupervisorDecision(
+                                            SupervisorAction.CONTINUE, "正常", null, false))
+                            .build();
+            assertEquals(NodeNames.ASK, factory.routeAfterEndCheck(state));
         }
     }
 

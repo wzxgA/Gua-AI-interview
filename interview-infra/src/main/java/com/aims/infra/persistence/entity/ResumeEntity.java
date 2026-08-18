@@ -24,6 +24,10 @@ public class ResumeEntity {
     @TableField("candidate_name")
     private String candidateName;
 
+    /** v1.1-C：指向 candidate 表（TD2 语义归位）。 */
+    @TableField("candidate_id")
+    private Long candidateId;
+
     private String phone;
 
     private String email;
@@ -95,6 +99,14 @@ public class ResumeEntity {
 
     public void setCandidateName(String candidateName) {
         this.candidateName = candidateName;
+    }
+
+    public Long getCandidateId() {
+        return candidateId;
+    }
+
+    public void setCandidateId(Long candidateId) {
+        this.candidateId = candidateId;
     }
 
     public String getPhone() {

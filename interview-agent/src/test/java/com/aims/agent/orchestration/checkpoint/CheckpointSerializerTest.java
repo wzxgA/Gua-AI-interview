@@ -1,6 +1,7 @@
 package com.aims.agent.orchestration.checkpoint;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -17,9 +18,12 @@ import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.PlanSection;
 import com.aims.core.interview.PlannedQuestion;
 import com.aims.core.interview.QaPair;
+import com.aims.core.interview.SupervisorAction;
+import com.aims.core.interview.SupervisorDecision;
 import com.aims.core.report.Recommendation;
 import com.aims.core.report.ReportResult;
 import com.aims.core.session.SessionStatus;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -180,6 +184,71 @@ class CheckpointSerializerTest {
     }
 
     @Test
+    @DisplayName("sessionStartedAt (Instant) 往返保持 Instant 类型且纳秒无损")
+    void serializeDeserialize_sessionStartedAt() {
+        Instant started = Instant.parse("2026-08-17T03:10:42.123456789Z");
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.SESSION_STARTED_AT, started);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.SESSION_STARTED_AT);
+        assertSame(Instant.class, value.getClass());
+        assertEquals(started, value);
+    }
+
+    @Test
+    @DisplayName("旧 checkpoint 中 Double（epoch 秒）形式的 sessionStartedAt 可还原为 Instant")
+    void deserialize_legacyDoubleSessionStartedAt() {
+        // 修复前 JSR310 默认输出 epoch 秒小数（Double），Redis 中已存在的旧 checkpoint 仍是该格式
+        String legacy =
+                "{\"checkpointId\":\"cp-old\",\"nodeId\":\"endCheck\",\"nextNodeId\":\"report\","
+                        + "\"stateData\":{\"sessionStartedAt\":1723867200.123456789},"
+                        + "\"timestampEpochMillis\":1723867200123}";
+
+        CheckpointRecord out = serializer.deserialize(legacy);
+
+        Object value = out.stateData().get(InterviewState.SESSION_STARTED_AT);
+        assertSame(Instant.class, value.getClass());
+        Instant restored = (Instant) value;
+        assertEquals(1723867200L, restored.getEpochSecond());
+        // Double 表达 epoch 秒带纳秒本身有浮点精度损失（IEEE 754），纳秒允许千位级误差即可
+        assertTrue(Math.abs(restored.getNano() - 123456789) < 1_000);
+    }
+
+    @Test
+    @DisplayName("elapsedMs (Long) 往返不退化")
+    void serializeDeserialize_elapsedMs() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.ELAPSED_MS, 3_600_000L);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.ELAPSED_MS);
+        assertSame(Long.class, value.getClass());
+        assertEquals(3_600_000L, value);
+    }
+
+    @Test
+    @DisplayName("SupervisorDecision record 往返保持类型")
+    void serializeDeserialize_supervisorDecision() {
+        SupervisorDecision decision =
+                new SupervisorDecision(SupervisorAction.TIGHTEN, "进度偏慢", 1, false);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.SUPERVISOR_DECISION, decision);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.SUPERVISOR_DECISION);
+        assertSame(SupervisorDecision.class, value.getClass());
+        SupervisorDecision restored = (SupervisorDecision) value;
+        assertEquals(SupervisorAction.TIGHTEN, restored.action());
+        assertEquals("进度偏慢", restored.reason());
+        assertEquals(Integer.valueOf(1), restored.suggestedRemaining());
+        assertFalse(restored.hardStop());
+    }
+
+    @Test
     @DisplayName("SessionStatus / InterviewerPersona 枚举类型正确")
     void serializeDeserialize_sessionStatus() {
         Map<String, Object> data = new LinkedHashMap<>();
@@ -255,6 +324,76 @@ class CheckpointSerializerTest {
     void deserialize_invalidJson_throws() {
         assertThrows(
                 CheckpointSerializationException.class, () -> serializer.deserialize("{broken"));
+    }
+
+    @Test
+    @DisplayName("F4：RESUME_ID 小整数往返后仍为 Long，不退化 Integer")
+    void serializeDeserialize_resumeId_keepsLong() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.RESUME_ID, 5L);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.RESUME_ID);
+        assertSame(Long.class, value.getClass());
+        assertEquals(5L, value);
+    }
+
+    @Test
+    @DisplayName("F4：CONFLICT_DETAILS_BY_ROUND 元素还原为 ConflictDetail")
+    void serializeDeserialize_conflictDetailsByRound_restoresRecords() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        Map<String, List<com.aims.core.interview.ConflictDetail>> conflicts =
+                Map.of(
+                        "1",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "company", null, "阿里巴巴", "我在阿里巴巴负责电商中台")),
+                        "1:2",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "period", "2020 - 2022", "2016 - 2018", "时间不符")));
+        data.put(InterviewState.CONFLICT_DETAILS_BY_ROUND, conflicts);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.CONFLICT_DETAILS_BY_ROUND);
+        assertTrue(value instanceof Map<?, ?>);
+        @SuppressWarnings("unchecked")
+        Map<String, List<com.aims.core.interview.ConflictDetail>> restored =
+                (Map<String, List<com.aims.core.interview.ConflictDetail>>) value;
+        assertEquals(2, restored.size());
+        com.aims.core.interview.ConflictDetail company = restored.get("1").get(0);
+        assertSame(com.aims.core.interview.ConflictDetail.class, company.getClass());
+        assertEquals("company", company.conflictField());
+        assertEquals("阿里巴巴", company.actual());
+        assertEquals("period", restored.get("1:2").get(0).conflictField());
+    }
+
+    @Test
+    @DisplayName("F4：FollowUpDecision 携带 conflictDetails 往返完整")
+    void serializeDeserialize_followUpDecision_withConflictDetails() {
+        FollowUpDecision decision =
+                FollowUpDecision.of(
+                        FollowUpType.CLARIFY,
+                        "请说明",
+                        "回答与简历矛盾",
+                        List.of(
+                                new com.aims.core.interview.ConflictDetail(
+                                        "company", null, "阿里巴巴", "简历未提及")));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put(InterviewState.FOLLOW_UP_DECISION, decision);
+
+        CheckpointRecord out = roundTrip(record(data));
+
+        Object value = out.stateData().get(InterviewState.FOLLOW_UP_DECISION);
+        assertSame(FollowUpDecision.class, value.getClass());
+        FollowUpDecision restored = (FollowUpDecision) value;
+        assertEquals(1, restored.conflictDetails().size());
+        assertSame(
+                com.aims.core.interview.ConflictDetail.class,
+                restored.conflictDetails().get(0).getClass());
+        assertEquals("company", restored.conflictDetails().get(0).conflictField());
     }
 
     // ─── 测试数据构造 ───

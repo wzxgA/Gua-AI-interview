@@ -100,6 +100,10 @@ public final class InterviewPromptBuilder {
                 .append(" 题，共 ")
                 .append(context.totalRounds())
                 .append(" 题。\n");
+        // F1 总指挥：TIGHTEN 时要求本轮收敛话题、勿深挖
+        if (context.tighten()) {
+            sb.append("【节奏提示】面试进度偏慢，本轮请收敛话题：只评估该题核心要点，不要继续深挖或展开追问。\n");
+        }
         sb.append("岗位：").append(safe(context.positionTitle())).append('\n');
         sb.append("候选人：").append(safe(context.candidateName())).append('\n');
 

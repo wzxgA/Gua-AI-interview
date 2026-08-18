@@ -6,6 +6,7 @@ import com.aims.core.common.Result;
 import com.aims.core.common.exception.BizException;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.session.SessionStatus;
+import com.aims.infra.persistence.entity.CandidateEntity;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
@@ -13,6 +14,7 @@ import com.aims.infra.persistence.entity.ProctorEventEntity;
 import com.aims.infra.persistence.entity.QuestionSearchResult;
 import com.aims.infra.persistence.entity.ResumeEntity;
 import com.aims.infra.persistence.messaging.EvaluationMessageProducer;
+import com.aims.infra.persistence.service.CandidateService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.InterviewSessionStore;
@@ -20,6 +22,7 @@ import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ProctorEventService;
 import com.aims.infra.persistence.service.QuestionRagService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,9 +51,6 @@ public class InterviewController {
 
     private static final Logger log = LoggerFactory.getLogger(InterviewController.class);
 
-    /** 简历摘要最大长度。 */
-    private static final int RESUME_SUMMARY_MAX = 2000;
-
     /** RAG 检索 Top-K。 */
     private static final int RAG_TOP_K = 10;
 
@@ -76,6 +76,8 @@ public class InterviewController {
     private final InterviewRoundService roundService;
     private final PositionService positionService;
     private final ResumeService resumeService;
+    private final CandidateService candidateService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final QuestionRagService questionRagService;
     private final InterviewPlanGenerator planGenerator;
     private final InterviewSessionStore sessionStore;
@@ -89,6 +91,8 @@ public class InterviewController {
             InterviewRoundService roundService,
             PositionService positionService,
             ResumeService resumeService,
+            CandidateService candidateService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             QuestionRagService questionRagService,
             InterviewPlanGenerator planGenerator,
             InterviewSessionStore sessionStore,
@@ -100,6 +104,8 @@ public class InterviewController {
         this.roundService = roundService;
         this.positionService = positionService;
         this.resumeService = resumeService;
+        this.candidateService = candidateService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.questionRagService = questionRagService;
         this.planGenerator = planGenerator;
         this.sessionStore = sessionStore;
@@ -120,11 +126,20 @@ public class InterviewController {
         return Result.ok(mapped);
     }
 
-    @Operation(summary = "创建面试会话", description = "创建面试会话，状态默认为 CREATED（不自动生成候选人链接）")
+    @Operation(summary = "创建面试会话", description = "创建面试会话（入参简历 ID），状态默认为 CREATED（不自动生成候选人链接）")
     @PostMapping("")
     public Result<InterviewResponse> create(@Valid @RequestBody CreateInterviewRequest req) {
+        ResumeEntity resume = resumeService.getById(req.resumeId());
+        Long candidateId = resume.getCandidateId();
+        if (candidateId == null) {
+            // 兜底：简历未归集候选人（如历史无姓名数据），按姓名建档；姓名仍为空则留空
+            CandidateEntity candidate =
+                    candidateService.findOrCreate(
+                            resume.getCandidateName(), resume.getPhone(), resume.getEmail());
+            candidateId = candidate != null ? candidate.getId() : null;
+        }
         InterviewSessionEntity entity =
-                sessionService.create(req.candidateId(), req.positionId(), req.persona());
+                sessionService.create(candidateId, req.resumeId(), req.positionId(), req.persona());
         return Result.ok(InterviewResponse.from(entity));
     }
 
@@ -289,7 +304,7 @@ public class InterviewController {
             // 4. 查岗位
             PositionEntity position = positionService.getById(session.getPositionId());
             // 5. 查简历
-            ResumeEntity resume = resumeService.getById(session.getCandidateId());
+            ResumeEntity resume = resumeService.getById(session.getResumeId());
             // 6. RAG 检索
             List<QuestionSearchResult> ragResults =
                     questionRagService.search(position.getJdText(), RAG_TOP_K).results();
@@ -300,7 +315,7 @@ public class InterviewController {
                             resume.getCandidateName(),
                             position.getTitle(),
                             position.getJdText(),
-                            buildResumeSummary(resume),
+                            resumeSummaryBuilder.build(resume),
                             ragQuestions,
                             questionCount,
                             difficulty,
@@ -422,21 +437,6 @@ public class InterviewController {
                             secureRandom.nextInt(ACCESS_PASSWORD_CHARS.length())));
         }
         return sb.toString();
-    }
-
-    /** 构建简历摘要：优先使用 parsedJson，否则使用 rawText 截断。 */
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        if (rawText.length() > RESUME_SUMMARY_MAX) {
-            return rawText.substring(0, RESUME_SUMMARY_MAX);
-        }
-        return rawText;
     }
 
     /** 格式化 RAG 检索结果为文本。 */

@@ -1,6 +1,7 @@
 package com.aims.ai.facade;
 
 import com.aims.ai.router.ModelTier;
+import java.util.List;
 import reactor.core.publisher.Flux;
 
 /**
@@ -14,6 +15,10 @@ public interface AiChatFacade {
 
     /** 阻塞纯文本调用。 */
     String call(ModelTier tier, String systemPrompt, String userPrompt);
+
+    /** 带工具注册的阻塞调用（F2）：模型可自主调用 {@code tools}（@Tool 实例），工具结果自动回填上下文后产出最终文本。 */
+    String callWithTools(
+            ModelTier tier, String systemPrompt, String userPrompt, List<Object> tools);
 
     /** 流式调用（P3 WebSocket 流式提问使用）。 */
     Flux<String> stream(ModelTier tier, String systemPrompt, String userPrompt);

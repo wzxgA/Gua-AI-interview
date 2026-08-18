@@ -6,6 +6,7 @@ import com.aims.ai.router.ModelRouter;
 import com.aims.ai.router.ModelTier;
 import com.aims.core.common.NodeContextHolder;
 import com.aims.core.common.exception.AiOutputParseException;
+import java.util.List;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
@@ -68,6 +69,18 @@ public class DefaultAiChatFacade implements AiChatFacade {
                 tier,
                 (client, model) ->
                         newSpec(client, tier, model, systemPrompt, userPrompt).call().content());
+    }
+
+    @Override
+    public String callWithTools(
+            ModelTier tier, String systemPrompt, String userPrompt, List<Object> tools) {
+        return modelRouter.executeCall(
+                tier,
+                (client, model) ->
+                        newSpec(client, tier, model, systemPrompt, userPrompt)
+                                .tools(tools.toArray())
+                                .call()
+                                .content());
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.aims.gateway.orchestration;
 
 import com.aims.agent.orchestration.state.InterviewState;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
@@ -10,12 +11,15 @@ import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.PositionEntity;
 import com.aims.infra.persistence.entity.ResumeEntity;
+import com.aims.infra.persistence.service.ConflictDetailsJson;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,12 +49,12 @@ import org.springframework.stereotype.Component;
 public class StatePersistenceService {
 
     private static final Logger log = LoggerFactory.getLogger(StatePersistenceService.class);
-    private static final int RESUME_SUMMARY_MAX = 2000;
 
     private final InterviewSessionService sessionService;
     private final InterviewRoundService roundService;
     private final ResumeService resumeService;
     private final PositionService positionService;
+    private final ResumeSummaryBuilder resumeSummaryBuilder;
     private final ObjectMapper objectMapper;
 
     public StatePersistenceService(
@@ -58,11 +62,13 @@ public class StatePersistenceService {
             InterviewRoundService roundService,
             ResumeService resumeService,
             PositionService positionService,
+            ResumeSummaryBuilder resumeSummaryBuilder,
             ObjectMapper objectMapper) {
         this.sessionService = sessionService;
         this.roundService = roundService;
         this.resumeService = resumeService;
         this.positionService = positionService;
+        this.resumeSummaryBuilder = resumeSummaryBuilder;
         this.objectMapper = objectMapper;
     }
 
@@ -80,7 +86,7 @@ public class StatePersistenceService {
             throw new IllegalArgumentException("Session 不存在: " + sessionId);
         }
 
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
         // P5 防御：plan 缺失/解析失败 -> 启动即失败，不进入 0 题评估（totalRounds=0 时 endCheck 恒真）
@@ -95,10 +101,11 @@ public class StatePersistenceService {
 
         Map<String, Object> data = new HashMap<>();
         data.put(InterviewState.SESSION_ID, entity.getId());
+        data.put(InterviewState.RESUME_ID, resume != null ? resume.getId() : null);
         data.put(InterviewState.CANDIDATE_NAME, resume != null ? resume.getCandidateName() : "");
         data.put(InterviewState.POSITION_TITLE, position != null ? position.getTitle() : "");
         data.put(InterviewState.JD_TEXT, position != null ? position.getJdText() : "");
-        data.put(InterviewState.RESUME_SUMMARY, buildResumeSummary(resume));
+        data.put(InterviewState.RESUME_SUMMARY, resumeSummaryBuilder.build(resume));
         data.put(InterviewState.PERSONA, InterviewerPersona.fromString(entity.getPersona()));
         data.put(InterviewState.TOTAL_ROUNDS, totalRounds);
         data.put(InterviewState.CURRENT_SEQ, 0);
@@ -107,6 +114,10 @@ public class StatePersistenceService {
         data.put(InterviewState.ROUND_EVALUATIONS, new ArrayList<>());
         data.put(InterviewState.SESSION_STATUS, SessionStatus.IN_PROGRESS);
         data.put(InterviewState.INTERVIEW_PLAN, plan);
+        // F1 总指挥：注入会话开始时间，供 SuperviseNode 计算已耗时
+        data.put(
+                InterviewState.SESSION_STARTED_AT,
+                entity.getStartedAt() != null ? entity.getStartedAt() : Instant.now());
         log.info("构建初始状态 sessionId={} totalRounds={}", sessionId, totalRounds);
         return new InterviewState(data);
     }
@@ -216,7 +227,29 @@ public class StatePersistenceService {
             }
         }
 
-        // 4. SESSION_STATUS → DB（仅当非 IN_PROGRESS 初始态时更新）
+        // 4. v1.1-F4：矛盾点落库 —— 决策阶段检测到的矛盾点按轮次 key 写入 conflict_details（幂等，已写同值不再更新）
+        for (Map.Entry<String, List<ConflictDetail>> entry :
+                state.conflictDetailsByRound().entrySet()) {
+            String key = entry.getKey();
+            InterviewRoundEntity round =
+                    key.contains(":")
+                            ? followUpByKey.get(key)
+                            : mainBySeq.get(Integer.parseInt(key));
+            if (round == null) {
+                continue;
+            }
+            if (!ConflictDetailsJson.serialize(entry.getValue())
+                    .equals(round.getConflictDetails())) {
+                roundService.updateConflictDetails(round.getId(), entry.getValue());
+                log.debug(
+                        "syncFromState 写入矛盾点 sessionId={} key={} conflicts={}",
+                        sessionId,
+                        key,
+                        entry.getValue().size());
+            }
+        }
+
+        // 5. SESSION_STATUS → DB（仅当非 IN_PROGRESS 初始态时更新）
         SessionStatus status = state.sessionStatus();
         if (status != SessionStatus.IN_PROGRESS && status != SessionStatus.CREATED) {
             sessionService.updateStatus(sessionId, status);
@@ -237,15 +270,25 @@ public class StatePersistenceService {
             throw new IllegalArgumentException("Session 不存在: " + sessionId);
         }
 
-        ResumeEntity resume = resumeService.getById(entity.getCandidateId());
+        ResumeEntity resume = resumeService.getById(entity.getResumeId());
         PositionEntity position = positionService.getById(entity.getPositionId());
         InterviewPlan plan = parsePlan(entity.getPlanJson());
 
         // 加载所有轮次，重建 QA_HISTORY（主问题 + 追问；追问沿用主问题 seq 并携带 followUpIndex/followUpType）
         List<InterviewRoundEntity> rounds = roundService.listBySession(sessionId);
         List<QaPair> qaHistory = new ArrayList<>();
+        Map<String, List<ConflictDetail>> conflictsByRound = new HashMap<>();
         int currentSeq = 0;
         for (InterviewRoundEntity r : rounds) {
+            // v1.1-F4：读回矛盾点（key=主问题 seq 或 "seq:followUpIndex"）
+            List<ConflictDetail> roundConflicts = ConflictDetailsJson.parse(r.getConflictDetails());
+            if (!roundConflicts.isEmpty()) {
+                conflictsByRound.put(
+                        r.getSeq() != null
+                                ? String.valueOf(r.getSeq())
+                                : r.getParentSeq() + ":" + r.getFollowUpIndex(),
+                        roundConflicts);
+            }
             if (r.getAnswer() == null || r.getAnswer().isBlank()) {
                 continue;
             }
@@ -265,14 +308,16 @@ public class StatePersistenceService {
 
         Map<String, Object> data = new HashMap<>();
         data.put(InterviewState.SESSION_ID, entity.getId());
+        data.put(InterviewState.RESUME_ID, resume != null ? resume.getId() : null);
         data.put(InterviewState.CANDIDATE_NAME, resume != null ? resume.getCandidateName() : "");
         data.put(InterviewState.POSITION_TITLE, position != null ? position.getTitle() : "");
         data.put(InterviewState.JD_TEXT, position != null ? position.getJdText() : "");
-        data.put(InterviewState.RESUME_SUMMARY, buildResumeSummary(resume));
+        data.put(InterviewState.RESUME_SUMMARY, resumeSummaryBuilder.build(resume));
         data.put(InterviewState.PERSONA, InterviewerPersona.fromString(entity.getPersona()));
         data.put(InterviewState.TOTAL_ROUNDS, getTotalRounds(plan));
         data.put(InterviewState.CURRENT_SEQ, currentSeq);
         data.put(InterviewState.QA_HISTORY, qaHistory);
+        data.put(InterviewState.CONFLICT_DETAILS_BY_ROUND, conflictsByRound);
         data.put(InterviewState.FOLLOW_UP_COUNT, 0);
         data.put(InterviewState.ROUND_EVALUATIONS, new ArrayList<>());
         data.put(InterviewState.SESSION_STATUS, SessionStatus.IN_PROGRESS);
@@ -299,22 +344,5 @@ public class StatePersistenceService {
             return 0;
         }
         return plan.questions().size();
-    }
-
-    private String buildResumeSummary(ResumeEntity resume) {
-        if (resume == null) {
-            return "未提供";
-        }
-        if (resume.getParsedJson() != null && !resume.getParsedJson().isBlank()) {
-            return resume.getParsedJson();
-        }
-        String rawText = resume.getRawText();
-        if (rawText == null || rawText.isBlank()) {
-            return "未提供";
-        }
-        if (rawText.length() > RESUME_SUMMARY_MAX) {
-            return rawText.substring(0, RESUME_SUMMARY_MAX);
-        }
-        return rawText;
     }
 }

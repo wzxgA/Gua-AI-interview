@@ -114,7 +114,7 @@ export function InterviewListPage() {
               <thead>
                 <tr className="border-b border-border-subtle text-text-muted">
                   <th className="px-4 py-3 text-left font-medium">{t('interviews.idColumn')}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t('interviews.candidateIdColumn')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('interviews.resumeIdColumn')}</th>
                   <th className="px-4 py-3 text-left font-medium">{t('interviews.positionIdColumn')}</th>
                   <th className="px-4 py-3 text-left font-medium">{t('interviews.statusColumn')}</th>
                   <th className="px-4 py-3 text-left font-medium">{t('interviews.createdAtColumn')}</th>
@@ -136,7 +136,7 @@ export function InterviewListPage() {
                         #{item.id}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-text-secondary">{item.candidateId}</td>
+                    <td className="px-4 py-3 text-text-secondary">{item.resumeId ?? '-'}</td>
                     <td className="px-4 py-3 text-text-secondary">
                       {item.positionId ?? '-'}
                     </td>

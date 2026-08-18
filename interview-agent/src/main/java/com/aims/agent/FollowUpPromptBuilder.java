@@ -1,8 +1,10 @@
 package com.aims.agent;
 
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpContext;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
+import java.util.List;
 
 /** 追问 Prompt 构建器。 */
 public final class FollowUpPromptBuilder {
@@ -30,6 +32,14 @@ public final class FollowUpPromptBuilder {
 - 如果回答完整且有具体细节，应进入下一题（NEXT）
 - 追问问题应基于预设的追问方向（followUpHints），不脱离面试主线
 
+工具（简历交叉验证）：
+- 如需验证回答与简历是否一致（尤其怀疑简历矛盾或夸大经历时），可调用 resumeCrossCheck 工具查证。
+- 工具返回的 score 为回答与简历的匹配度：score < 0.5 表示回答内容在简历中缺乏对应支持（疑似简历未提及或夸大），应倾向 CLARIFY 追问；score >= 0.7 表示与简历一致，可信任回答。
+- 工具结果仅作证据参考，最终判断仍由你做出；工具不可用（无结果）时按常规判断，不要臆造证据。
+
+JSON 输出约束：
+- 所有字符串值内不得包含未转义的双引号 "；如需在文本中引用内容，请用单引号或中文引号『』。
+
 只输出 JSON，不要额外说明：
 {"action":"NEXT|CLARIFY|DEEPEN|REDIRECT","reason":"决策理由（一句话）","followUpQuestion":"追问问题文本（action=NEXT 时为null）"}
 """;
@@ -43,11 +53,24 @@ public final class FollowUpPromptBuilder {
 
     /** 构造追问决策用户 Prompt。 */
     public static String decisionUser(FollowUpContext context) {
+        return decisionUser(context, List.of());
+    }
+
+    /** 构造追问决策用户 Prompt（可带简历交叉验证矛盾证据，F4：注入决策阶段探测的矛盾点）。 */
+    public static String decisionUser(FollowUpContext context, List<ConflictDetail> conflicts) {
         StringBuilder sb = new StringBuilder();
         sb.append("## 面试问题\n").append(safe(context.question())).append("\n\n");
         sb.append("## 候选人回答\n").append(safe(context.answer())).append("\n\n");
         sb.append("## 岗位要求\n").append(safe(context.jdText())).append("\n\n");
         sb.append("## 简历摘要\n").append(safe(context.resumeSummary())).append("\n\n");
+        if (conflicts != null && !conflicts.isEmpty()) {
+            sb.append("## 简历交叉验证矛盾证据\n");
+            sb.append("以下为规则通道检测到的回答与简历经历的不一致，供你判断是否追问（仅作参考，最终裁决由你做出）：\n");
+            for (ConflictDetail c : conflicts) {
+                sb.append("- ").append(formatConflict(c)).append('\n');
+            }
+            sb.append('\n');
+        }
         if (!context.followUpHints().isEmpty()) {
             sb.append("## 预设追问方向\n");
             for (int i = 0; i < context.followUpHints().size(); i++) {
@@ -55,6 +78,22 @@ public final class FollowUpPromptBuilder {
             }
         }
         return sb.toString();
+    }
+
+    /** 矛盾点格式化：字段+expected/actual，便于模型一眼理解。 */
+    public static String formatConflict(ConflictDetail c) {
+        return switch (c.conflictField()) {
+            case "company" -> "公司矛盾：回答提到「" + c.actual() + "」，简历未提及该公司";
+            case "project" -> "项目矛盾：回答提到「" + c.actual() + "」，简历未提及该项目";
+            case "period" -> "时间线矛盾：回答称 " + c.actual() + "，简历为 " + c.expected();
+            default ->
+                    "矛盾："
+                            + c.conflictField()
+                            + " expected="
+                            + c.expected()
+                            + " actual="
+                            + c.actual();
+        };
     }
 
     /** 构造追问问题生成用户 Prompt。 */

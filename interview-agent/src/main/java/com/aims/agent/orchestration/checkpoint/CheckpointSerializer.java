@@ -2,15 +2,20 @@ package com.aims.agent.orchestration.checkpoint;
 
 import com.aims.agent.orchestration.state.InterviewState;
 import com.aims.core.evaluation.RoundEvaluation;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.core.interview.FollowUpDecision;
 import com.aims.core.interview.FollowUpType;
 import com.aims.core.interview.InterviewPlan;
 import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.interview.QaPair;
+import com.aims.core.interview.SupervisorDecision;
 import com.aims.core.report.ReportResult;
 import com.aims.core.session.SessionStatus;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,6 +61,11 @@ public class CheckpointSerializer {
 
     private static ObjectMapper defaultMapper() {
         ObjectMapper m = new ObjectMapper();
+        // F1：sessionStartedAt 为 java.time.Instant，需 JSR310 模块序列化/反序列化。
+        // 关闭时间戳输出：Instant 写 ISO-8601 字符串（无损、可读），否则默认输出 epoch 秒小数（Double），
+        // 反序列化经 Map<String,Object> 读回会退化为 Double，导致 <Instant> 强转 ClassCastException。
+        m.registerModule(new JavaTimeModule());
+        m.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         m.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return m;
     }
@@ -96,13 +106,18 @@ public class CheckpointSerializer {
             Map.of(
                     InterviewState.INTERVIEW_PLAN, InterviewPlan.class,
                     InterviewState.FOLLOW_UP_DECISION, FollowUpDecision.class,
-                    InterviewState.REPORT_RESULT, ReportResult.class);
+                    InterviewState.REPORT_RESULT, ReportResult.class,
+                    InterviewState.SUPERVISOR_DECISION, SupervisorDecision.class);
 
     private static final Map<String, Class<?>> LONG_TYPES =
             Map.of(
                     InterviewState.SESSION_ID,
                     Long.class,
+                    InterviewState.RESUME_ID,
+                    Long.class,
                     InterviewState.CURRENT_ROUND_ID,
+                    Long.class,
+                    InterviewState.ELAPSED_MS,
                     Long.class);
 
     private static final Map<String, Class<?>> INT_TYPES =
@@ -143,6 +158,9 @@ public class CheckpointSerializer {
         if (value == null) {
             return null;
         }
+        if (InterviewState.SESSION_STARTED_AT.equals(key)) {
+            return toInstant(value);
+        }
         Class<?> recordType = RECORD_TYPES.get(key);
         if (recordType != null && value instanceof Map) {
             return mapper.convertValue(value, recordType);
@@ -162,7 +180,52 @@ public class CheckpointSerializer {
         if (value instanceof List<?> list) {
             return normalizeList(key, list);
         }
+        // v1.1-F4：CONFLICT_DETAILS_BY_ROUND 为 Map<String, List<ConflictDetail>>，
+        // 反序列化后退化为 Map<String, List<LinkedHashMap>>，需还原元素为 ConflictDetail，
+        // 否则 EvaluateNode/ReportNode 访问 conflictField() 会抛 ClassCastException
+        if (InterviewState.CONFLICT_DETAILS_BY_ROUND.equals(key)
+                && value instanceof Map<?, ?> map) {
+            return normalizeConflictDetailsMap(map);
+        }
         return value;
+    }
+
+    /** 还原矛盾点映射：Map<String, List<ConflictDetail>>（元素由 LinkedHashMap 转回 ConflictDetail）。 */
+    @SuppressWarnings("unchecked")
+    private Map<String, List<ConflictDetail>> normalizeConflictDetailsMap(Map<?, ?> map) {
+        Map<String, List<ConflictDetail>> result = new LinkedHashMap<>(map.size());
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String k = String.valueOf(entry.getKey());
+            if (entry.getValue() instanceof List<?> list) {
+                List<ConflictDetail> details = new ArrayList<>(list.size());
+                for (Object element : list) {
+                    if (element instanceof ConflictDetail cd) {
+                        details.add(cd);
+                    } else if (element instanceof Map) {
+                        details.add(mapper.convertValue(element, ConflictDetail.class));
+                    }
+                }
+                result.put(k, details);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 还原 {@code sessionStartedAt} 为 {@link Instant}：兼容新 checkpoint（ISO-8601 字符串）与旧 checkpoint
+     * （JSR310 默认输出的 epoch 秒 Double）。
+     */
+    private static Instant toInstant(Object value) {
+        if (value instanceof Instant instant) {
+            return instant;
+        }
+        if (value instanceof Number number) {
+            double secs = number.doubleValue();
+            long epochSecond = (long) secs;
+            int nano = (int) Math.round((secs - epochSecond) * 1_000_000_000);
+            return Instant.ofEpochSecond(epochSecond, nano);
+        }
+        return Instant.parse(value.toString());
     }
 
     private List<Object> normalizeList(String key, List<?> list) {

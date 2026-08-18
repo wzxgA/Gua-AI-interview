@@ -22,6 +22,7 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,8 +39,8 @@ public class ChatClientConfig {
     private static final Logger log = LoggerFactory.getLogger(ChatClientConfig.class);
 
     @Bean
-    LoggingAdvisor loggingAdvisor() {
-        return new LoggingAdvisor();
+    LoggingAdvisor loggingAdvisor(@Value("${aims.log.prompt-max-chars:200}") int promptMaxChars) {
+        return new LoggingAdvisor(promptMaxChars);
     }
 
     @Bean

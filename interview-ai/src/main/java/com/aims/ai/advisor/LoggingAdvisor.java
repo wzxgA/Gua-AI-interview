@@ -19,7 +19,18 @@ import reactor.core.publisher.Flux;
 public class LoggingAdvisor implements CallAdvisor, StreamAdvisor {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingAdvisor.class);
-    private static final int PROMPT_SUMMARY_MAX = 500;
+    private static final int PROMPT_SUMMARY_MAX_DEFAULT = 200;
+
+    /** prompt 摘要最大字符数（可由 AIMS_LOG_PROMPT_MAX_CHARS 覆盖，排查时调大）。 */
+    private final int promptSummaryMax;
+
+    public LoggingAdvisor() {
+        this(PROMPT_SUMMARY_MAX_DEFAULT);
+    }
+
+    public LoggingAdvisor(int promptSummaryMax) {
+        this.promptSummaryMax = promptSummaryMax;
+    }
 
     @Override
     public String getName() {
@@ -102,8 +113,8 @@ public class LoggingAdvisor implements CallAdvisor, StreamAdvisor {
             return "-";
         }
         String flat = content.replaceAll("\\s+", " ").trim();
-        return flat.length() <= PROMPT_SUMMARY_MAX
+        return flat.length() <= promptSummaryMax
                 ? flat
-                : flat.substring(0, PROMPT_SUMMARY_MAX) + "...(" + flat.length() + " chars)";
+                : flat.substring(0, promptSummaryMax) + "...(" + flat.length() + " chars)";
     }
 }

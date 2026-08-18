@@ -1,5 +1,8 @@
 package com.aims.core.evaluation;
 
+import com.aims.core.interview.ConflictDetail;
+import java.util.List;
+
 /**
  * 评估上下文，传递给 {@code EvaluatorAgent}。
  *
@@ -13,6 +16,7 @@ package com.aims.core.evaluation;
  * @param positionTitle 岗位名称
  * @param jdText 岗位 JD
  * @param resumeSummary 简历摘要
+ * @param conflictDetails 该轮简历交叉验证矛盾点（无矛盾为空列表，供评估引用）
  */
 public record EvaluationContext(
         Long sessionId,
@@ -24,4 +28,10 @@ public record EvaluationContext(
         String answer,
         String positionTitle,
         String jdText,
-        String resumeSummary) {}
+        String resumeSummary,
+        List<ConflictDetail> conflictDetails) {
+
+    public EvaluationContext {
+        conflictDetails = conflictDetails == null ? List.of() : List.copyOf(conflictDetails);
+    }
+}

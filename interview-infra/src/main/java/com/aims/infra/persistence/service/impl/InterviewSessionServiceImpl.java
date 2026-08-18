@@ -40,12 +40,14 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     @Override
     @Transactional
-    public InterviewSessionEntity create(Long candidateId, Long positionId, String persona) {
-        if (candidateId == null) {
-            throw new BizException(ErrorCode.PARAM_INVALID, "候选人 ID 不能为空");
+    public InterviewSessionEntity create(
+            Long candidateId, Long resumeId, Long positionId, String persona) {
+        if (resumeId == null) {
+            throw new BizException(ErrorCode.PARAM_INVALID, "简历 ID 不能为空");
         }
         InterviewSessionEntity entity = new InterviewSessionEntity();
         entity.setCandidateId(candidateId);
+        entity.setResumeId(resumeId);
         entity.setPositionId(positionId);
         entity.setPersona(InterviewerPersona.fromString(persona).name());
         entity.setStatus(SessionStatus.CREATED.name());

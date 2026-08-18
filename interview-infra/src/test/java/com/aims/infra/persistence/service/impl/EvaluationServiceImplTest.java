@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,7 +18,10 @@ import com.aims.infra.persistence.mapper.EvaluationMapper;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
+import com.aims.infra.persistence.service.ResumeExperienceService;
 import com.aims.infra.persistence.service.ResumeService;
+import com.aims.infra.persistence.service.ResumeSummaryBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +45,10 @@ class EvaluationServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        ResumeExperienceService experienceService = mock(ResumeExperienceService.class);
+        // lenient：skip 类用例不触发摘要构建
+        lenient().when(experienceService.listWork(anyLong())).thenReturn(List.of());
+        lenient().when(experienceService.listProject(anyLong())).thenReturn(List.of());
         service =
                 new EvaluationServiceImpl(
                         evaluationMapper,
@@ -47,6 +56,7 @@ class EvaluationServiceImplTest {
                         roundService,
                         positionService,
                         resumeService,
+                        new ResumeSummaryBuilder(new ObjectMapper(), experienceService),
                         evaluatorAgent);
     }
 
@@ -55,6 +65,7 @@ class EvaluationServiceImplTest {
         e.setId(1L);
         e.setPositionId(10L);
         e.setCandidateId(20L);
+        e.setResumeId(20L);
         e.setEvaluationStatus(evaluationStatus);
         return e;
     }

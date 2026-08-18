@@ -2,8 +2,10 @@ package com.aims.infra.persistence.service.impl;
 
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.BizException;
+import com.aims.core.interview.ConflictDetail;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.mapper.InterviewRoundMapper;
+import com.aims.infra.persistence.service.ConflictDetailsJson;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Instant;
@@ -75,6 +77,17 @@ public class InterviewRoundServiceImpl implements InterviewRoundService {
         }
         entity.setAudioUrl(audioUrl);
         entity.setDurationMs(durationMs);
+        roundMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
+    public void updateConflictDetails(Long roundId, List<ConflictDetail> conflicts) {
+        InterviewRoundEntity entity = roundMapper.selectById(roundId);
+        if (entity == null) {
+            return;
+        }
+        entity.setConflictDetails(ConflictDetailsJson.serialize(conflicts));
         roundMapper.updateById(entity);
     }
 

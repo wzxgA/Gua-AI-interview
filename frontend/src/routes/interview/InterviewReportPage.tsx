@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SilverButton } from '@/components/ui/silver-button';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
 import { ReportSummaryCard } from '@/components/report/ReportSummaryCard';
+import { ConflictSummaryCard } from '@/components/report/ConflictSummaryCard';
 import { DimensionRadarChart } from '@/components/report/DimensionRadarChart';
 import { DimensionScoreList } from '@/components/report/DimensionScoreList';
 import { RoundEvaluationList } from '@/components/report/RoundEvaluationList';
@@ -113,6 +114,9 @@ export function InterviewReportPage() {
       />
 
       <ReportSummaryCard report={report} />
+
+      {/* v1.1-F4：候选人与简历矛盾点（有矛盾才显示） */}
+      <ConflictSummaryCard conflictSummary={report.conflictSummary} />
 
       {/* 专注度摘要（开启防作弊时展示；与评估打分解耦，仅参考） */}
       {proctorActive && <ProctorFocusCard summary={proctorSummary} />}

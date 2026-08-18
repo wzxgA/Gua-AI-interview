@@ -134,6 +134,9 @@ aims:
     sample-rate: 24000
     speech-rate: 0
     persona-voice-link: true
+  log:
+    # LLM 调用日志的 prompt 摘要截断长度（字符）；排查需要时可临时调大（AIMS_LOG_PROMPT_MAX_CHARS）
+    prompt-max-chars: ${AIMS_LOG_PROMPT_MAX_CHARS:200}
 
 rag:
   # 题库 RAG 检索缓存（均可关闭，Redis 异常自动降级直查）
@@ -148,6 +151,4 @@ logging:
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] [%X{sessionId:-}] [%X{node:-}/%X{round:-}] %-5level %logger{36} - %msg%n"
   level:
-    org.springframework.web.client: DEBUG
-    org.springframework.ai.openai.api: DEBUG
     org.apache.kafka: WARN

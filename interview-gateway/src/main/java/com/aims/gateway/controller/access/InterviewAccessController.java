@@ -183,7 +183,9 @@ public class InterviewAccessController {
         requireSameSession(sessionId);
         ReportEntity report = reportService.getBySession(sessionId);
         InterviewSessionEntity session = sessionService.getById(sessionId);
-        return Result.ok(ReportResponse.from(report, session.getTotalScore()));
+        return Result.ok(
+                ReportResponse.from(
+                        report, session.getTotalScore(), roundService.listBySession(sessionId)));
     }
 
     @Operation(
@@ -241,8 +243,7 @@ public class InterviewAccessController {
     }
 
     private String resolveCandidateName(InterviewSessionEntity session) {
-        Long resumeId =
-                session.getResumeId() != null ? session.getResumeId() : session.getCandidateId();
+        Long resumeId = session.getResumeId();
         if (resumeId == null) {
             return "候选人";
         }
