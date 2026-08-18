@@ -409,8 +409,8 @@
     "selectResumePlaceholder": "Select a parsed resume",
     "nameWithId": "{{name}} (#{{id}})",
     "noParsedResumes": "No parsed resumes. Please upload and parse a resume first",
-    "positionOptional": "Interview Position (optional)",
-    "noPosition": "No position specified",
+    "positionRequired": "Interview Position *",
+    "selectPositionPlaceholder": "Select a position",
     "personaLabel": "Interviewer Persona",
     "personaDescFriendly": "Encouraging and guiding, suitable for junior positions",
     "personaDescPressure": "Direct challenges, tests stress tolerance",
@@ -536,7 +536,8 @@
       "POTENTIAL": "Learning & Potential"
     },
     "validation": {
-      "resumeRequired": "Please select a candidate resume"
+      "resumeRequired": "Please select a candidate resume",
+      "positionRequired": "Please select an interview position"
     }
   },
   "rag": {

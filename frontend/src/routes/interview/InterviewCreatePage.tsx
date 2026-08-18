@@ -46,6 +46,10 @@ export function InterviewCreatePage() {
       toast.error(t('interviews.validation.resumeRequired'));
       return;
     }
+    if (!positionId) {
+      toast.error(t('interviews.validation.positionRequired'));
+      return;
+    }
     createMutation.mutate(
       {
         resumeId,
@@ -117,7 +121,7 @@ export function InterviewCreatePage() {
 
           {/* 选择岗位 */}
           <div>
-            <Label>{t('interviews.positionOptional')}</Label>
+            <Label>{t('interviews.positionRequired')}</Label>
             {positionsLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
@@ -127,7 +131,7 @@ export function InterviewCreatePage() {
                   setPositionId(e.target.value ? Number(e.target.value) : '')
                 }
               >
-                <option value="">{t('interviews.noPosition')}</option>
+                <option value="">{t('interviews.selectPositionPlaceholder')}</option>
                 {positions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {t('interviews.nameWithId', { name: p.title, id: p.id })}
@@ -172,7 +176,7 @@ export function InterviewCreatePage() {
             <SilverButton
               type="button"
               onClick={handleSubmit}
-              disabled={createMutation.isPending || !resumeId}
+              disabled={createMutation.isPending || !resumeId || !positionId}
             >
               {createMutation.isPending ? t('interviews.creating') : t('interviews.create')}
             </SilverButton>
