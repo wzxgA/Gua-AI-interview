@@ -4,7 +4,6 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModelTiers } from '@/api/settings';
-import { APP_VERSION } from '@/lib/constants';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
@@ -94,15 +93,6 @@ export function SettingsPage() {
           )}
         </GlassCard>
 
-        <GlassCard className="p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-primary">{t('settings.envInfo')}</h3>
-          <div className="space-y-2 text-xs text-text-secondary">
-            <div className="flex justify-between">
-              <span>{t('settings.frontendVersion')}</span>
-              <span>{APP_VERSION}</span>
-            </div>
-          </div>
-        </GlassCard>
       </div>
     </div>
   );

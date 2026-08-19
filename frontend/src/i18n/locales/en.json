@@ -152,9 +152,7 @@
     "dimensions": "{{count}} dims",
     "temperature": "Temp {{value}}",
     "maxTokens": "maxTokens {{value}}",
-    "fallback": "Fallback {{tier}}",
-    "envInfo": "Environment",
-    "frontendVersion": "Frontend version"
+    "fallback": "Fallback {{tier}}"
   },
   "positions": {
     "title": "Positions",

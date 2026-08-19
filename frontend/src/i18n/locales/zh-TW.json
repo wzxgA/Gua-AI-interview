@@ -152,9 +152,7 @@
     "dimensions": "{{count}} 維",
     "temperature": "溫度 {{value}}",
     "maxTokens": "maxTokens {{value}}",
-    "fallback": "降級 {{tier}}",
-    "envInfo": "環境資訊",
-    "frontendVersion": "前端版本"
+    "fallback": "降級 {{tier}}"
   },
   "positions": {
     "title": "崗位管理",
