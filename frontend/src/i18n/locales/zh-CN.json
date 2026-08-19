@@ -579,6 +579,7 @@
     "reconnect": "重新连接",
     "candidate": "候选人",
     "radarChartTitle": "维度雷达图",
+    "dimensionScoreTitle": "维度得分明细",
     "roundEvaluationTitle": "轮次评估明细",
     "conflictSummaryTitle": "候选人与简历矛盾点",
     "roundNumber": "第 {{index}} 轮",

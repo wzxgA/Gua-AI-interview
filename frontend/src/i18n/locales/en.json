@@ -579,6 +579,7 @@
     "reconnect": "Reconnect",
     "candidate": "Candidate",
     "radarChartTitle": "Dimension Radar Chart",
+    "dimensionScoreTitle": "Dimension Score Details",
     "roundEvaluationTitle": "Round Evaluation Details",
     "conflictSummaryTitle": "Resume Conflicts Detected",
     "roundNumber": "Round {{index}}",

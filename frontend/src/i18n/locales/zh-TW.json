@@ -579,6 +579,7 @@
     "reconnect": "重新連線",
     "candidate": "候選人",
     "radarChartTitle": "維度雷達圖",
+    "dimensionScoreTitle": "維度得分明細",
     "roundEvaluationTitle": "輪次評估明細",
     "conflictSummaryTitle": "候選人與履歷矛盾點",
     "roundNumber": "第 {{index}} 輪",
