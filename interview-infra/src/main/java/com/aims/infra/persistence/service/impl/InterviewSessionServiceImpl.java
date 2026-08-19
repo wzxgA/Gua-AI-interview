@@ -226,6 +226,16 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     @Override
     @Transactional
+    public void recordFinish(Long id, String finishedBy, String finishReason) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setFinishedBy(finishedBy);
+        entity.setFinishReason(finishReason);
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
     public InterviewSessionEntity transition(
             Long id,
             SessionStatus expected,

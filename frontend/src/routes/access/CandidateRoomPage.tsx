@@ -45,6 +45,7 @@ export function CandidateRoomPage() {
   const resetStore = useSessionStore((s) => s.reset);
   const addQuestion = useSessionStore((s) => s.addQuestion);
   const addAnswer = useSessionStore((s) => s.addAnswer);
+  const addSystem = useSessionStore((s) => s.addSystem);
   const { connect, disconnect } = session;
 
   // WebSocket 连接
@@ -79,6 +80,15 @@ export function CandidateRoomPage() {
       setSession(guestSession.id, guestSession.status as SessionStatus);
     }
   }, [guestSession, setSession]);
+
+  // 结束回执（重连兜底）：终态/评估中时用 REST 数据补齐 end 回执，去重由 store.addSystem 保证
+  useEffect(() => {
+    if (!guestSession) return;
+    const st = session.status as SessionStatus;
+    if (['EVALUATING', 'COMPLETED', 'CANCELLED', 'FAILED'].includes(st)) {
+      addSystem(st, guestSession.finishedBy ?? undefined, guestSession.finishReason ?? undefined);
+    }
+  }, [session.status, guestSession, addSystem]);
 
   // WS 错误提示
   useEffect(() => {

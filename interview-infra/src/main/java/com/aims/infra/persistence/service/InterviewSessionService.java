@@ -61,6 +61,9 @@ public interface InterviewSessionService {
     /** 标记结束时间。 */
     InterviewSessionEntity markEnded(Long id);
 
+    /** 记录结束原因（谁结束、以何种方式结束），用于结束原因透明化。 */
+    void recordFinish(Long id, String finishedBy, String finishReason);
+
     /** 更新评估流程状态。 */
     void updateEvaluationStatus(Long sessionId, String evaluationStatus);
 

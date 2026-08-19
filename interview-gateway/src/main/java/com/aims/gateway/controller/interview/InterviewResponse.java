@@ -24,7 +24,9 @@ public record InterviewResponse(
         Instant updatedAt,
         String accessToken,
         String accessPassword,
-        String accessMode) {
+        String accessMode,
+        String finishedBy,
+        String finishReason) {
 
     /** 从持久化实体构建响应。 */
     public static InterviewResponse from(InterviewSessionEntity entity) {
@@ -57,6 +59,8 @@ public record InterviewResponse(
                 entity.getUpdatedAt(),
                 entity.getAccessToken(),
                 rawPassword,
-                entity.getAccessMode());
+                entity.getAccessMode(),
+                entity.getFinishedBy(),
+                entity.getFinishReason());
     }
 }

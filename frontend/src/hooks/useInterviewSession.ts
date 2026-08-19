@@ -69,12 +69,19 @@ export function useInterviewSession({ sessionId, token }: UseInterviewSessionOpt
           break;
 
         case 'STATUS':
-          if (msg.status) store.setStatus(msg.status);
+          if (msg.status) {
+            store.setStatus(msg.status);
+            // 结束/取消时透传结束原因，注入回执
+            if (msg.finishedBy || msg.finishReason) {
+              store.addSystem(msg.status, msg.finishedBy, msg.finishReason);
+            }
+          }
           break;
 
         case 'SESSION_COMPLETED':
           store.setStatus('COMPLETED');
           store.finalizeQuestion();
+          store.addSystem('COMPLETED', msg.finishedBy, msg.finishReason);
           break;
 
         case 'ERROR':

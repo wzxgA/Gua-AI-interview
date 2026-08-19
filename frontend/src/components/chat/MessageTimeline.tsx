@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QuestionBubble } from './QuestionBubble';
 import { AnswerBubble } from './AnswerBubble';
+import { EndBubble } from './EndBubble';
 import type { ChatMessage } from '@/types/interview';
 
 interface MessageTimelineProps {
@@ -28,13 +29,16 @@ export function MessageTimeline({ messages }: MessageTimelineProps) {
 
   return (
     <div className="space-y-4 overflow-y-auto">
-      {messages.map((msg) =>
-        msg.role === 'question' ? (
+      {messages.map((msg) => {
+        if (msg.role === 'system') {
+          return <EndBubble key={msg.id} message={msg} />;
+        }
+        return msg.role === 'question' ? (
           <QuestionBubble key={msg.id} message={msg} />
         ) : (
           <AnswerBubble key={msg.id} message={msg} />
-        ),
-      )}
+        );
+      })}
       <div ref={bottomRef} />
     </div>
   );

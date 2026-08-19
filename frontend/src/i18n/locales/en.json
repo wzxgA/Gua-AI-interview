@@ -569,6 +569,18 @@
     "presetQuestions": "Preset Questions",
     "evaluationFocus": "Evaluation focus: {{focus}}",
     "waitingToStart": "Waiting for the interview to start...",
+    "ending": {
+      "titleFinished": "Interview Ended",
+      "titleDone": "Interview Completed",
+      "titleCancelled": "Interview Cancelled",
+      "titleFailed": "Interview Interrupted",
+      "bodyFinishedCandidate": "You ended this interview. Thank you for your participation. We are generating your evaluation report and it will be available shortly.",
+      "bodyFinishedAdmin": "The interviewer ended this interview. We are generating your evaluation report and it will be available shortly.",
+      "bodyCancelled": "This interview was cancelled. If you have any questions, please contact the interviewer to reschedule.",
+      "bodyFailed": "This interview could not be completed due to an unexpected issue. Please contact the interviewer.",
+      "bodyDone": "All interview questions are completed. Your evaluation report is being generated.",
+      "evaluatingHint": "Evaluation in progress. This usually takes a few minutes; you can refresh later to view the report."
+    },
     "answerPlaceholder": "Type your answer... (Ctrl+Enter to send)",
     "send": "Send",
     "aiInterviewer": "AI Interviewer",

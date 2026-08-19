@@ -569,6 +569,18 @@
     "presetQuestions": "預設問題",
     "evaluationFocus": "評價重點：{{focus}}",
     "waitingToStart": "等待面試開始...",
+    "ending": {
+      "titleFinished": "面試已結束",
+      "titleDone": "面試已完成",
+      "titleCancelled": "面試已取消",
+      "titleFailed": "面試異常",
+      "bodyFinishedCandidate": "你已主動結束本次面試。感謝你的參與，我們正在為你生成評估報告，完成後可查看。",
+      "bodyFinishedAdmin": "面試官已結束本次面試，我們正在為你生成評估報告，完成後可查看。",
+      "bodyCancelled": "本次面試已取消。如有疑問，可聯繫面試官重新安排。",
+      "bodyFailed": "本次面試出現異常未能完成，可聯繫面試官處理。",
+      "bodyDone": "面試環節已全部完成，正在生成評估報告。",
+      "evaluatingHint": "正在評估，通常需要幾分鐘，稍後可重新整理查看報告。"
+    },
     "answerPlaceholder": "輸入你的回答...（Ctrl+Enter 發送）",
     "send": "發送",
     "aiInterviewer": "AI 面試官",

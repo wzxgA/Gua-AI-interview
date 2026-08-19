@@ -15,6 +15,7 @@ import { ActionButtons } from '@/components/interview/ActionButtons';
 import { useInterview, useInterviewRounds, useResumeInterview } from '@/api/interview';
 import { useInterviewSession } from '@/hooks/useInterviewSession';
 import { useSessionStore } from '@/stores/sessionStore';
+import type { SessionStatus } from '@/types/interview';
 
 export function InterviewRoomPage() {
   const { t } = useTranslation();
@@ -32,6 +33,7 @@ export function InterviewRoomPage() {
   const resetStore = useSessionStore((s) => s.reset);
   const addQuestion = useSessionStore((s) => s.addQuestion);
   const addAnswer = useSessionStore((s) => s.addAnswer);
+  const addSystem = useSessionStore((s) => s.addSystem);
   const queryClient = useQueryClient();
   const { connect, disconnect } = session;
 
@@ -63,6 +65,15 @@ export function InterviewRoomPage() {
       setSession(interview.id, interview.status);
     }
   }, [interview, setSession]);
+
+  // 结束回执（重连兜底）：终态/评估中时用 REST 数据补齐 end 回执，去重由 store.addSystem 保证
+  useEffect(() => {
+    if (!interview) return;
+    const st = session.status as SessionStatus;
+    if (['EVALUATING', 'COMPLETED', 'CANCELLED', 'FAILED'].includes(st)) {
+      addSystem(st, interview.finishedBy ?? undefined, interview.finishReason ?? undefined);
+    }
+  }, [session.status, interview, addSystem]);
 
   // WebSocket 错误提示
   useEffect(() => {

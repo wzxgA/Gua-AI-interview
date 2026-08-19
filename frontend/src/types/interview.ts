@@ -59,6 +59,10 @@ export interface InterviewResponse {
   accessPassword?: string | null;
   /** 入口模式：NONE=未生成链接，CANDIDATE_ONLY=仅候选端，DISABLED=已作废 */
   accessMode?: 'NONE' | 'CANDIDATE_ONLY' | 'DISABLED';
+  /** 结束方（谁结束）：ADMIN/CANDIDATE/SYSTEM */
+  finishedBy?: string | null;
+  /** 结束方式：MANUAL_FINISH/CANCELLED/FAILED */
+  finishReason?: string | null;
 }
 
 /** 对齐 CreateInterviewRequest（v1.1-C TD2：入参为简历 ID） */
@@ -126,12 +130,14 @@ export interface WsServerMessage {
   followUpType?: string;
   audioUrl?: string;
   durationMs?: number;
+  finishedBy?: string;
+  finishReason?: string;
 }
 
 /** 聊天消息 */
 export interface ChatMessage {
   id: string;
-  role: 'question' | 'answer';
+  role: 'question' | 'answer' | 'system';
   text: string;
   roundId?: number;
   seq?: number;
@@ -140,6 +146,9 @@ export interface ChatMessage {
   followUpIndex?: number;
   audioUrl?: string;
   durationMs?: number;
+  status?: SessionStatus;
+  finishedBy?: string;
+  finishReason?: string;
   timestamp: string;
   streaming?: boolean;
 }

@@ -37,6 +37,8 @@ export interface GuestSession {
   planJson: string | null;
   startedAt: string | null;
   endedAt: string | null;
+  finishedBy?: string | null;
+  finishReason?: string | null;
 }
 
 // ---- 公开接口（无需 token） ----

@@ -569,6 +569,18 @@
     "presetQuestions": "预设问题",
     "evaluationFocus": "评价重点：{{focus}}",
     "waitingToStart": "等待面试开始...",
+    "ending": {
+      "titleFinished": "面试已结束",
+      "titleDone": "面试已完成",
+      "titleCancelled": "面试已取消",
+      "titleFailed": "面试异常",
+      "bodyFinishedCandidate": "你已主动结束本次面试。感谢你的参与，我们正在为你生成评估报告，完成后可查看。",
+      "bodyFinishedAdmin": "面试官已结束本次面试，我们正在为你生成评估报告，完成后可查看。",
+      "bodyCancelled": "本次面试已取消。如有疑问，可联系面试官重新安排。",
+      "bodyFailed": "本次面试出现异常未能完成，可联系面试官处理。",
+      "bodyDone": "面试环节已全部完成，正在生成评估报告。",
+      "evaluatingHint": "正在评估，通常需要几分钟，稍后可刷新查看报告。"
+    },
     "answerPlaceholder": "输入你的回答...（Ctrl+Enter 发送）",
     "send": "发送",
     "aiInterviewer": "AI 面试官",

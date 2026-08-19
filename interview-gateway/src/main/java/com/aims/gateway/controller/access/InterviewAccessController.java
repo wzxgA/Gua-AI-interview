@@ -260,7 +260,9 @@ public class InterviewAccessController {
             String persona,
             String planJson,
             String startedAt,
-            String endedAt) {
+            String endedAt,
+            String finishedBy,
+            String finishReason) {
 
         static GuestSessionResponse from(InterviewSessionEntity e) {
             return new GuestSessionResponse(
@@ -269,7 +271,9 @@ public class InterviewAccessController {
                     e.getPersona(),
                     e.getPlanJson(),
                     e.getStartedAt() == null ? null : e.getStartedAt().toString(),
-                    e.getEndedAt() == null ? null : e.getEndedAt().toString());
+                    e.getEndedAt() == null ? null : e.getEndedAt().toString(),
+                    e.getFinishedBy(),
+                    e.getFinishReason());
         }
     }
 }

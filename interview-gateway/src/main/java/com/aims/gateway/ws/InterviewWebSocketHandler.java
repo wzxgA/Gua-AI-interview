@@ -693,8 +693,13 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
         }
         // 状态转为 EVALUATING，触发评估
         if (triggerEvaluation(sessionId)) {
-            // 通知前端进入评估状态
-            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            String finisher = resolveFinisher(session);
+            recordFinishQuietly(sessionId, finisher, "MANUAL_FINISH");
+            // 通知前端进入评估状态，并透传结束原因用于回执
+            send(
+                    session,
+                    WsOutbound.status(
+                            sessionId, SessionStatus.EVALUATING.name(), finisher, "MANUAL_FINISH"));
             log.info("面试结束，进入评估流程 sessionId={}", sessionId);
         }
     }
@@ -703,21 +708,45 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private void handleCancel(WebSocketSession session, Long sessionId) {
         // Phase 5：Engine 启用时委托
         if (engine.isEnabled()) {
+            String finisher = resolveFinisher(session);
             try {
                 engine.cancelInterview(sessionId);
             } catch (Exception e) {
                 log.warn("Engine 取消面试失败 sessionId={}", sessionId, e);
             }
+            recordFinishQuietly(sessionId, finisher, "CANCELLED");
             sessionStore.forceUnlock(sessionId);
-            send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
+            send(
+                    session,
+                    WsOutbound.status(
+                            sessionId, SessionStatus.CANCELLED.name(), finisher, "CANCELLED"));
             log.info("会话取消（Engine）sessionId={}", sessionId);
             return;
         }
+        String finisher = resolveFinisher(session);
         sessionService.updateStatus(sessionId, SessionStatus.CANCELLED);
         sessionService.markEnded(sessionId);
+        recordFinishQuietly(sessionId, finisher, "CANCELLED");
         sessionStore.forceUnlock(sessionId);
-        send(session, WsOutbound.status(sessionId, SessionStatus.CANCELLED.name()));
+        send(
+                session,
+                WsOutbound.status(
+                        sessionId, SessionStatus.CANCELLED.name(), finisher, "CANCELLED"));
         log.info("会话取消 sessionId={}", sessionId);
+    }
+
+    /** 判定结束方：候选连接受 guestSessionId 标记，管理端连接无此标记。 */
+    private String resolveFinisher(WebSocketSession session) {
+        return session.getAttributes().get("guestSessionId") != null ? "CANDIDATE" : "ADMIN";
+    }
+
+    /** 记录结束原因；失败不影响主流程（仅告警）。 */
+    private void recordFinishQuietly(Long sessionId, String finishedBy, String finishReason) {
+        try {
+            sessionService.recordFinish(sessionId, finishedBy, finishReason);
+        } catch (Exception e) {
+            log.warn("记录结束原因失败 sessionId={}", sessionId, e);
+        }
     }
 
     // ==================== Phase 5 Engine 委托方法 ====================
@@ -782,7 +811,12 @@ public class InterviewWebSocketHandler extends TextWebSocketHandler {
     private void handleFinishViaEngine(WebSocketSession session, Long sessionId) {
         try {
             engine.finishInterview(sessionId);
-            send(session, WsOutbound.status(sessionId, SessionStatus.EVALUATING.name()));
+            String finisher = resolveFinisher(session);
+            recordFinishQuietly(sessionId, finisher, "MANUAL_FINISH");
+            send(
+                    session,
+                    WsOutbound.status(
+                            sessionId, SessionStatus.EVALUATING.name(), finisher, "MANUAL_FINISH"));
             log.info("面试已结束，进入评估（Engine）sessionId={}", sessionId);
         } catch (Exception e) {
             log.error("Engine 结束面试失败 sessionId={}", sessionId, e);
