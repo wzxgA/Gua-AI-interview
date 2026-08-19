@@ -7,8 +7,11 @@ import com.aims.core.interview.InterviewerPersona;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewRoundEntity;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
+import com.aims.infra.persistence.mapper.EvaluationMapper;
 import com.aims.infra.persistence.mapper.InterviewRoundMapper;
 import com.aims.infra.persistence.mapper.InterviewSessionMapper;
+import com.aims.infra.persistence.mapper.ProctorEventMapper;
+import com.aims.infra.persistence.mapper.ReportMapper;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -39,11 +42,21 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     private final InterviewSessionMapper sessionMapper;
     private final InterviewRoundMapper roundMapper;
+    private final EvaluationMapper evaluationMapper;
+    private final ProctorEventMapper proctorEventMapper;
+    private final ReportMapper reportMapper;
 
     public InterviewSessionServiceImpl(
-            InterviewSessionMapper sessionMapper, InterviewRoundMapper roundMapper) {
+            InterviewSessionMapper sessionMapper,
+            InterviewRoundMapper roundMapper,
+            EvaluationMapper evaluationMapper,
+            ProctorEventMapper proctorEventMapper,
+            ReportMapper reportMapper) {
         this.sessionMapper = sessionMapper;
         this.roundMapper = roundMapper;
+        this.evaluationMapper = evaluationMapper;
+        this.proctorEventMapper = proctorEventMapper;
+        this.reportMapper = reportMapper;
     }
 
     @Override
@@ -232,7 +245,12 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
     public void delete(Long id) {
         // 校验存在
         getById(id);
-        // 级联删除轮次数据
+        // 级联删除关联数据，顺序需满足外键依赖（先删子表，再删轮次/会话）
+        // interview_proctor_event / interview_evaluation / interview_report → session
+        // interview_evaluation.round_id → interview_round
+        proctorEventMapper.deleteBySession(id);
+        evaluationMapper.deleteBySession(id);
+        reportMapper.deleteBySession(id);
         LambdaQueryWrapper<InterviewRoundEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InterviewRoundEntity::getSessionId, id);
         roundMapper.delete(wrapper);
