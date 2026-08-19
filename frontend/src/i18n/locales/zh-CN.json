@@ -657,9 +657,6 @@
     "resumeFailed": "恢复失败",
     "startSuccess": "面试已开始",
     "startFailed": "开始失败",
-    "reportTitle": "评估报告",
-    "reportSubtitle": "你的面试评估结果",
-    "reportNotFound": "报告尚未生成或不存在",
     "backToRoom": "返回面试间"
   },
   "errors": {

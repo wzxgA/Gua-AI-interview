@@ -657,9 +657,6 @@
     "resumeFailed": "恢復失敗",
     "startSuccess": "面試已開始",
     "startFailed": "開始失敗",
-    "reportTitle": "評估報告",
-    "reportSubtitle": "你的面試評估結果",
-    "reportNotFound": "報告尚未生成或不存在",
     "backToRoom": "返回面試間"
   },
   "errors": {

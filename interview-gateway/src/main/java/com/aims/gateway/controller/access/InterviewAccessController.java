@@ -6,18 +6,13 @@ import com.aims.core.common.exception.BizException;
 import com.aims.core.session.SessionStatus;
 import com.aims.gateway.controller.interview.ProctorConfig;
 import com.aims.gateway.controller.interview.RoundResponse;
-import com.aims.gateway.controller.report.EvaluationResponse;
-import com.aims.gateway.controller.report.ReportResponse;
 import com.aims.gateway.security.GuestTokenService;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.aims.infra.persistence.entity.ProctorEventEntity;
-import com.aims.infra.persistence.entity.ReportEntity;
-import com.aims.infra.persistence.service.EvaluationService;
 import com.aims.infra.persistence.service.InterviewRoundService;
 import com.aims.infra.persistence.service.InterviewSessionService;
 import com.aims.infra.persistence.service.PositionService;
 import com.aims.infra.persistence.service.ProctorEventService;
-import com.aims.infra.persistence.service.ReportService;
 import com.aims.infra.persistence.service.ResumeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,8 +51,6 @@ public class InterviewAccessController {
     private final ResumeService resumeService;
     private final PositionService positionService;
     private final InterviewRoundService roundService;
-    private final ReportService reportService;
-    private final EvaluationService evaluationService;
     private final GuestTokenService guestTokenService;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redis;
@@ -68,8 +61,6 @@ public class InterviewAccessController {
             ResumeService resumeService,
             PositionService positionService,
             InterviewRoundService roundService,
-            ReportService reportService,
-            EvaluationService evaluationService,
             GuestTokenService guestTokenService,
             PasswordEncoder passwordEncoder,
             StringRedisTemplate redis,
@@ -78,8 +69,6 @@ public class InterviewAccessController {
         this.resumeService = resumeService;
         this.positionService = positionService;
         this.roundService = roundService;
-        this.reportService = reportService;
-        this.evaluationService = evaluationService;
         this.guestTokenService = guestTokenService;
         this.passwordEncoder = passwordEncoder;
         this.redis = redis;
@@ -176,18 +165,6 @@ public class InterviewAccessController {
                 roundService.listBySession(sessionId).stream().map(RoundResponse::from).toList());
     }
 
-    @Operation(summary = "候选查看自己的报告", description = "携带 guestToken 访问，仅返回自身会话报告")
-    @PreAuthorize("hasRole('GUEST')")
-    @GetMapping("/{sessionId}/report")
-    public Result<ReportResponse> report(@PathVariable Long sessionId) {
-        requireSameSession(sessionId);
-        ReportEntity report = reportService.getBySession(sessionId);
-        InterviewSessionEntity session = sessionService.getById(sessionId);
-        return Result.ok(
-                ReportResponse.from(
-                        report, session.getTotalScore(), roundService.listBySession(sessionId)));
-    }
-
     @Operation(
             summary = "候选恢复自己的面试",
             description = "携带 guestToken 访问，仅恢复自身会话（PAUSED → IN_PROGRESS）")
@@ -218,18 +195,6 @@ public class InterviewAccessController {
         sessionService.updateStatus(sessionId, SessionStatus.IN_PROGRESS);
         sessionService.markStarted(sessionId);
         return Result.ok(GuestSessionResponse.from(sessionService.getById(sessionId)));
-    }
-
-    @Operation(summary = "候选查看自己的评分明细", description = "携带 guestToken 访问，仅返回自身会话评分")
-    @PreAuthorize("hasRole('GUEST')")
-    @GetMapping("/{sessionId}/evaluations")
-    public Result<List<EvaluationResponse>> evaluations(@PathVariable Long sessionId) {
-        requireSameSession(sessionId);
-        sessionService.getById(sessionId);
-        return Result.ok(
-                evaluationService.listBySession(sessionId).stream()
-                        .map(EvaluationResponse::from)
-                        .toList());
     }
 
     /** 校验 guestToken 绑定的 sid 与路径 sessionId 一致，防越权访问他人会话。 */

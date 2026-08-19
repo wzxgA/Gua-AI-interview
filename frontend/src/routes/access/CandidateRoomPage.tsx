@@ -200,7 +200,6 @@ export function CandidateRoomPage() {
           onFinish={() => session.finishInterview()}
           onCancel={() => session.cancelInterview()}
           onResume={handleResume}
-          onViewReport={() => navigate(`/i/${accessToken}/report`)}
         />
       </GlassCard>
 

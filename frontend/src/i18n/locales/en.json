@@ -657,9 +657,6 @@
     "resumeFailed": "Failed to resume",
     "startSuccess": "Interview started",
     "startFailed": "Failed to start",
-    "reportTitle": "Evaluation Report",
-    "reportSubtitle": "Your interview evaluation results",
-    "reportNotFound": "Report has not been generated or does not exist",
     "backToRoom": "Back to Interview Room"
   },
   "errors": {

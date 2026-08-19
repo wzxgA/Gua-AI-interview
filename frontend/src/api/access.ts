@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { http } from './client';
 import type { RoundResponse } from '@/types/interview';
-import type { EvaluationResponse, ReportResponse } from '@/types/report';
 import type { ProctorConfig } from '@/types/interview';
 
 /** 候选入口信息 */
@@ -58,14 +57,6 @@ export function getGuestSession(sessionId: number) {
 
 export function getGuestRounds(sessionId: number) {
   return http.get<RoundResponse[]>(`/api/v1/access/interviews/${sessionId}/rounds`);
-}
-
-export function getGuestReport(sessionId: number) {
-  return http.get<ReportResponse>(`/api/v1/access/interviews/${sessionId}/report`);
-}
-
-export function getGuestEvaluations(sessionId: number) {
-  return http.get<EvaluationResponse[]>(`/api/v1/access/interviews/${sessionId}/evaluations`);
 }
 
 export function resumeGuestSession(sessionId: number) {
