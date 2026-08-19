@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { GlassCard } from '@/components/ui/glass-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SilverButton } from '@/components/ui/silver-button';
 import { PageHeader, ErrorState } from '@/components/common/PageHeader';
@@ -10,7 +9,7 @@ import { ConflictSummaryCard } from '@/components/report/ConflictSummaryCard';
 import { DimensionRadarChart } from '@/components/report/DimensionRadarChart';
 import { DimensionScoreList } from '@/components/report/DimensionScoreList';
 import { RoundEvaluationList } from '@/components/report/RoundEvaluationList';
-import { getGuestReport, getGuestEvaluations } from '@/api/access';
+import { getGuestReport, getGuestEvaluations, useGuestRounds } from '@/api/access';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 import { useUrlLanguageInit } from '@/hooks/useUrlLanguageInit';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -38,6 +37,7 @@ export function CandidateReportPage() {
     queryFn: () => getGuestEvaluations(sessionId!),
     enabled: sessionId != null,
   });
+  const { data: rounds } = useGuestRounds(sessionId);
 
   if (isLoading) {
     return (
@@ -92,10 +92,7 @@ export function CandidateReportPage() {
         <DimensionScoreList scores={dimensionScores} />
       </div>
 
-      <GlassCard className="p-6">
-        <h3 className="mb-4 text-sm font-medium text-text-primary">{t('interviews.roundEvaluationTitle')}</h3>
-        <RoundEvaluationList evaluations={evaluations ?? []} />
-      </GlassCard>
+      <RoundEvaluationList rounds={rounds ?? []} evaluations={evaluations ?? []} />
     </div>
   );
 }
