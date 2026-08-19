@@ -112,10 +112,7 @@
   },
   "dashboard": {
     "title": "平台概览",
-    "subtitle": "AI 智能面试 Agent 平台 · 管理端",
-    "backendStatus": "后端状态",
-    "online": "在线",
-    "offline": "离线",
+    "subtitle": "瓜分offer AI 面试 Agent 平台 · 管理端",
     "positionCount": "岗位总数",
     "questionCount": "题目总数",
     "resumeCount": "简历总数",

@@ -112,10 +112,7 @@
   },
   "dashboard": {
     "title": "Overview",
-    "subtitle": "AI Interview Agent Platform · Admin",
-    "backendStatus": "Backend status",
-    "online": "Online",
-    "offline": "Offline",
+    "subtitle": "Guafen Offer AI Interview Agent Platform · Admin",
     "positionCount": "Positions",
     "questionCount": "Questions",
     "resumeCount": "Resumes",

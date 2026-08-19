@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -78,7 +78,7 @@ export function ScoreDistributionChart() {
   }
 
   return (
-    <GlassCard className="p-5">
+    <GlassCard className="flex h-full flex-col p-5">
       <div className="flex items-baseline justify-between">
         <h3 className="text-sm font-medium text-text-muted">{t('dashboard.scoreDistribution')}</h3>
         <span className="text-xs text-text-muted">
@@ -142,7 +142,13 @@ export function ScoreDistributionChart() {
         </div>
       </div>
 
-      <div className={cn('mt-2 h-56 w-full transition-opacity', isPlaceholderData && 'opacity-60')}>
+      {/* 图表占满卡片剩余高度，SVG 按容器实际尺寸渲染，无留白 */}
+      <div
+        className={cn(
+          'mt-2 min-h-56 w-full flex-1 transition-opacity',
+          isPlaceholderData && 'opacity-60',
+        )}
+      >
         {isLoading && !data ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-3">
             <Skeleton className="h-4 w-32" />
@@ -181,7 +187,8 @@ export function ScoreDistributionChart() {
   );
 }
 
-/** 散点图（5 分制，横轴为时间、纵轴为得分），每点代表一次已评分会话。 */
+/** 散点图（5 分制，横轴为时间、纵轴为得分），每点代表一次已评分会话。
+ *  尺寸由 ResizeObserver 动态测量容器，SVG 按实际像素渲染，完全占满可用区域。 */
 function ScatterSvg({
   points,
   avgScore,
@@ -192,12 +199,26 @@ function ScatterSvg({
   isDark: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<ScorePoint | null>(null);
-  const W = 640;
-  const H = 240;
+  const [size, setSize] = useState({ w: 640, h: 240 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect();
+      setSize({ w: rect.width, h: rect.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const W = Math.max(size.w, 320);
+  const H = Math.max(size.h, 200);
   const left = 58;
-  const right = 616;
-  const axisY = 196;
+  const right = W - 24;
+  const axisY = H - 44;
   const top = 24;
   const plotW = right - left;
   const plotH = axisY - top;
@@ -241,7 +262,8 @@ function ScatterSvg({
   const yTicks = [0, 1, 2, 3, 4, 5];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img">
+    <div ref={containerRef} className="h-full w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="h-full w-full" role="img">
       {yTicks.map((tick) => {
         const y = toY(tick);
         return (
@@ -350,5 +372,6 @@ function ScatterSvg({
           );
         })()}
     </svg>
+    </div>
   );
 }

@@ -15,9 +15,9 @@ export function RecentInterviews({ data }: RecentInterviewsProps) {
 
   if (data.length === 0) {
     return (
-      <GlassCard className="p-5">
+      <GlassCard className="flex h-full flex-col p-5">
         <h3 className="text-sm font-medium text-text-muted">{t('dashboard.recentInterviews')}</h3>
-        <div className="flex h-40 items-center justify-center">
+        <div className="flex flex-1 items-center justify-center">
           <span className="text-sm text-text-muted">{t('dashboard.noInterviews')}</span>
         </div>
       </GlassCard>
@@ -25,9 +25,9 @@ export function RecentInterviews({ data }: RecentInterviewsProps) {
   }
 
   return (
-    <GlassCard className="p-5">
+    <GlassCard className="flex h-full flex-col p-5">
       <h3 className="mb-3 text-sm font-medium text-text-muted">{t('dashboard.recentInterviews')}</h3>
-      <ul className="space-y-1">
+      <ul className="flex-1 space-y-1">
         {data.map((item) => (
           <li key={item.id}>
             <Link

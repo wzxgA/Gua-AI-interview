@@ -112,10 +112,7 @@
   },
   "dashboard": {
     "title": "平台概覽",
-    "subtitle": "AI 智慧面試 Agent 平台 · 管理端",
-    "backendStatus": "後端狀態",
-    "online": "在線",
-    "offline": "離線",
+    "subtitle": "瓜分offer AI 面試 Agent 平台 · 管理端",
     "positionCount": "崗位總數",
     "questionCount": "題目總數",
     "resumeCount": "簡歷總數",
