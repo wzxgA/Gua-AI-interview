@@ -220,8 +220,8 @@ function ScatterSvg({
   const toX = (t: number) => left + ((t - tMin) / (tMax - tMin)) * plotW;
   const toY = (score: number) => axisY - (Math.min(5, Math.max(0, score)) / 5) * plotH;
 
-  const axisColor = isDark ? 'rgba(200,212,232,0.55)' : 'rgba(0,0,0,0.45)';
-  const gridColor = isDark ? 'rgba(200,212,232,0.12)' : 'rgba(0,0,0,0.06)';
+  const axisColor = isDark ? 'rgba(220,224,230,0.55)' : 'rgba(0,0,0,0.45)';
+  const gridColor = isDark ? 'rgba(220,224,230,0.12)' : 'rgba(0,0,0,0.06)';
   const avgColor = '#f59e0b';
   const pointColor = isDark ? 'rgba(56,189,248,0.6)' : 'rgba(2,132,199,0.5)';
   const r = points.length > 300 ? 2.5 : 3;

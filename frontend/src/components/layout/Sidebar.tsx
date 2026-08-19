@@ -18,7 +18,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-56 flex-col border-r border-border-subtle bg-space-800/50 backdrop-blur-xl">
+    <aside className="sticky top-0 flex h-screen w-56 flex-col border-r border-border-subtle bg-space-800/40 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-5 py-6">
         <img src="/logo.svg" alt="logo" className="h-12 w-12 shrink-0" />
         <span className="text-lg font-semibold text-text-primary">{t('common.appName')}</span>

@@ -21,8 +21,8 @@ export function TrendChart({ data }: TrendChartProps) {
   const isEmpty = data.every((item) => item.count <= 0);
   const chartData = data.map((item) => ({ ...item, label: shortDate(item.date) }));
   const chartLineColor = isDark ? 'rgba(56,189,248,0.85)' : 'rgba(2,132,199,0.9)';
-  const gridColor = isDark ? 'rgba(200,212,232,0.1)' : 'rgba(0,0,0,0.06)';
-  const axisColor = isDark ? 'rgba(200,212,232,0.55)' : 'rgba(0,0,0,0.45)';
+  const gridColor = isDark ? 'rgba(220,224,230,0.1)' : 'rgba(0,0,0,0.06)';
+  const axisColor = isDark ? 'rgba(220,224,230,0.55)' : 'rgba(0,0,0,0.45)';
 
   return (
     <GlassCard className="p-5">

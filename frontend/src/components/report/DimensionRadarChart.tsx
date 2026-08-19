@@ -20,9 +20,9 @@ export function DimensionRadarChart({ scores }: DimensionRadarChartProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
-  const gridColor = isDark ? 'rgba(200,212,232,0.1)' : 'rgba(0,0,0,0.08)';
-  const axisColor = isDark ? 'rgba(200,212,232,0.6)' : 'rgba(0,0,0,0.5)';
-  const radiusColor = isDark ? 'rgba(200,212,232,0.3)' : 'rgba(0,0,0,0.2)';
+  const gridColor = isDark ? 'rgba(220,224,230,0.1)' : 'rgba(0,0,0,0.08)';
+  const axisColor = isDark ? 'rgba(220,224,230,0.6)' : 'rgba(0,0,0,0.5)';
+  const radiusColor = isDark ? 'rgba(220,224,230,0.3)' : 'rgba(0,0,0,0.2)';
   const strokeColor = isDark ? 'rgba(56,189,248,0.8)' : 'rgba(2,132,199,0.9)';
   const fillColor = isDark ? 'rgba(56,189,248,0.2)' : 'rgba(2,132,199,0.15)';
 
