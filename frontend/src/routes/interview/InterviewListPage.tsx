@@ -168,6 +168,14 @@ export function InterviewListPage() {
                             {t('interviews.room')}
                           </Link>
                         )}
+                        {item.status === 'COMPLETED' && (
+                          <Link
+                            to={`/interviews/${item.id}/report`}
+                            className="text-xs text-silver-300 hover:text-silver-100 transition-colors"
+                          >
+                            {t('interviews.report')}
+                          </Link>
+                        )}
                         {item.status === 'CREATED' && (
                           <button
                             onClick={() => setCancelTarget({ id: item.id })}

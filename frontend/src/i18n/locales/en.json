@@ -450,6 +450,7 @@
     "actions": "Actions",
     "console": "Console",
     "room": "Interview Room",
+    "report": "Report",
     "cancelSuccess": "Interview cancelled",
     "cancelFailed": "Cancel failed",
     "cancelConfirmTitle": "Confirm cancellation",

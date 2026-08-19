@@ -450,6 +450,7 @@
     "actions": "操作",
     "console": "控制台",
     "room": "面试间",
+    "report": "报告",
     "cancelSuccess": "面试已取消",
     "cancelFailed": "取消失败",
     "cancelConfirmTitle": "确认取消",
