@@ -188,7 +188,7 @@ export function Select({
               zIndex: 100,
               ...(pos.openUp ? { bottom: pos.bottom } : { top: pos.top }),
             }}
-            className="max-h-60 overflow-auto rounded-md border border-border-default bg-space-700 py-1 shadow-lg shadow-black/20"
+            className="max-h-60 overflow-auto rounded-md border border-border-default bg-space-600 py-1 shadow-lg shadow-black/20"
           >
             {options.map((opt, index) => (
               <li

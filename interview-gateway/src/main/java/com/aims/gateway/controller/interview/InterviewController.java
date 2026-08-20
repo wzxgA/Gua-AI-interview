@@ -334,6 +334,8 @@ public class InterviewController {
             // 8. 序列化并保存计划，保持在 PLANNING 状态等待用户确认
             String planJson = objectMapper.writeValueAsString(plan);
             sessionService.savePlan(id, planJson);
+            // 8.1 落库面试官 TTS 语音开关（缺省 false）
+            sessionService.updateTtsEnabled(id, req != null ? req.ttsEnabled() : null);
             // 9. 返回最新会话（状态为 PLANNING）
             InterviewSessionEntity updated = sessionService.getById(id);
             return Result.ok(InterviewResponse.from(updated));

@@ -63,6 +63,8 @@ export interface InterviewResponse {
   finishedBy?: string | null;
   /** 结束方式：MANUAL_FINISH/CANCELLED/FAILED */
   finishReason?: string | null;
+  /** 是否启用面试官 TTS 语音播报 */
+  ttsEnabled?: boolean;
 }
 
 /** 对齐 CreateInterviewRequest（v1.1-C TD2：入参为简历 ID） */

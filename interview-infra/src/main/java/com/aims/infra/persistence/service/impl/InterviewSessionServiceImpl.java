@@ -236,6 +236,15 @@ public class InterviewSessionServiceImpl implements InterviewSessionService {
 
     @Override
     @Transactional
+    public void updateTtsEnabled(Long id, Boolean ttsEnabled) {
+        InterviewSessionEntity entity = getById(id);
+        entity.setTtsEnabled(Boolean.TRUE.equals(ttsEnabled));
+        entity.setUpdatedAt(Instant.now());
+        sessionMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional
     public InterviewSessionEntity transition(
             Long id,
             SessionStatus expected,

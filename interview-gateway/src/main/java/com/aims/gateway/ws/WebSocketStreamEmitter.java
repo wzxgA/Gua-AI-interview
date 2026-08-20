@@ -212,6 +212,10 @@ public class WebSocketStreamEmitter implements StreamEmitter {
         if (ttsService == null) {
             return;
         }
+        // 该场次未启用面试官 TTS 语音时跳过（默认关闭）
+        if (!Boolean.TRUE.equals(sessionService.getById(sessionId).getTtsEnabled())) {
+            return;
+        }
         Thread.startVirtualThread(
                 () -> {
                     try {

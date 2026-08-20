@@ -9,7 +9,7 @@ export interface SilverButtonProps extends ButtonHTMLAttributes<HTMLButtonElemen
 
 const variants: Record<Variant, string> = {
   primary: cn(
-    'relative overflow-hidden text-space-900',
+    'relative overflow-hidden text-[#1a1f36]',
     'bg-gradient-to-r from-silver-300 via-silver-100 to-silver-300',
     'shadow-[0_0_16px_var(--silver-glow)] hover:shadow-[0_0_28px_var(--silver-glow)]',
     'hover:scale-[1.02] active:scale-[0.98] transition-all',

@@ -26,7 +26,8 @@ public record InterviewResponse(
         String accessPassword,
         String accessMode,
         String finishedBy,
-        String finishReason) {
+        String finishReason,
+        Boolean ttsEnabled) {
 
     /** 从持久化实体构建响应。 */
     public static InterviewResponse from(InterviewSessionEntity entity) {
@@ -61,6 +62,7 @@ public record InterviewResponse(
                 rawPassword,
                 entity.getAccessMode(),
                 entity.getFinishedBy(),
-                entity.getFinishReason());
+                entity.getFinishReason(),
+                entity.getTtsEnabled());
     }
 }

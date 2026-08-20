@@ -34,7 +34,7 @@ export function EndBubble({ message }: EndBubbleProps) {
 
   return (
     <div className="flex justify-center px-4">
-      <div className="max-w-md rounded-2xl border border-border-default bg-space-700/50 px-5 py-4 text-center backdrop-blur-sm">
+      <div className="max-w-md rounded-2xl border border-border-default bg-space-600/60 px-5 py-4 text-center backdrop-blur-sm">
         <p className="text-sm font-medium text-silver-100">{resolveTitle()}</p>
         <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{resolveBody()}</p>
         {status === 'EVALUATING' && (

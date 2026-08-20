@@ -80,6 +80,9 @@ public class InterviewSessionEntity {
     @TableField("finish_reason")
     private String finishReason;
 
+    @TableField("tts_enabled")
+    private Boolean ttsEnabled;
+
     public Long getId() {
         return id;
     }
@@ -262,5 +265,13 @@ public class InterviewSessionEntity {
 
     public void setFinishReason(String finishReason) {
         this.finishReason = finishReason;
+    }
+
+    public Boolean getTtsEnabled() {
+        return ttsEnabled;
+    }
+
+    public void setTtsEnabled(Boolean ttsEnabled) {
+        this.ttsEnabled = ttsEnabled;
     }
 }

@@ -196,7 +196,7 @@ export function DateRangePicker({
               zIndex: 100,
               ...(pos.openUp ? { bottom: pos.bottom } : { top: pos.top }),
             }}
-            className="rounded-lg border border-border-default bg-space-700 p-3 shadow-lg shadow-black/20"
+            className="rounded-lg border border-border-default bg-space-600 p-3 shadow-lg shadow-black/20"
           >
             {/* 月份导航 */}
             <div className="flex items-center justify-between px-1">
