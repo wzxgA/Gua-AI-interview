@@ -1,99 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 绿色瓜皮（外圈深绿描边） -->
-  <path
-    d="M 256 92 C 158 92 84 190 84 302 C 84 382 108 420 162 420 L 350 420 C 404 420 428 382 428 302 C 428 190 354 92 256 92 Z"
-    fill="#3E9B4F"
-    stroke="#123B26"
-    stroke-width="14"
-    stroke-linejoin="round"
-  />
-  <!-- 白色内环 -->
-  <path
-    d="M 256 122 C 172 122 110 208 110 304 C 110 372 130 396 172 396 L 340 396 C 382 396 402 372 402 304 C 402 208 340 122 256 122 Z"
-    fill="#FAFAF8"
-  />
-  <!-- 红色瓜瓤 -->
-  <path
-    d="M 256 148 C 184 148 132 224 132 306 C 132 362 148 372 182 372 L 330 372 C 364 372 380 362 380 306 C 380 224 328 148 256 148 Z"
-    fill="#E2434B"
-  />
-  <!-- 左眼（水滴形） -->
-  <path
-    d="M 205 202 C 197 216 189 226 189 237 C 189 247 196 254 205 254 C 214 254 221 247 221 237 C 221 226 213 216 205 202 Z"
-    fill="#123B26"
-  />
-  <circle cx="200" cy="234" r="4.5" fill="#FFFFFF" />
-  <!-- 右眼（水滴形） -->
-  <path
-    d="M 307 202 C 315 216 323 226 323 237 C 323 247 316 254 307 254 C 298 254 291 247 291 237 C 291 226 299 216 307 202 Z"
-    fill="#123B26"
-  />
-  <circle cx="302" cy="234" r="4.5" fill="#FFFFFF" />
-  <!-- 腮红 -->
-  <ellipse cx="178" cy="262" rx="15" ry="8" fill="#C22F3A" />
-  <ellipse cx="334" cy="262" rx="15" ry="8" fill="#C22F3A" />
-  <!-- 微笑 -->
-  <path
-    d="M 238 256 Q 256 272 274 256"
-    fill="none"
-    stroke="#123B26"
-    stroke-width="8"
-    stroke-linecap="round"
-  />
-  <!-- 手臂线条 -->
-  <path
-    d="M 118 346 Q 148 372 182 366"
-    fill="none"
-    stroke="#123B26"
-    stroke-width="9"
-    stroke-linecap="round"
-  />
-  <path
-    d="M 394 346 Q 364 372 330 366"
-    fill="none"
-    stroke="#123B26"
-    stroke-width="9"
-    stroke-linecap="round"
-  />
-  <!-- OFFER 通知单 -->
-  <rect
-    x="168"
-    y="288"
-    width="176"
-    height="84"
-    rx="16"
-    fill="#FAFAF8"
-    stroke="#123B26"
-    stroke-width="10"
-  />
-  <text
-    x="256"
-    y="344"
-    text-anchor="middle"
-    font-family="Arial, 'Helvetica Neue', sans-serif"
-    font-size="40"
-    font-weight="700"
-    letter-spacing="1"
-    fill="#123B26"
-  >OFFER</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!-- 西瓜主体 -->
+  <g transform="translate(250, 280)">
+    <!-- 绿色外皮 -->
+    <path d="M -180 0 A 180 180 0 0 0 180 0" 
+          fill="none" stroke="#2E7D32" stroke-width="24" stroke-linecap="round"/>
+
+    <!-- 白色内层 -->
+    <path d="M -168 0 A 168 168 0 0 0 168 0" 
+          fill="none" stroke="#F5F5F5" stroke-width="16" stroke-linecap="round"/>
+
+    <!-- 红色果肉 -->
+    <path d="M -156 0 A 156 156 0 0 0 156 0 Z" 
+          fill="#FF5252" stroke="black" stroke-width="4"/>
+
+    <!-- 脸部 -->
+    <!-- 左眼 - 竖形豆豆眼 -->
+    <ellipse cx="-56" cy="59" rx="10" ry="16" fill="#1A1A2E"/>
+    <!-- 右眼 - 竖形豆豆眼 -->
+    <ellipse cx="54" cy="39" rx="10" ry="16" fill="#1A1A2E"/>
+    <!-- 嘴巴 - ω形猫猫嘴 -->
+    <path d="M -18 85 Q -10 100 0 90 Q 10 100 18 85" 
+          fill="none" stroke="#1A1A2E" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- 左手臂 -->
+  <path d="M 110 230 Q 80 180 60 140" 
+        fill="none" stroke="black" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- 右手臂 -->
+  <path d="M 390 230 Q 420 180 440 140" 
+        fill="none" stroke="black" stroke-width="6" stroke-linecap="round"/>
+
   <!-- 左手 -->
-  <ellipse
-    cx="160"
-    cy="330"
-    rx="28"
-    ry="24"
-    fill="#3E9B4F"
-    stroke="#123B26"
-    stroke-width="10"
-  />
+  <g transform="translate(60, 140)">
+    <ellipse cx="0" cy="0" rx="18" ry="22" fill="white" stroke="black" stroke-width="4"/>
+    <line x1="-8" y1="-8" x2="-8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="-10" x2="0" y2="10" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="8" y1="-8" x2="8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
   <!-- 右手 -->
-  <ellipse
-    cx="352"
-    cy="330"
-    rx="28"
-    ry="24"
-    fill="#3E9B4F"
-    stroke="#123B26"
-    stroke-width="10"
-  />
+  <g transform="translate(440, 140)">
+    <ellipse cx="0" cy="0" rx="18" ry="22" fill="white" stroke="black" stroke-width="4"/>
+    <line x1="-8" y1="-8" x2="-8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="-10" x2="0" y2="10" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="8" y1="-8" x2="8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 牌子 -->
+  <g transform="translate(250, 120) rotate(-8)">
+    <rect x="-140" y="-80" width="280" height="160" rx="4" 
+          fill="white" stroke="black" stroke-width="5"/>
+    <text x="0" y="20" 
+          font-family="Arial, Helvetica, sans-serif" 
+          font-size="70" 
+          font-weight="900" 
+          text-anchor="middle" 
+          fill="black"
+          letter-spacing="2">OFFER</text>
+  </g>
 </svg>

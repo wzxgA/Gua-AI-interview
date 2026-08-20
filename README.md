@@ -1,4 +1,24 @@
-# 瓜分Offer AI 智能面试 Agent 平台
+<p align="center">
+  <img src="frontend/public/logo.svg" alt="瓜分Offer Logo" width="120" height="120" style="border-radius:16px;" />
+</p>
+
+<p align="center">
+  <b style="font-size:32px">瓜分Offer · AI 智能面试 Agent 平台</b>
+</p>
+
+<p align="center">
+  <i>Spring Boot + Spring AI + LangGraph4j · AI Interview Agent Platform</i>
+</p>
+
+<p align="center">
+  <a href="#功能特性">功能特性</a> ·
+  <a href="#技术栈">技术栈</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#核心流程与架构">架构</a> ·
+  <a href="#API-接口">API</a>
+</p>
+
+---
 
 基于 Spring Boot 3.5 + Spring AI 1.1 + Java 21 虚拟线程 + LangGraph4j 构建的 AI 面试 Agent 服务平台。覆盖岗位/题库/简历管理、RAG 语义检索、简历 AI 解析、面试实时问答（动态追问、面试官人设、TTS 语音播报、断线恢复）以及五维评估与报告生成。
 
@@ -6,14 +26,16 @@
 
 | 模块         | 说明                                                                                                    |
 | ---------- | ----------------------------------------------------------------------------------------------------- |
-| 岗位/题库/简历管理 | CRUD + 向量化（pgvector 语义索引）；题库批量导入；简历上传（PDF/TXT）与 AI 结构化解析，支持人工修正后自动失效旧向量并重新向量化                         |
-| RAG 语义检索   | 基于 pgvector（halfvec + HNSW 索引）的题库/简历相似度检索，支持分类/难度过滤、最低相似度阈值、指定候选人匹配；面试计划生成时自动以岗位 JD 检索参考题库            |
+| 岗位/题库/简历管理 | CRUD + 向量化（pgvector 语义索引）；题库批量导入与面试笔记导入（AI 结构化提取题目）；简历上传（PDF/TXT）与 AI 结构化解析（工作/项目经历拆分），支持人工修正后自动失效旧向量并重新向量化        |
+| RAG 语义检索   | 基于 pgvector（halfvec + HNSW 索引）的题库/简历相似度检索，支持分类/难度过滤、最低相似度阈值、指定候选人匹配；面试计划生成时自动以岗位 JD 检索参考题库；检索结果与查询向量双层 Redis 缓存（异常自动降级直查） |
 | 面试全流程      | 面试计划生成（题数/难度可配置）→ WebSocket 实时问答（问题流式输出）→ 动态追问（每主问题最多 3 次，类型含澄清/深挖/引导）→ 断线恢复（Redis Checkpoint + 会话快照） |
 | 面试官人设      | 温和型 / 压力面型 / 深度技术型，并可联动 TTS 音色                                                                        |
 | TTS 语音播报   | 火山引擎豆包 TTS 2.0，问题生成后异步合成，前端音频播放（可选开关）                                                                 |
 | 五维评估与报告    | 专业能力 / 逻辑思维 / 沟通表达 / 岗位匹配 / 学习与潜力，逐轮 AI 评分 + 综合报告 + 录用建议，Kafka 异步处理                                   |
+| 简历真实性校验    | 面试中与结束后交叉校验简历工作经历与候选人回答，突出"疑似未提及/存在冲突"的经历，辅助甄别简历造假（冲突详情写入报告）                    |
 | 面试防作弊      | 生成候选人链接时可选开启：切屏检测（标签页/窗口失焦）+ 眼神检测（MediaPipe 本地 WASM 人脸/视线偏离，帧不出浏览器）；控制台实时面板 + 报告页专注度参考 |
 | 多模型路由      | FLAGSHIP / STANDARD / ECONOMY / EMBEDDING 四档位，失败自动降级换模型，带指数退避重试、token/延迟/成本指标统计                       |
+| 配置中心化      | AI 模型路由与 TTS 均支持 DB 覆盖 yml、运行期改配置即时生效（无需重启）；TTS API Key 入库加密、界面掩码展示（DB 增量覆盖 + yml 兜底模式）  |
 | 鉴权与安全      | JWT + RefreshToken 轮换，基于角色的接口权限（仅 ADMIN 可执行全量重向量化等操作）                                                 |
 
 ## 技术栈
@@ -268,18 +290,22 @@ CREATED → PLANNING → IN_PROGRESS ⇄ PAUSED → EVALUATING → REPORTING →
 
 ## 数据库
 
-由 Flyway 版本化管理（`interview-infra/src/main/resources/db/migration/`，当前 V2\_0\_15），核心表：
+由 Flyway 版本化管理（`interview-infra/src/main/resources/db/migration/`，当前 V2\_1\_7），核心表：
 
 | 表                      | 说明                                       |
 | ---------------------- | ---------------------------------------- |
 | `position`             | 岗位（含 JD、halfvec 向量、HNSW 索引）              |
-| `question_bank`        | 题库（分类/难度/主题/标签、halfvec 向量）               |
+| `question_bank`        | 题库（分类/难度/主题/标签、halfvec 向量、搜索索引）           |
 | `resume`               | 简历（原始文本、解析结果、解析/向量状态与重试、向量模型版本）          |
-| `interview_session`    | 面试会话（状态机、计划、人设、评估进度、防作弊配置 proctor\_json）         |
-| `interview_round`      | 面试轮次（追问通过 parentSeq/followUpIndex 关联主问题） |
+| `work_experience` / `project_experience` / `project_highlight` | 简历工作/项目经历拆分后的明细（v1.3 起从 resume 拆出） |
+| `candidate`            | 候选人（简历解析出，关联经历与面试访问）                     |
+| `interview_session`    | 面试会话（状态机、计划、人设、评估进度、防作弊配置 proctor\_json、tts\_enabled、finished\_by/finish\_reason） |
+| `interview_round`      | 面试轮次（追问通过 parentSeq/followUpIndex 关联主问题，含冲突校验详情 conflict\_details） |
 | `interview_evaluation` | 逐轮五维评估结果                                 |
 | `interview_report`     | 综合报告（session 唯一约束）                       |
 | `interview_proctor_event` | 面试防作弊事件（切屏/失焦/眼神偏离/摄像头状态，按会话聚合展示）       |
+| `ai_provider_config` / `ai_tier_config` | AI 模型提供商/档位配置（DB 覆盖 yml，运行期生效）          |
+| `tts_config`           | TTS 配置（单行 id=1，DB 增量覆盖 yml，API Key 加密）      |
 | `sys_user`             | 用户表（用户名/密码/角色/启用状态）                      |
 
 ## 测试
@@ -349,6 +375,12 @@ mvn spotless:apply   # 自动格式化
 | `AIMS_EMBEDDING_PROVIDER`   | dashscope                                                         | 向量化提供商                                       |
 | `AIMS_EMBEDDING_MODEL`      | text-embedding-v4                                                 | 向量化模型                                        |
 | `AIMS_EMBEDDING_DIMENSIONS` | 2048                                                              | 向量维度                                         |
+| `AIMS_FLAGSHIP_THINKING`    | （空）                                                            | 旗舰档 DeepSeek 推理思考模式（enabled/disabled，留空走模型默认） |
+| `AIMS_FLAGSHIP_REASONING_EFFORT` | （空）                                                      | 旗舰档思考强度（low/high/max，仅思考开启时生效）              |
+| `AIMS_CONFIG_ENCRYPT_KEY`   | （空）                                                            | 配置中心化 DB 覆盖层的 API Key 加密密钥（base64 32 字节，生产必须配置，未配置退化为由 JWT 密钥派生） |
+| `AIMS_RAG_RESULT_CACHE_ENABLED` | true                                                         | 题库 RAG 检索结果缓存（TTL 60s；Redis 异常自动降级直查）       |
+| `AIMS_RAG_EMBEDDING_CACHE_ENABLED` | true                                                    | 题库 RAG 查询向量缓存（TTL 30min）                   |
+| `AIMS_LOG_PROMPT_MAX_CHARS` | 200                                                               | LLM 日志 prompt 摘要截断长度（字符）                    |
 | `DASHSCOPE_API_KEY`         | -                                                                 | 通义千问 API Key（必填）                             |
 | `DASHSCOPE_BASE_URL`        | <https://dashscope.aliyuncs.com/compatible-mode>                  | 通义千问 base URL                                |
 | `DEEPSEEK_API_KEY`          | -                                                                 | DeepSeek API Key（必填）                         |
