@@ -8,6 +8,7 @@ import io.jsonwebtoken.Claims;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -16,6 +17,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
 /** WebSocket 配置：注册面试原生 WebSocket endpoint，握手时校验 JWT + 入口模式互斥。 */
 @Configuration(proxyBeanMethods = false)
@@ -33,6 +35,22 @@ public class InterviewWebSocketConfig implements WebSocketConfigurer {
         this.handler = handler;
         this.jwtUtil = jwtUtil;
         this.sessionService = sessionService;
+    }
+
+    /**
+     * 定制 WebSocket 容器缓冲，避免出站文本消息超出 Tomcat 默认 8192 字节导致 1009 断连。
+     *
+     * <p>根因：最后一题回答收尾时若服务端回传一条超过 {@code maxTextMessageBufferSize} 的文本消息 （例如长异常信息），Tomcat 会在不支持分片时以
+     * code=1009 直接关闭连接。因此把文本/二进制缓冲都调大。
+     */
+    @Bean
+    public ServletServerContainerFactoryBean createWebSocketContainer() {
+        ServletServerContainerFactoryBean factory = new ServletServerContainerFactoryBean();
+        // 文本缓冲调大（对齐 MAX_ANSWER_LENGTH 级别并留出余量，避免接近上限再次触发 1009）
+        factory.setMaxTextMessageBufferSize(16 * 1024 * 1024);
+        // 二进制缓冲调大（TTS 音频 / 图片等二进制消息）
+        factory.setMaxBinaryMessageBufferSize(16 * 1024 * 1024);
+        return factory;
     }
 
     @Override
