@@ -7,6 +7,7 @@ import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModelTiers } from '@/api/settings';
 import { AiModelConfigCard } from '@/components/settings/AiModelConfigCard';
+import { TtsConfigCard } from '@/components/settings/TtsConfigCard';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
@@ -19,6 +20,8 @@ export function SettingsPage() {
   const enumLabel = useEnumLabel();
   // 默认只展示档位概览，AI 模型配置点击“配置”后展开
   const [configOpen, setConfigOpen] = useState(false);
+  // TTS 语音配置折叠展开
+  const [ttsOpen, setTtsOpen] = useState(false);
 
   return (
     <div>
@@ -98,6 +101,21 @@ export function SettingsPage() {
         </GlassCard>
 
         {configOpen && <AiModelConfigCard />}
+
+        <GlassCard className="p-6">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-text-primary">{t('settings.ttsConfig.title')}</h3>
+            <SilverButton
+              variant="ghost"
+              onClick={() => setTtsOpen((o) => !o)}
+              className="px-2 py-1 text-[11px]"
+            >
+              <Settings2 className="h-3 w-3" />
+              {t(ttsOpen ? 'settings.ttsConfig.collapse' : 'settings.ttsConfig.configure')}
+            </SilverButton>
+          </div>
+          {ttsOpen && <TtsConfigCard />}
+        </GlassCard>
 
       </div>
     </div>

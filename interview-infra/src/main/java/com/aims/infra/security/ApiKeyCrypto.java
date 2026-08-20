@@ -1,4 +1,4 @@
-package com.aims.gateway.security;
+package com.aims.infra.security;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

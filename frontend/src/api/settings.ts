@@ -153,3 +153,73 @@ export function useDeleteModelConfigProvider() {
     },
   });
 }
+
+// ---- TTS 连接配置（v1.4 F 方案：设置页配置 url / apiKey / 音色） ----
+
+/** GET tts-config 响应的生效值（yml + DB 合并，key 掩码）。 */
+export interface TtsConfigView {
+  enabled: boolean | null;
+  enabledSource: 'db' | 'yml';
+  provider: string | null;
+  providerSource: 'db' | 'yml';
+  baseUrl: string | null;
+  baseUrlSource: 'db' | 'yml';
+  /** 掩码后的 API Key（空串表示未配置）。 */
+  apiKeyMasked: string;
+  apiKeySource: 'db' | 'yml';
+  resourceId: string | null;
+  resourceIdSource: 'db' | 'yml';
+  defaultSpeaker: string | null;
+  defaultSpeakerSource: 'db' | 'yml';
+  format: string | null;
+  formatSource: 'db' | 'yml';
+  sampleRate: number | null;
+  sampleRateSource: 'db' | 'yml';
+  speechRate: number | null;
+  speechRateSource: 'db' | 'yml';
+  personaVoiceLink: boolean | null;
+  personaVoiceLinkSource: 'db' | 'yml';
+  updatedBy: string | null;
+  updatedAt: string | null;
+}
+
+/** PUT tts-config 请求体。apiKey/baseUrl 语义同模型配置：空串=清除回退 yml，null=保留。 */
+export interface SaveTtsConfigCommand {
+  enabled?: boolean | null;
+  provider?: string | null;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  resourceId?: string | null;
+  defaultSpeaker?: string | null;
+  format?: string | null;
+  sampleRate?: number | null;
+  speechRate?: number | null;
+  personaVoiceLink?: boolean | null;
+}
+
+/** 当前生效 TTS 配置。 */
+export function useTtsConfig() {
+  return useQuery({
+    queryKey: ['system', 'tts-config'],
+    queryFn: () => http.get<TtsConfigView>('/api/v1/system/tts-config'),
+  });
+}
+
+/** 保存配置并立即生效。 */
+export function useSaveTtsConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (command: SaveTtsConfigCommand) =>
+      http.put<TtsConfigView>('/api/v1/system/tts-config', command),
+    onSuccess: (view) => queryClient.setQueryData(['system', 'tts-config'], view),
+  });
+}
+
+/** 恢复默认（清空 DB 覆盖，回退 yml）。 */
+export function useResetTtsConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => http.post<TtsConfigView>('/api/v1/system/tts-config/reset'),
+    onSuccess: (view) => queryClient.setQueryData(['system', 'tts-config'], view),
+  });
+}

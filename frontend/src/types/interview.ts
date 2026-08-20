@@ -132,8 +132,8 @@ export interface WsServerMessage {
   followUpType?: string;
   audioUrl?: string;
   durationMs?: number;
-  finishedBy?: string;
-  finishReason?: string;
+  finishedBy?: string | null;
+  finishReason?: string | null;
 }
 
 /** 聊天消息 */
@@ -149,8 +149,8 @@ export interface ChatMessage {
   audioUrl?: string;
   durationMs?: number;
   status?: SessionStatus;
-  finishedBy?: string;
-  finishReason?: string;
+  finishedBy?: string | null;
+  finishReason?: string | null;
   timestamp: string;
   streaming?: boolean;
 }

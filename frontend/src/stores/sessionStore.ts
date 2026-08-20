@@ -16,7 +16,7 @@ interface SessionStore {
   // Actions
   setSession: (sessionId: number, status: SessionStatus) => void;
   setStatus: (status: SessionStatus) => void;
-  addSystem: (status: SessionStatus, finishedBy?: string, finishReason?: string) => void;
+  addSystem: (status: SessionStatus, finishedBy?: string | null, finishReason?: string | null) => void;
   startQuestion: (roundId: number | undefined, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   appendChunk: (text: string) => void;
   finalizeQuestion: (roundId?: number) => void;

@@ -2,6 +2,7 @@ package com.aims.gateway.controller.system;
 
 import com.aims.core.common.Result;
 import com.aims.gateway.service.ModelConfigService;
+import com.aims.gateway.service.TtsConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,9 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class SystemController {
 
     private final ModelConfigService modelConfigService;
+    private final TtsConfigService ttsConfigService;
 
-    public SystemController(ModelConfigService modelConfigService) {
+    public SystemController(
+            ModelConfigService modelConfigService, TtsConfigService ttsConfigService) {
         this.modelConfigService = modelConfigService;
+        this.ttsConfigService = ttsConfigService;
     }
 
     @Operation(summary = "模型档位配置", description = "返回当前生效的模型档位配置（提供商/模型/参数，yml 与 DB 合并）")
@@ -70,5 +74,29 @@ public class SystemController {
     @DeleteMapping("/model-config/provider/{name}")
     public Result<ModelConfigView> deleteProvider(@PathVariable String name) {
         return Result.ok(modelConfigService.deleteProvider(name));
+    }
+
+    @Operation(
+            summary = "TTS 连接配置（读写）",
+            description = "返回 yml 与 DB 合并后的生效 TTS 配置：url / 掩码 key / 音色等，每字段标记来源（db|yml）")
+    @GetMapping("/tts-config")
+    public Result<TtsConfigView> ttsConfig() {
+        return Result.ok(ttsConfigService.getConfig());
+    }
+
+    @Operation(
+            summary = "保存 TTS 连接配置",
+            description =
+                    "保存并立即生效（下一题合成即用）。apiKey 语义：不传=保留 DB 旧值（无则沿用 yml），空串=清除覆盖回退 yml，非空=加密覆盖。"
+                            + "baseUrl/resourceId 空串同理回退 yml。")
+    @PutMapping("/tts-config")
+    public Result<TtsConfigView> saveTtsConfig(@RequestBody SaveTtsConfigCommand command) {
+        return Result.ok(ttsConfigService.save(command));
+    }
+
+    @Operation(summary = "恢复 TTS 连接配置默认", description = "清空 DB 中的 TTS 覆盖配置，整体回退 yml 并立即生效")
+    @PostMapping("/tts-config/reset")
+    public Result<TtsConfigView> resetTtsConfig() {
+        return Result.ok(ttsConfigService.reset());
     }
 }
