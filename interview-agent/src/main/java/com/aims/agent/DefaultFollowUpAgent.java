@@ -10,11 +10,13 @@ import com.aims.core.interview.InterviewerPersona;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -27,14 +29,22 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
     private final AiChatFacade aiChatFacade;
     private final ObjectMapper objectMapper;
     private final ResumeCrossCheckTool resumeCrossCheckTool;
+    private final ResumeEntityMentionExtractor regexMentionExtractor;
+    private final ResumeEntityMentionExtractor aiMentionExtractor;
 
     public DefaultFollowUpAgent(
             AiChatFacade aiChatFacade,
             ObjectMapper objectMapper,
-            ResumeCrossCheckTool resumeCrossCheckTool) {
+            ResumeCrossCheckTool resumeCrossCheckTool,
+            @Qualifier("regexResumeMentionExtractor")
+                    ResumeEntityMentionExtractor regexMentionExtractor,
+            @Qualifier("aiResumeMentionExtractor")
+                    ResumeEntityMentionExtractor aiMentionExtractor) {
         this.aiChatFacade = aiChatFacade;
         this.objectMapper = objectMapper;
         this.resumeCrossCheckTool = resumeCrossCheckTool;
+        this.regexMentionExtractor = regexMentionExtractor;
+        this.aiMentionExtractor = aiMentionExtractor;
     }
 
     @Override
@@ -60,18 +70,42 @@ public class DefaultFollowUpAgent implements FollowUpAgent {
         }
     }
 
-    /** F4/F5 规则通道探测：简历 ID + 回答 → 经历表实体比对，返回矛盾点（探测失败返回空，不阻断决策）。 */
+    /**
+     * F4/F5 两级矛盾点探测：正则低成本提名 → AI 语义判定真实体 → DB 实体比对，返回矛盾点（探测失败返回空，不阻断决策）。
+     *
+     * <p>多数轮次回答无公司/项目候选：正则空 → 直接返回，零额外 AI 成本。AI 判定候选非真实体（如「CLH等待队列」）→ 丢弃不报矛盾。
+     */
     private List<ConflictDetail> probeConflicts(FollowUpContext context) {
         if (context.resumeId() == null || context.answer() == null || context.answer().isBlank()) {
             return List.of();
         }
         try {
-            // F5：先规则提取回答中的公司名作为 companyHint，使"回答提到简历外公司"也能定向比对"简历是否提及"
-            String companyHint = CompanyNameExtractor.extract(context.answer());
-            ResumeCrossCheckResult r =
-                    resumeCrossCheckTool.crossCheck(
-                            context.resumeId(), context.answer(), companyHint);
-            return r == null ? List.of() : r.conflictDetails();
+            // 一级：正则低成本提名；无候选 → 零 AI 成本直接返回
+            List<ResumeEntityMentionExtractor.ResumeMention> regexMentions =
+                    regexMentionExtractor.extract(context.answer());
+            if (regexMentions == null || regexMentions.isEmpty()) {
+                return List.of();
+            }
+            // 二级：AI 语义判定，过滤非真实体；null（AI 不可用）→ 回退正则提名
+            List<ResumeEntityMentionExtractor.ResumeMention> mentions =
+                    aiMentionExtractor.extract(context.answer());
+            if (mentions == null) {
+                mentions = regexMentions;
+            }
+            if (mentions.isEmpty()) {
+                return List.of();
+            }
+            // 三级：每个真实体作为 companyHint 走 DB 实体比对 + 时间线冲突，汇总矛盾点
+            List<ConflictDetail> conflicts = new ArrayList<>();
+            for (ResumeEntityMentionExtractor.ResumeMention mention : mentions) {
+                ResumeCrossCheckResult r =
+                        resumeCrossCheckTool.crossCheck(
+                                context.resumeId(), context.answer(), mention.resolvedName());
+                if (r != null && r.conflictDetails() != null) {
+                    conflicts.addAll(r.conflictDetails());
+                }
+            }
+            return conflicts;
         } catch (Exception e) {
             log.debug("追问决策前矛盾点探测失败 sessionId={} err={}", context.sessionId(), e.getMessage());
             return List.of();

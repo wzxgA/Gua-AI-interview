@@ -6,9 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.aims.agent.ResumeEntityMentionExtractor.ResumeMention;
 import com.aims.ai.facade.AiChatFacade;
 import com.aims.ai.router.ModelTier;
 import com.aims.core.interview.ConflictDetail;
@@ -25,13 +27,23 @@ class DefaultFollowUpAgentTest {
 
     private AiChatFacade aiChatFacade;
     private ResumeCrossCheckTool resumeCrossCheckTool;
+    private ResumeEntityMentionExtractor regexMentionExtractor;
+    private ResumeEntityMentionExtractor aiMentionExtractor;
     private DefaultFollowUpAgent agent;
 
     @BeforeEach
     void setUp() {
         aiChatFacade = mock(AiChatFacade.class);
         resumeCrossCheckTool = mock(ResumeCrossCheckTool.class);
-        agent = new DefaultFollowUpAgent(aiChatFacade, new ObjectMapper(), resumeCrossCheckTool);
+        regexMentionExtractor = mock(ResumeEntityMentionExtractor.class);
+        aiMentionExtractor = mock(ResumeEntityMentionExtractor.class);
+        agent =
+                new DefaultFollowUpAgent(
+                        aiChatFacade,
+                        new ObjectMapper(),
+                        resumeCrossCheckTool,
+                        regexMentionExtractor,
+                        aiMentionExtractor);
     }
 
     private FollowUpContext ctx() {
@@ -128,7 +140,7 @@ class DefaultFollowUpAgentTest {
 
     @Test
     void evaluate_conflictProbed_carriedIntoDecisionAndPrompt() {
-        // resumeId 非空时决策前经规则通道探测矛盾点（stub resumeCrossCheckTool）
+        // resumeId 非空时决策前经两级通道探测矛盾点（stub 两个提取器 + resumeCrossCheckTool）
         ConflictDetail detail = new ConflictDetail("company", null, "阿里巴巴", "我在阿里巴巴负责电商中台");
         ResumeCrossCheckResult cross =
                 new ResumeCrossCheckResult(
@@ -140,8 +152,11 @@ class DefaultFollowUpAgentTest {
                         List.of("company"),
                         "ENTITY",
                         List.of(detail));
-        // F5：companyHint 由提取器从回答提取（"阿里巴巴"），不再恒为 null
-        when(resumeCrossCheckTool.crossCheck(eq(1L), any(), any())).thenReturn(cross);
+        when(regexMentionExtractor.extract(any()))
+                .thenReturn(List.of(new ResumeMention("阿里巴巴", "阿里巴巴")));
+        when(aiMentionExtractor.extract(any()))
+                .thenReturn(List.of(new ResumeMention("阿里巴巴", "阿里巴巴")));
+        when(resumeCrossCheckTool.crossCheck(eq(1L), any(), eq("阿里巴巴"))).thenReturn(cross);
         when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
                 .thenReturn(
                         "{\"action\":\"CLARIFY\",\"reason\":\"回答与简历矛盾\",\"followUpQuestion\":\"请说明\"}");
@@ -173,7 +188,105 @@ class DefaultFollowUpAgentTest {
                         any(),
                         argThat(user -> user.contains("阿里巴巴") && user.contains("简历未提及")),
                         any());
-        // 探测时 companyHint 由提取器给出（回答含"阿里巴巴"）
+        // 探测时以 AI 确认的真实体作为 companyHint 定向比对
         verify(resumeCrossCheckTool).crossCheck(eq(1L), any(), eq("阿里巴巴"));
+    }
+
+    @Test
+    void probeConflicts_noRegexCandidate_noAiCallNoConflicts() {
+        // 正则无候选 → 不触发 AI、不触发 DB 比对
+        when(regexMentionExtractor.extract(any())).thenReturn(List.of());
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn("{\"action\":\"NEXT\",\"reason\":\"回答充分\",\"followUpQuestion\":null}");
+
+        FollowUpContext ctxWithResume =
+                new FollowUpContext(
+                        1L,
+                        1L,
+                        100L,
+                        "问题",
+                        "我对微服务架构很有心得，做过分布式系统",
+                        "张三",
+                        "Java 后端工程师",
+                        "岗位要求",
+                        "简历摘要",
+                        List.of(),
+                        List.of(),
+                        null);
+        agent.evaluate(ctxWithResume);
+
+        verify(aiMentionExtractor, never()).extract(any());
+        verify(resumeCrossCheckTool, never()).crossCheck(any(), any(), any());
+    }
+
+    @Test
+    void probeConflicts_aiFiltersNonEntity_noConflicts() {
+        // AI 判定候选为非真实体（如「CLH等待队列」）→ 不产生矛盾点，也不走 DB
+        when(regexMentionExtractor.extract(any()))
+                .thenReturn(List.of(new ResumeMention("CLH等待队列", "CLH等待队列")));
+        when(aiMentionExtractor.extract(any())).thenReturn(List.of());
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn("{\"action\":\"NEXT\",\"reason\":\"回答充分\",\"followUpQuestion\":null}");
+
+        FollowUpContext ctxWithResume =
+                new FollowUpContext(
+                        1L,
+                        1L,
+                        100L,
+                        "问题",
+                        "我用「CLH等待队列」解决并发",
+                        "张三",
+                        "Java 后端工程师",
+                        "岗位要求",
+                        "简历摘要",
+                        List.of(),
+                        List.of(),
+                        null);
+        FollowUpDecision decision = agent.evaluate(ctxWithResume);
+
+        assertTrue(decision.conflictDetails().isEmpty());
+        verify(resumeCrossCheckTool, never()).crossCheck(any(), any(), any());
+    }
+
+    @Test
+    void probeConflicts_aiUnavailable_fallsBackToRegexHint() {
+        // AI 不可用（null）→ 回退正则提名作为 companyHint 走 DB
+        ConflictDetail detail = new ConflictDetail("company", null, "腾讯", "曾就职于腾讯");
+        ResumeCrossCheckResult cross =
+                new ResumeCrossCheckResult(
+                        "张三",
+                        0.3,
+                        0.0,
+                        "片段",
+                        List.of("腾讯"),
+                        List.of("company"),
+                        "ENTITY",
+                        List.of(detail));
+        when(regexMentionExtractor.extract(any()))
+                .thenReturn(List.of(new ResumeMention("腾讯", "腾讯")));
+        when(aiMentionExtractor.extract(any())).thenReturn(null);
+        when(resumeCrossCheckTool.crossCheck(eq(1L), any(), eq("腾讯"))).thenReturn(cross);
+        when(aiChatFacade.callWithTools(eq(ModelTier.STANDARD), any(), any(), any()))
+                .thenReturn("{\"action\":\"NEXT\",\"reason\":\"回答充分\",\"followUpQuestion\":null}");
+
+        FollowUpContext ctxWithResume =
+                new FollowUpContext(
+                        1L,
+                        1L,
+                        100L,
+                        "问题",
+                        "曾就职于腾讯",
+                        "张三",
+                        "Java 后端工程师",
+                        "岗位要求",
+                        "简历摘要",
+                        List.of(),
+                        List.of(),
+                        null);
+        FollowUpDecision decision = agent.evaluate(ctxWithResume);
+
+        assertEquals(1, decision.conflictDetails().size());
+        assertEquals("company", decision.conflictDetails().get(0).conflictField());
+        verify(resumeCrossCheckTool).crossCheck(eq(1L), any(), eq("腾讯"));
     }
 }
