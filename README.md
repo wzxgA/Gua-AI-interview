@@ -1,4 +1,8 @@
 <p align="center">
+  <a href="README.en.md">English</a> · <a href="README.md">中文</a>
+</p>
+
+<p align="center">
   <img src="frontend/public/logo.svg" alt="瓜分Offer Logo" width="120" height="120" style="border-radius:16px;" />
 </p>
 
