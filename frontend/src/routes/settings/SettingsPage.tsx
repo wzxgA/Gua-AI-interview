@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check } from 'lucide-react';
+import { Check, Settings2 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SilverButton } from '@/components/ui/silver-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useModelTiers } from '@/api/settings';
-import { APP_VERSION } from '@/lib/constants';
+import { AiModelConfigCard } from '@/components/settings/AiModelConfigCard';
+import { TtsConfigCard } from '@/components/settings/TtsConfigCard';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
@@ -15,6 +18,10 @@ export function SettingsPage() {
   const { data, isLoading } = useModelTiers();
   const { language, setLanguage } = useLanguage();
   const enumLabel = useEnumLabel();
+  // 默认只展示档位概览，AI 模型配置点击“配置”后展开
+  const [configOpen, setConfigOpen] = useState(false);
+  // TTS 语音配置折叠展开
+  const [ttsOpen, setTtsOpen] = useState(false);
 
   return (
     <div>
@@ -47,7 +54,17 @@ export function SettingsPage() {
         </GlassCard>
 
         <GlassCard className="p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-primary">{t('settings.modelTiers')}</h3>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-text-primary">{t('settings.modelTiers')}</h3>
+            <SilverButton
+              variant="ghost"
+              onClick={() => setConfigOpen((o) => !o)}
+              className="px-2 py-1 text-[11px]"
+            >
+              <Settings2 className="h-3 w-3" />
+              {t(configOpen ? 'settings.aiConfig.collapse' : 'settings.aiConfig.configure')}
+            </SilverButton>
+          </div>
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
@@ -76,17 +93,6 @@ export function SettingsPage() {
                     <p>
                       {t_.provider} / {t_.model}
                     </p>
-                    <p className="mt-0.5 text-text-muted">
-                      {t_.dimensions != null
-                        ? t('settings.dimensions', { count: t_.dimensions })
-                        : [
-                            t_.temperature != null && t('settings.temperature', { value: t_.temperature }),
-                            t_.maxTokens != null && t('settings.maxTokens', { value: t_.maxTokens }),
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                      {t_.fallback && ` · ${t('settings.fallback', { tier: t_.fallback })}`}
-                    </p>
                   </div>
                 </div>
               ))}
@@ -94,15 +100,23 @@ export function SettingsPage() {
           )}
         </GlassCard>
 
+        {configOpen && <AiModelConfigCard />}
+
         <GlassCard className="p-6">
-          <h3 className="mb-4 text-sm font-medium text-text-primary">{t('settings.envInfo')}</h3>
-          <div className="space-y-2 text-xs text-text-secondary">
-            <div className="flex justify-between">
-              <span>{t('settings.frontendVersion')}</span>
-              <span>{APP_VERSION}</span>
-            </div>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-text-primary">{t('settings.ttsConfig.title')}</h3>
+            <SilverButton
+              variant="ghost"
+              onClick={() => setTtsOpen((o) => !o)}
+              className="px-2 py-1 text-[11px]"
+            >
+              <Settings2 className="h-3 w-3" />
+              {t(ttsOpen ? 'settings.ttsConfig.collapse' : 'settings.ttsConfig.configure')}
+            </SilverButton>
           </div>
+          {ttsOpen && <TtsConfigCard />}
         </GlassCard>
+
       </div>
     </div>
   );

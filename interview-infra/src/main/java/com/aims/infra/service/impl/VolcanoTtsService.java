@@ -1,7 +1,7 @@
 package com.aims.infra.service.impl;
 
 import com.aims.core.interview.InterviewerPersona;
-import com.aims.infra.config.TtsProperties;
+import com.aims.infra.config.TtsConfigResolver;
 import com.aims.infra.service.TtsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,30 +35,33 @@ public class VolcanoTtsService implements TtsService {
     private static final Logger log = LoggerFactory.getLogger(VolcanoTtsService.class);
     private static final String BUCKET = "aims-audio";
 
-    private final TtsProperties ttsProperties;
+    private final TtsConfigResolver ttsConfigResolver;
     private final MinioClient minioClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient =
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-    public VolcanoTtsService(TtsProperties ttsProperties, MinioClient minioClient) {
-        this.ttsProperties = ttsProperties;
+    public VolcanoTtsService(TtsConfigResolver ttsConfigResolver, MinioClient minioClient) {
+        this.ttsConfigResolver = ttsConfigResolver;
         this.minioClient = minioClient;
     }
 
     @Override
     public TtsResult synthesize(String text, InterviewerPersona persona) {
         try {
+            // 0. 运行时解析生效配置（DB 覆盖 yml，下一题立即生效）
+            TtsConfigResolver.ResolvedTts config = ttsConfigResolver.resolve();
+
             // 1. 构造请求体
-            String speaker = resolveSpeaker(persona);
-            String requestBody = buildRequestBody(text, speaker);
+            String speaker = resolveSpeaker(config, persona);
+            String requestBody = buildRequestBody(config, text, speaker);
 
             // 2. 调用火山引擎 TTS API
             HttpRequest request =
                     HttpRequest.newBuilder()
-                            .uri(URI.create(ttsProperties.baseUrl()))
-                            .header("X-Api-Key", ttsProperties.apiKey())
-                            .header("X-Api-Resource-Id", ttsProperties.resourceId())
+                            .uri(URI.create(config.baseUrl()))
+                            .header("X-Api-Key", config.apiKey())
+                            .header("X-Api-Resource-Id", config.resourceId())
                             .header("X-Api-Request-Id", UUID.randomUUID().toString())
                             .header("Content-Type", "application/json")
                             .timeout(Duration.ofSeconds(30))
@@ -139,9 +142,10 @@ public class VolcanoTtsService implements TtsService {
     }
 
     /** 根据人设解析音色。 */
-    private String resolveSpeaker(InterviewerPersona persona) {
-        if (!ttsProperties.personaVoiceLink()) {
-            return ttsProperties.defaultSpeaker();
+    private String resolveSpeaker(
+            TtsConfigResolver.ResolvedTts config, InterviewerPersona persona) {
+        if (!config.personaVoiceLink()) {
+            return config.defaultSpeaker();
         }
         return switch (persona) {
             case FRIENDLY -> "zh_female_vv_uranus_bigtts";
@@ -152,11 +156,12 @@ public class VolcanoTtsService implements TtsService {
 
     /** 构造请求体 JSON。 */
     @SuppressWarnings("unchecked")
-    private String buildRequestBody(String text, String speaker) throws Exception {
+    private String buildRequestBody(
+            TtsConfigResolver.ResolvedTts config, String text, String speaker) throws Exception {
         Map<String, Object> audioParams = new HashMap<>();
-        audioParams.put("format", ttsProperties.format());
-        audioParams.put("sample_rate", ttsProperties.sampleRate());
-        audioParams.put("speech_rate", ttsProperties.speechRate());
+        audioParams.put("format", config.format());
+        audioParams.put("sample_rate", config.sampleRate());
+        audioParams.put("speech_rate", config.speechRate());
 
         Map<String, Object> reqParams = new HashMap<>();
         reqParams.put("text", text);

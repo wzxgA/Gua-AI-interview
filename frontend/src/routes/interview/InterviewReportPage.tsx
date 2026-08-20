@@ -10,7 +10,7 @@ import { DimensionRadarChart } from '@/components/report/DimensionRadarChart';
 import { DimensionScoreList } from '@/components/report/DimensionScoreList';
 import { RoundEvaluationList } from '@/components/report/RoundEvaluationList';
 import { ProctorFocusCard } from '@/components/report/ProctorFocusCard';
-import { useInterview, useInterviewAccess, useProctorSummary } from '@/api/interview';
+import { useInterview, useInterviewAccess, useInterviewRounds, useProctorSummary } from '@/api/interview';
 import { useInterviewReport, useInterviewEvaluations } from '@/api/report';
 import { DIMENSION_CONFIG, type EvaluationDimension } from '@/types/report';
 
@@ -25,6 +25,7 @@ export function InterviewReportPage() {
   const { data: report, isLoading: reportLoading, isError: reportError } =
     useInterviewReport(interviewId);
   const { data: evaluations } = useInterviewEvaluations(interviewId);
+  const { data: rounds } = useInterviewRounds(interviewId);
 
   // 该面试是否开启防作弊（专注度摘要仅开启时展示）
   const { data: accessConfig } = useInterviewAccess(interviewId);
@@ -126,7 +127,7 @@ export function InterviewReportPage() {
         <DimensionScoreList scores={dimensionScores} />
       </div>
 
-      <RoundEvaluationList evaluations={evaluations ?? []} />
+      <RoundEvaluationList rounds={rounds ?? []} evaluations={evaluations ?? []} />
     </div>
   );
 }

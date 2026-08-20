@@ -145,6 +145,7 @@ class WebSocketStreamEmitterTest {
                 .thenReturn(new TtsService.TtsResult("/aims-audio/tts/1.mp3", 1000));
         InterviewSessionEntity entity = new InterviewSessionEntity();
         entity.setPersona("FRIENDLY");
+        entity.setTtsEnabled(true);
         when(sessionService.getById(1L)).thenReturn(entity);
 
         emitter.emitStart(1L, 3);
@@ -194,6 +195,7 @@ class WebSocketStreamEmitterTest {
                         });
         InterviewSessionEntity entity = new InterviewSessionEntity();
         entity.setPersona("FRIENDLY");
+        entity.setTtsEnabled(true);
         when(sessionService.getById(1L)).thenReturn(entity);
 
         emitter.emitStart(1L, 3);

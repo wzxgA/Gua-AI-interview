@@ -16,6 +16,7 @@ interface SessionStore {
   // Actions
   setSession: (sessionId: number, status: SessionStatus) => void;
   setStatus: (status: SessionStatus) => void;
+  addSystem: (status: SessionStatus, finishedBy?: string | null, finishReason?: string | null) => void;
   startQuestion: (roundId: number | undefined, seq: number | undefined, followUpType?: string, parentSeq?: number, followUpIndex?: number) => void;
   appendChunk: (text: string) => void;
   finalizeQuestion: (roundId?: number) => void;
@@ -52,6 +53,33 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ sessionId, status }),
 
   setStatus: (status) => set({ status }),
+
+  /** 注入一条结束回执系统消息（按路径身份 + 状态去重，避免重复/重连恢复后仍仅一条）。 */
+  addSystem: (status, finishedBy, finishReason) =>
+    set((state) => {
+      const already = state.messages.some(
+        (m) =>
+          m.role === 'system' &&
+          m.status === status &&
+          m.finishedBy === (finishedBy ?? null) &&
+          m.finishReason === (finishReason ?? null),
+      );
+      if (already) return state;
+      return {
+        messages: [
+          ...state.messages,
+          {
+            id: nextId(),
+            role: 'system',
+            text: '',
+            status,
+            finishedBy: finishedBy ?? null,
+            finishReason: finishReason ?? null,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    }),
 
   startQuestion: (roundId, seq, followUpType, parentSeq, followUpIndex) =>
     set((state) => {

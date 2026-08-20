@@ -1,33 +1,61 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Briefcase, FileQuestion, FileText, Search, Activity } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
-import { useHealth } from '@/api/health';
 import { usePositionList } from '@/api/positions';
 import { useQuestionList } from '@/api/questions';
 import { useResumeList } from '@/api/resumes';
+import { useDashboardStats } from '@/api/dashboard';
+import { StatusDistributionChart } from '@/components/dashboard/StatusDistributionChart';
+import { TrendChart } from '@/components/dashboard/TrendChart';
+import { ScoreDistributionChart } from '@/components/dashboard/ScoreDistributionChart';
+import { RecentInterviews } from '@/components/dashboard/RecentInterviews';
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { data: health } = useHealth();
   const { data: positions } = usePositionList({ page: 1, size: 1 });
   const { data: questions } = useQuestionList({ page: 1, size: 1 });
   const { data: resumes } = useResumeList({ page: 1, size: 1 });
+  const { data: stats } = useDashboardStats();
 
-  const isUp = health?.status === 'UP';
+  const totalSessions =
+    stats?.statusCounts.reduce((sum, item) => sum + item.count, 0) ?? 0;
+  const inProgress =
+    stats?.statusCounts.find((item) => item.status === 'IN_PROGRESS')?.count ?? 0;
+  const completed =
+    stats?.statusCounts.find((item) => item.status === 'COMPLETED')?.count ?? 0;
+  const avgScore = stats?.scoreStats.avgScore;
 
-  const stats = [
-    { label: t('dashboard.backendStatus'), value: isUp ? t('dashboard.online') : t('dashboard.offline'), icon: Activity, color: isUp ? 'text-success' : 'text-danger' },
-    { label: t('dashboard.positionCount'), value: positions?.total ?? '-', icon: Briefcase, color: 'text-silver-200' },
-    { label: t('dashboard.questionCount'), value: questions?.total ?? '-', icon: FileQuestion, color: 'text-silver-200' },
-    { label: t('dashboard.resumeCount'), value: resumes?.total ?? '-', icon: FileText, color: 'text-silver-200' },
+  const kpis = [
+    {
+      label: t('dashboard.interviewTotal'),
+      value: totalSessions,
+    },
+    {
+      label: t('dashboard.inProgress'),
+      value: inProgress,
+    },
+    {
+      label: t('dashboard.completed'),
+      value: completed,
+    },
+    {
+      label: t('dashboard.avgScore'),
+      value: avgScore != null ? avgScore.toFixed(2) : '-',
+    },
   ];
 
-  const shortcuts = [
-    { to: '/positions', label: t('sidebar.menu.positions'), icon: Briefcase },
-    { to: '/questions', label: t('sidebar.menu.questions'), icon: FileQuestion },
-    { to: '/resumes', label: t('sidebar.menu.resumes'), icon: FileText },
-    { to: '/rag', label: t('sidebar.menu.rag'), icon: Search },
+  const overview = [
+    {
+      label: t('dashboard.positionCount'),
+      value: positions?.total ?? '-',
+    },
+    {
+      label: t('dashboard.questionCount'),
+      value: questions?.total ?? '-',
+    },
+    {
+      label: t('dashboard.resumeCount'),
+      value: resumes?.total ?? '-',
+    },
   ];
 
   return (
@@ -38,29 +66,31 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {kpis.map((stat) => (
           <GlassCard key={stat.label} hover className="p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-muted">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
+            <p className="text-sm text-text-muted">{stat.label}</p>
             <p className="mt-2 text-2xl font-semibold text-text-primary">{stat.value}</p>
           </GlassCard>
         ))}
       </div>
 
-      <div>
-        <h3 className="mb-3 text-sm font-medium text-text-secondary">{t('dashboard.shortcuts')}</h3>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {shortcuts.map((item) => (
-            <Link key={item.to} to={item.to}>
-              <GlassCard hover className="flex flex-col items-center gap-3 p-6">
-                <item.icon className="h-6 w-6 text-silver-300" />
-                <span className="text-sm text-text-secondary">{item.label}</span>
-              </GlassCard>
-            </Link>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {overview.map((stat) => (
+          <GlassCard key={stat.label} className="p-5">
+            <p className="text-sm text-text-muted">{stat.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-text-primary">{stat.value}</p>
+          </GlassCard>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <StatusDistributionChart data={stats?.statusCounts ?? []} total={totalSessions} />
+        <TrendChart data={stats?.dailyTrend ?? []} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ScoreDistributionChart />
+        <RecentInterviews data={stats?.recentInterviews ?? []} />
       </div>
     </div>
   );

@@ -68,6 +68,7 @@ export function useCreateInterview() {
 export interface StartPlanBody {
   questionCount?: number;
   difficulty?: 'BASIC' | 'BALANCED' | 'ADVANCED';
+  ttsEnabled?: boolean;
 }
 
 /** 生成面试计划（仅生成，不开始） */

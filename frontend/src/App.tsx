@@ -21,7 +21,6 @@ import { RagDebugPage } from '@/routes/rag/RagDebugPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { CandidateAccessPage } from '@/routes/access/CandidateAccessPage';
 import { CandidateRoomPage } from '@/routes/access/CandidateRoomPage';
-import { CandidateReportPage } from '@/routes/access/CandidateReportPage';
 
 export default function App() {
   return (
@@ -32,7 +31,6 @@ export default function App() {
         {/* 候选端免登录入口（无需登录，密码准入） */}
         <Route path="/i/:accessToken" element={<CandidateAccessPage />} />
         <Route path="/i/:accessToken/room" element={<CandidateRoomPage />} />
-        <Route path="/i/:accessToken/report" element={<CandidateReportPage />} />
         <Route
           element={
             <ProtectedRoute>

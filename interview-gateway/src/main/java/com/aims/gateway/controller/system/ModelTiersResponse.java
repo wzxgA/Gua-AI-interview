@@ -31,7 +31,8 @@ public record ModelTiersResponse(String defaultTier, List<TierItem> tiers) {
         static TierItem from(ModelTier tier, AiModelProperties.TierConfig cfg) {
             return new TierItem(
                     tier.name(),
-                    cfg.provider(),
+                    // 档位 override 时 provider 为 "<TIER>@override" 内部名，展示还原为原始 provider
+                    cfg.provider().replaceAll("@override$", ""),
                     cfg.model(),
                     cfg.temperature(),
                     cfg.maxTokens(),

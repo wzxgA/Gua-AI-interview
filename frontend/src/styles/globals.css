@@ -15,13 +15,13 @@
   --text-secondary: #4a5170;
   --text-muted: #8a92ad;
 
-  /* 银色流光强调（浅色下调深） */
-  --silver-100: #2a3556;
-  --silver-200: #3d4a6b;
-  --silver-300: #6b7890;
-  --silver-400: #8a96ae;
-  --silver-glow: #4a5680;
-  --silver-dim: #aab2c8;
+  /* 银色流光强调（浅色下为中性银灰，无蓝调） */
+  --silver-100: #8a94a6;
+  --silver-200: #5d6675;
+  --silver-300: #a9b2bf;
+  --silver-400: #c4cbd4;
+  --silver-glow: #7b8496;
+  --silver-dim: #6d7684;
 
   /* 语义色（浅色下调深） */
   --success: #0d9d5e;
@@ -29,46 +29,63 @@
   --danger: #d6377e;
   --info: var(--silver-200);
 
+  /* 强调色（白天） */
+  --accent-primary: #4a6cf7;
+
   /* 语义层变量 */
-  --surface-overlay: rgba(0, 0, 0, 0.025);
-  --surface-hover: rgba(0, 0, 0, 0.04);
-  --border-default: rgba(0, 0, 0, 0.1);
+  --surface-overlay: rgba(255, 255, 255, 0.6);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.12);
   --border-subtle: rgba(0, 0, 0, 0.05);
   --border-strong: rgba(0, 0, 0, 0.2);
   --modal-scrim: rgba(0, 0, 0, 0.4);
-  --shadow-glow: rgba(60, 80, 120, 0.08);
+  --shadow-glow: rgba(60, 80, 120, 0.14);
 }
 
-/* 深色主题 */
+/* 深色主题：黑灰银主色调（中性冷灰，无蓝紫调） */
 .dark {
-  --space-900: #050714;
-  --space-800: #0a0f24;
-  --space-700: #111936;
-  --space-600: #1a2347;
+  --space-900: #020204;
+  --space-800: #07070c;
+  --space-700: #0c0c14;
+  --space-600: #12121c;
 
-  --text-primary: #e8ecff;
-  --text-secondary: #a8b0d0;
-  --text-muted: #6b7299;
+  --text-primary: #eceef2;
+  --text-secondary: #b3b6bd;
+  /* 对比度校准：对最暗背景 #020204 对比度约 6.2:1，满足 WCAG AA */
+  --text-muted: #8a8e96;
 
-  --silver-100: #f0f4ff;
-  --silver-200: #d4dce8;
-  --silver-300: #a8b4c8;
-  --silver-400: #c8d4e8;
-  --silver-glow: #c8d4e8;
-  --silver-dim: #6b7890;
+  --silver-100: #f4f5f7;
+  --silver-200: #d9dbe0;
+  --silver-300: #adb1b8;
+  --silver-400: #cdd0d5;
+  --silver-glow: #cdd0d5;
+  --silver-dim: #7a7e86;
 
   --success: #5dffac;
   --warning: #ffc24d;
   --danger: #ff5ea8;
   --info: var(--silver-200);
 
-  --surface-overlay: rgba(255, 255, 255, 0.03);
-  --surface-hover: rgba(255, 255, 255, 0.05);
+  /* 强调色（黑夜） */
+  --accent-primary: #5d7bff;
+
+  /* 半透明中性黑灰，配合 backdrop-blur 形成毛玻璃、透出星空；控件级使用较低不透明度保证可读 */
+  --surface-overlay: rgba(24, 25, 30, 0.45);
+  --surface-hover: rgba(36, 37, 44, 0.55);
   --border-default: rgba(255, 255, 255, 0.1);
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-strong: rgba(255, 255, 255, 0.2);
-  --modal-scrim: rgba(0, 0, 0, 0.7);
-  --shadow-glow: rgba(200, 212, 232, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --modal-scrim: rgba(0, 0, 0, 0.72);
+  --shadow-glow: rgba(220, 224, 230, 0.05);
+}
+
+/* 深色夜空背景：纯黑系多层渐变，极淡银灰星云，保留层次感 */
+.dark body {
+  background-color: #020204;
+  background-image:
+    radial-gradient(ellipse at 75% 90%, rgba(210, 214, 224, 0.04), transparent 55%),
+    radial-gradient(ellipse at top, #0a0a10 0%, #040406 55%, #020204 100%);
+  background-attachment: fixed;
 }
 
 * {

@@ -14,7 +14,7 @@ export function ConflictSummaryCard({ conflictSummary }: { conflictSummary: stri
     <div className="rounded-xl border border-rose-400/30 bg-rose-400/5 p-4">
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-rose-300">
         <span aria-hidden>⚠️</span>
-        <span>{t('report.conflictSummaryTitle')}</span>
+        <span>{t('interviews.conflictSummaryTitle')}</span>
       </div>
       <ul className="space-y-1 text-sm text-text-primary">
         {lines.map((line, idx) => (

@@ -10,12 +10,14 @@ type GazeCls = 'normal' | 'face_lost' | 'gaze_away';
 type GazeEventType = 'FACE_LOST' | 'GAZE_AWAY' | 'CAMERA_DENIED' | 'CAMERA_OFF' | 'CAMERA_ON';
 
 export interface GazeDetectionHandle {
-  /** 当前摄像头授权状态机：'prompt' 待弹窗授权 / 'granted' 运行中 / 'denied' 拒绝 / 'unavailable' 浏览器不支持 */
-  camState: 'prompt' | 'granted' | 'denied' | 'unavailable';
+  /** 当前摄像头授权状态机：'disabled' 未启用(不参与) / 'prompt' 待弹窗授权 / 'granted' 运行中 / 'denied' 拒绝 / 'unavailable' 浏览器不支持 */
+  camState: 'disabled' | 'prompt' | 'granted' | 'denied' | 'unavailable';
   /** 用户确认授权（需在用户手势中调用） */
   grant: () => void;
   /** 用户拒绝授权（不阻断面试） */
   deny: () => void;
+  /** 要求眼神检测时：拒绝/不可用后可重新发起授权（denied/unavailable → prompt） */
+  retry: () => void;
 }
 
 interface ActiveEvent {
@@ -34,7 +36,7 @@ export function useGazeDetection(
   sessionId: number | null,
   videoEl: HTMLVideoElement | null,
 ): GazeDetectionHandle {
-  const [camState, setCamState] = useState<'prompt' | 'granted' | 'denied' | 'unavailable'>('prompt');
+  const [camState, setCamState] = useState<'disabled' | 'prompt' | 'granted' | 'denied' | 'unavailable'>('disabled');
 
   const streamRef = useRef<MediaStream | null>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -203,12 +205,18 @@ export function useGazeDetection(
     }
   }, [report, stopCamera, handleResult]);
 
-  // 启用/停用：disabled 时停止摄像头；enabled 且已授权但流缺失（状态短暂波动被 stop 后恢复）→ 自动重启
+  // 启用/停用（整体门禁）：未启用时停止摄像头且不进入授权态；
+  // disabled 起始态不弹窗，首次 enabled 才注入 prompt（请求授权）；
+  // granted 但流缺失（状态短暂波动被 stop 后恢复）→ 自动重启
   useEffect(() => {
     if (!enabledRef.current || !sessionIdRef.current) {
       stopCamera();
+      // 未启用（未开启防作弊/面试不在进行）时若残留待授权态则回落 disabled，避免误弹
+      if (camStateRef.current === 'prompt') setCamState('disabled');
       return;
     }
+    // 首次启用：由 disabled 进入 prompt，触发授权弹窗
+    if (camStateRef.current === 'disabled') setCamState('prompt');
     if (camStateRef.current === 'granted' && !streamRef.current) {
       startCamera();
     }
@@ -228,5 +236,12 @@ export function useGazeDetection(
     setCamState('denied');
   }, []);
 
-  return { camState, grant, deny };
+  /** 要求眼神检测时拒绝后重开：denied/unavailable → prompt，重新弹授权框 */
+  const retry = useCallback(() => {
+    if (camStateRef.current === 'denied' || camStateRef.current === 'unavailable') {
+      setCamState('prompt');
+    }
+  }, []);
+
+  return { camState, grant, deny, retry };
 }

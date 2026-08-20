@@ -4,6 +4,7 @@ import com.aims.infra.persistence.entity.ProctorEventEntity;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -29,4 +30,8 @@ public interface ProctorEventMapper extends BaseMapper<ProctorEventEntity> {
                     + " total_duration_ms FROM interview_proctor_event WHERE session_id ="
                     + " #{sessionId} GROUP BY event_type")
     List<Map<String, Object>> countByType(@Param("sessionId") Long sessionId);
+
+    /** 删除会话所有防作弊事件（级联删除面试时清理）。 */
+    @Delete("DELETE FROM interview_proctor_event WHERE session_id = #{sessionId}")
+    int deleteBySession(@Param("sessionId") Long sessionId);
 }

@@ -74,6 +74,15 @@ public class InterviewSessionEntity {
     @TableField("proctor_json")
     private String proctorJson;
 
+    @TableField("finished_by")
+    private String finishedBy;
+
+    @TableField("finish_reason")
+    private String finishReason;
+
+    @TableField("tts_enabled")
+    private Boolean ttsEnabled;
+
     public Long getId() {
         return id;
     }
@@ -240,5 +249,29 @@ public class InterviewSessionEntity {
 
     public void setProctorJson(String proctorJson) {
         this.proctorJson = proctorJson;
+    }
+
+    public String getFinishedBy() {
+        return finishedBy;
+    }
+
+    public void setFinishedBy(String finishedBy) {
+        this.finishedBy = finishedBy;
+    }
+
+    public String getFinishReason() {
+        return finishReason;
+    }
+
+    public void setFinishReason(String finishReason) {
+        this.finishReason = finishReason;
+    }
+
+    public Boolean getTtsEnabled() {
+        return ttsEnabled;
+    }
+
+    public void setTtsEnabled(Boolean ttsEnabled) {
+        this.ttsEnabled = ttsEnabled;
     }
 }

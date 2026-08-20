@@ -17,6 +17,8 @@ import { useTabSwitchDetection } from '@/hooks/useTabSwitchDetection';
 import { useGazeDetection } from '@/hooks/useGazeDetection';
 import { GazeDetector } from '@/components/candidate/GazeDetector';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { SilverButton } from '@/components/ui/silver-button';
+import { Lock } from 'lucide-react';
 import type { SessionStatus } from '@/types/interview';
 
 /** 候选面试间：免登录，基于 guestToken 连接 WS 完成实时问答（复用现有问答链路）。 */
@@ -45,6 +47,7 @@ export function CandidateRoomPage() {
   const resetStore = useSessionStore((s) => s.reset);
   const addQuestion = useSessionStore((s) => s.addQuestion);
   const addAnswer = useSessionStore((s) => s.addAnswer);
+  const addSystem = useSessionStore((s) => s.addSystem);
   const { connect, disconnect } = session;
 
   // WebSocket 连接
@@ -79,6 +82,15 @@ export function CandidateRoomPage() {
       setSession(guestSession.id, guestSession.status as SessionStatus);
     }
   }, [guestSession, setSession]);
+
+  // 结束回执（重连兜底）：终态/评估中时用 REST 数据补齐 end 回执，去重由 store.addSystem 保证
+  useEffect(() => {
+    if (!guestSession) return;
+    const st = session.status as SessionStatus;
+    if (['EVALUATING', 'COMPLETED', 'CANCELLED', 'FAILED'].includes(st)) {
+      addSystem(st, guestSession.finishedBy ?? undefined, guestSession.finishReason ?? undefined);
+    }
+  }, [session.status, guestSession, addSystem]);
 
   // WS 错误提示
   useEffect(() => {
@@ -183,6 +195,8 @@ export function CandidateRoomPage() {
 
   const status = session.status;
   const isTerminal = ['COMPLETED', 'CANCELLED', 'FAILED'].includes(status);
+  // 要求眼神检测且正在面试但未授权 → 禁止答题（输入与提交禁控）
+  const gazeLocked = proctor.gaze && status === 'IN_PROGRESS' && gaze.camState !== 'granted';
 
   return (
     <div className="relative mx-auto flex h-screen w-full max-w-5xl flex-col gap-4 p-4">
@@ -200,7 +214,6 @@ export function CandidateRoomPage() {
           onFinish={() => session.finishInterview()}
           onCancel={() => session.cancelInterview()}
           onResume={handleResume}
-          onViewReport={() => navigate(`/i/${accessToken}/report`)}
         />
       </GlassCard>
 
@@ -210,9 +223,20 @@ export function CandidateRoomPage() {
       </div>
 
       {/* 回答输入区 */}
+      {gazeLocked && (
+        <GlassCard className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-text-muted">
+            <Lock className="h-4 w-4 shrink-0 text-amber-300" />
+            <span>{t('proctor.gazeLockedHint')}</span>
+          </div>
+          <SilverButton variant="ghost" onClick={gaze.retry}>
+            {t('proctor.gazeOpenAgain')}
+          </SilverButton>
+        </GlassCard>
+      )}
       <AnswerInput
         onSend={session.submitAnswer}
-        disabled={session.isStreaming || status !== 'IN_PROGRESS'}
+        disabled={session.isStreaming || status !== 'IN_PROGRESS' || gazeLocked}
       />
 
       {/* 断线遮罩 */}

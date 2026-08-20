@@ -1,10 +1,13 @@
 package com.aims.infra.persistence.service;
 
+import com.aims.core.dashboard.DashboardStats;
 import com.aims.core.session.SessionStatus;
 import com.aims.infra.persistence.entity.InterviewSessionEntity;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.function.Function;
 
 /** 面试会话持久化服务。 */
@@ -58,6 +61,12 @@ public interface InterviewSessionService {
     /** 标记结束时间。 */
     InterviewSessionEntity markEnded(Long id);
 
+    /** 记录结束原因（谁结束、以何种方式结束），用于结束原因透明化。 */
+    void recordFinish(Long id, String finishedBy, String finishReason);
+
+    /** 设置面试官 TTS 语音开关（仅生成计划时调用一次）。 */
+    void updateTtsEnabled(Long id, Boolean ttsEnabled);
+
     /** 更新评估流程状态。 */
     void updateEvaluationStatus(Long sessionId, String evaluationStatus);
 
@@ -78,4 +87,30 @@ public interface InterviewSessionService {
 
     /** 删除面试会话（级联删除轮次数据）。 */
     void delete(Long id);
+
+    /** 组装仪表盘聚合统计（状态分布 / 30 日趋势 / 得分分布 / 最近面试）。 */
+    DashboardStats getDashboardStats();
+
+    /**
+     * 得分统计（平均分 + 五档分布）。
+     *
+     * <p>过滤优先级：startDate/endDate 均非 null 时按该自定义区间过滤；否则 days 表示最近 N 天；两者都未提供时返回全部时间。
+     *
+     * @param days 最近 N 天（按 created_at 过滤），为 null 或 &lt;= 0 时忽略
+     * @param startDate 自定义区间起始日期（含当天），yyyy-MM-dd
+     * @param endDate 自定义区间结束日期（含当天），yyyy-MM-dd
+     */
+    DashboardStats.ScoreStats getScoreStats(Integer days, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * 得分点列表（得分 + 创建时间，散点图数据），按时间升序。
+     *
+     * <p>过滤优先级同 {@link #getScoreStats(Integer, LocalDate, LocalDate)}。
+     *
+     * @param days 最近 N 天（按 created_at 过滤），为 null 或 &lt;= 0 时忽略
+     * @param startDate 自定义区间起始日期（含当天），yyyy-MM-dd
+     * @param endDate 自定义区间结束日期（含当天），yyyy-MM-dd
+     */
+    List<DashboardStats.ScorePoint> getScorePoints(
+            Integer days, LocalDate startDate, LocalDate endDate);
 }

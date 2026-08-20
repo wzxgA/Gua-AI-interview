@@ -1,5 +1,7 @@
 package com.aims.ai.router;
 
+import com.aims.ai.config.AiModelProperties;
+import com.aims.ai.config.ModelHandleFactory;
 import com.aims.core.common.ErrorCode;
 import com.aims.core.common.exception.AiException;
 import com.aims.core.common.exception.AiOutputParseException;
@@ -10,6 +12,7 @@ import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.api.OpenAiApi;
 import reactor.core.publisher.Flux;
 
 /**
@@ -23,17 +26,47 @@ public class ModelRouter {
     private static final Logger log = LoggerFactory.getLogger(ModelRouter.class);
     private static final int DEFAULT_EMBEDDING_DIMENSIONS = 2048;
 
-    private final Map<ModelTier, ModelHandle> handles;
-    private final ModelTier defaultTier;
+    /** 句柄工厂：非 null 时支持 {@link #refresh} 热刷新（正常装配路径注入）；单测直建时可省略。 */
+    private final ModelHandleFactory factory;
+
     private final MeterRegistry meterRegistry;
+    private volatile Map<ModelTier, ModelHandle> handles;
+    private volatile ModelTier defaultTier;
 
     public ModelRouter(
             Map<ModelTier, ModelHandle> handles,
             ModelTier defaultTier,
             MeterRegistry meterRegistry) {
+        this(null, handles, defaultTier, meterRegistry);
+    }
+
+    public ModelRouter(
+            ModelHandleFactory factory,
+            Map<ModelTier, ModelHandle> handles,
+            ModelTier defaultTier,
+            MeterRegistry meterRegistry) {
+        this.factory = factory;
         this.handles = Map.copyOf(handles);
         this.defaultTier = defaultTier;
         this.meterRegistry = meterRegistry;
+    }
+
+    /**
+     * 热刷新：用合并后的生效配置重建全部句柄并原子替换快照。
+     *
+     * <p>旧句柄上正在流式/阻塞的请求继续走完（句柄不可变），新请求自动走新快照，无需加锁。
+     *
+     * @param merged yml 与 DB 合并后的生效配置（pricing/retry 仍以 yml 为准，不做热更新）
+     */
+    public synchronized void refresh(AiModelProperties merged) {
+        if (factory == null) {
+            throw new IllegalStateException("ModelRouter 未装配 ModelHandleFactory，无法热刷新");
+        }
+        Map<String, OpenAiApi> apis = factory.buildApis(merged);
+        Map<ModelTier, ModelHandle> next = factory.buildHandles(merged, apis);
+        this.handles = next;
+        this.defaultTier = merged.defaultTier();
+        log.info("模型路由热刷新完成 tiers={} default={}", next.keySet(), merged.defaultTier());
     }
 
     /** 按档位解析句柄（O(1) 纯内存）；档位未配置时抛出业务异常。 */

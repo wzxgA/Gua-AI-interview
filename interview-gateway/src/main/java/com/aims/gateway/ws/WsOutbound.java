@@ -17,7 +17,9 @@ public record WsOutbound(
         String text,
         String followUpType,
         String audioUrl,
-        Integer durationMs) {
+        Integer durationMs,
+        String finishedBy,
+        String finishReason) {
 
     public static WsOutbound sessionReady(Long sessionId, String status) {
         return new WsOutbound(
@@ -33,6 +35,8 @@ public record WsOutbound(
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -42,6 +46,8 @@ public record WsOutbound(
                 sessionId,
                 roundId,
                 seq,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -74,6 +80,8 @@ public record WsOutbound(
                 null,
                 followUpType,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -89,6 +97,8 @@ public record WsOutbound(
                 null,
                 null,
                 text,
+                null,
+                null,
                 null,
                 null,
                 null);
@@ -108,6 +118,8 @@ public record WsOutbound(
                 text,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -125,13 +137,34 @@ public record WsOutbound(
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
     public static WsOutbound status(Long sessionId, String status) {
+        return status(sessionId, status, null, null);
+    }
+
+    /** 状态广播：可选携带结束原因（finishedBy/finishReason），用于前端结束回执。 */
+    public static WsOutbound status(
+            Long sessionId, String status, String finishedBy, String finishReason) {
         return new WsOutbound(
-                "STATUS", sessionId, null, null, null, null, status, null, null, null, null, null,
-                null);
+                "STATUS",
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                finishedBy,
+                finishReason);
     }
 
     public static WsOutbound heartbeatAck(Long sessionId) {
@@ -148,10 +181,17 @@ public record WsOutbound(
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
     public static WsOutbound completed(Long sessionId) {
+        return completed(sessionId, null, null);
+    }
+
+    /** 会话完成广播：可选携带结束原因。 */
+    public static WsOutbound completed(Long sessionId, String finishedBy, String finishReason) {
         return new WsOutbound(
                 "SESSION_COMPLETED",
                 sessionId,
@@ -165,12 +205,15 @@ public record WsOutbound(
                 null,
                 null,
                 null,
-                null);
+                null,
+                finishedBy,
+                finishReason);
     }
 
     public static WsOutbound error(int code, String message) {
         return new WsOutbound(
-                "ERROR", null, null, null, null, null, null, code, message, null, null, null, null);
+                "ERROR", null, null, null, null, null, null, code, message, null, null, null, null,
+                null, null);
     }
 
     /** TTS 音频合成完成通知。 */
@@ -189,6 +232,8 @@ public record WsOutbound(
                 null,
                 null,
                 audioUrl,
-                durationMs);
+                durationMs,
+                null,
+                null);
     }
 }

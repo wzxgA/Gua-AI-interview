@@ -31,7 +31,7 @@ export function TopBar() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-subtle bg-space-800/50 px-8 backdrop-blur-xl">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border-subtle bg-space-800/40 px-8 backdrop-blur-xl">
       <h1 className="text-base font-semibold text-text-primary">{title}</h1>
       <div className="flex items-center gap-4">
         <LanguageSwitcher />

@@ -27,6 +27,7 @@ const config: Config = {
         warning: 'var(--warning)',
         danger: 'var(--danger)',
         info: 'var(--info)',
+        'accent-primary': 'var(--accent-primary)',
         'surface-overlay': 'var(--surface-overlay)',
         'surface-hover': 'var(--surface-hover)',
         'border-default': 'var(--border-default)',

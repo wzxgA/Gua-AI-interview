@@ -66,6 +66,10 @@ springdoc:
 aims:
   ai:
     default-tier: ${AIMS_DEFAULT_TIER:STANDARD}
+    # 配置中心化（v1.2 D 方案）：DB 覆盖层的 API Key 加密密钥（base64 32 字节）
+    # 未配置时退化为由 AIMS_JWT_SECRET 派生；生产环境务必配置 AIMS_CONFIG_ENCRYPT_KEY
+    config-store:
+      encrypt-key: ${AIMS_CONFIG_ENCRYPT_KEY:}
     providers:
       # 通义千问（DashScope OpenAI 兼容模式）
       dashscope:
