@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!-- 西瓜主体 -->
+  <g transform="translate(250, 280)">
+    <!-- 绿色外皮 -->
+    <path d="M -180 0 A 180 180 0 0 0 180 0" 
+          fill="none" stroke="#2E7D32" stroke-width="24" stroke-linecap="round"/>
+
+    <!-- 白色内层 -->
+    <path d="M -168 0 A 168 168 0 0 0 168 0" 
+          fill="none" stroke="#F5F5F5" stroke-width="16" stroke-linecap="round"/>
+
+    <!-- 红色果肉 -->
+    <path d="M -156 0 A 156 156 0 0 0 156 0 Z" 
+          fill="#FF5252" stroke="black" stroke-width="4"/>
+
+    <!-- 脸部 -->
+    <!-- 左眼 - 竖形豆豆眼 -->
+    <ellipse cx="-56" cy="59" rx="10" ry="16" fill="#1A1A2E"/>
+    <!-- 右眼 - 竖形豆豆眼 -->
+    <ellipse cx="54" cy="39" rx="10" ry="16" fill="#1A1A2E"/>
+    <!-- 嘴巴 - ω形猫猫嘴 -->
+    <path d="M -18 85 Q -10 100 0 90 Q 10 100 18 85" 
+          fill="none" stroke="#1A1A2E" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- 左手臂 -->
+  <path d="M 110 230 Q 80 180 60 140" 
+        fill="none" stroke="black" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- 右手臂 -->
+  <path d="M 390 230 Q 420 180 440 140" 
+        fill="none" stroke="black" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- 左手 -->
+  <g transform="translate(60, 140)">
+    <ellipse cx="0" cy="0" rx="18" ry="22" fill="white" stroke="black" stroke-width="4"/>
+    <line x1="-8" y1="-8" x2="-8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="-10" x2="0" y2="10" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="8" y1="-8" x2="8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 右手 -->
+  <g transform="translate(440, 140)">
+    <ellipse cx="0" cy="0" rx="18" ry="22" fill="white" stroke="black" stroke-width="4"/>
+    <line x1="-8" y1="-8" x2="-8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="-10" x2="0" y2="10" stroke="black" stroke-width="3" stroke-linecap="round"/>
+    <line x1="8" y1="-8" x2="8" y2="8" stroke="black" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- 牌子 -->
+  <g transform="translate(250, 120) rotate(-8)">
+    <rect x="-140" y="-80" width="280" height="160" rx="4" 
+          fill="white" stroke="black" stroke-width="5"/>
+    <text x="0" y="20" 
+          font-family="Arial, Helvetica, sans-serif" 
+          font-size="70" 
+          font-weight="900" 
+          text-anchor="middle" 
+          fill="black"
+          letter-spacing="2">OFFER</text>
+  </g>
+</svg>
