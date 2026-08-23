@@ -75,7 +75,6 @@ ai-ms/
 ├── frontend/             # Frontend (React 19 + TypeScript + Vite 6 + Tailwind CSS)
 ├── docker/               # Docker Compose infrastructure + init scripts
 ├── scripts/              # Data cleanup scripts (by business domain)
-├── dev.ps1               # One-click local infrastructure management
 ├── pom.xml               # Parent POM (version locking + dependency management)
 └── .env.example          # Application environment variable template
 ```
@@ -96,10 +95,17 @@ Dependency direction: `gateway -> agent -> ai -> core`, `gateway -> infra -> ai 
 
 ```powershell
 # Windows PowerShell
-./dev.ps1 up
+cd docker
+docker compose up -d
 ```
 
-This command auto-generates `docker/.env` from `.env.example` and starts the following services:
+If `docker/.env` does not exist, run this from the repository root first:
+
+```powershell
+Copy-Item .env.example docker/.env
+```
+
+Then run `docker compose up -d` to start the following services:
 
 | Service                    | Container port | Host port   | Description                       |
 | -------------------------- | ----------- | ----------- | ------------------------------- |
@@ -111,10 +117,10 @@ This command auto-generates `docker/.env` from `.env.example` and starts the fol
 > Host ports align with `application-local.yml` defaults to avoid conflicts with locally installed services.
 
 ```powershell
-./dev.ps1 ps      # show container status
-./dev.ps1 logs    # show logs
-./dev.ps1 down    # stop containers
-./dev.ps1 reset   # stop and delete all data volumes (use with caution)
+docker compose ps      # show container status
+docker compose logs -f # show logs
+docker compose down    # stop containers
+docker compose down -v --remove-orphans # stop and delete all data volumes (use with caution)
 ```
 
 ### 2. Configure API keys
@@ -330,7 +336,8 @@ Live integration tests require real API keys and running infrastructure and are 
 
 ```powershell
 # Start infrastructure
-./dev.ps1 up
+cd docker
+docker compose up -d
 
 # Enable the Live test switch
 $env:AIMS_LIVE_TEST = "true"

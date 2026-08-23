@@ -75,7 +75,6 @@ ai-ms/
 ├── frontend/             # 前端工程（React 19 + TypeScript + Vite 6 + Tailwind CSS）
 ├── docker/               # Docker Compose 基础设施 + 初始化脚本
 ├── scripts/              # 各类数据清理脚本（按业务域）
-├── dev.ps1               # 一键管理本地基础设施
 ├── pom.xml               # 父 POM（版本锁定 + 依赖管理）
 └── .env.example          # 应用环境变量模板
 ```
@@ -96,10 +95,17 @@ ai-ms/
 
 ```powershell
 # Windows PowerShell
-./dev.ps1 up
+cd docker
+docker compose up -d
 ```
 
-该命令会自动从 `.env.example` 生成 `docker/.env`，并启动以下服务：
+如果 `docker/.env` 不存在，先在项目根目录执行：
+
+```powershell
+Copy-Item .env.example docker/.env
+```
+
+然后重新执行 `docker compose up -d`，启动以下服务：
 
 | 服务                       | 容器端口        | 宿主机端口       | 说明                   |
 | ------------------------ | ----------- | ----------- | -------------------- |
@@ -111,10 +117,10 @@ ai-ms/
 > 宿主机端口与 `application-local.yml` 默认值对齐，避免与本机已安装的服务冲突。
 
 ```powershell
-./dev.ps1 ps      # 查看容器状态
-./dev.ps1 logs    # 查看日志
-./dev.ps1 down    # 停止容器
-./dev.ps1 reset   # 停止并删除所有数据卷（慎用）
+docker compose ps      # 查看容器状态
+docker compose logs -f # 查看日志
+docker compose down    # 停止容器
+docker compose down -v --remove-orphans # 停止并删除所有数据卷（慎用）
 ```
 
 ### 2. 配置 API Key
@@ -330,7 +336,8 @@ Live 集成测试需要真实 API Key 和运行中的基础设施，默认跳过
 
 ```powershell
 # 启动基础设施
-./dev.ps1 up
+cd docker
+docker compose up -d
 
 # 开启 Live 测试开关
 $env:AIMS_LIVE_TEST = "true"

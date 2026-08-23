@@ -1,7 +1,7 @@
 name: aims-infra-wzxg
 
 # AIMS P1 本地开发基础设施：PostgreSQL(pgvector) / Redis / Kafka(KRaft) / MinIO
-# 启动：./dev.ps1 up  （或 docker compose --env-file ../.env -f docker-compose.yml up -d）
+# 启动：cd docker && docker compose up -d
 
 services:
   postgres:
