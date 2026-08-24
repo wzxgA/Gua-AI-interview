@@ -1,7 +1,55 @@
 <img src="assets/proj-logo.svg" alt="瓜分 Offer" width="300" height="200">
 
 # 第1期 · 瓜分 Offer 是什么 
+```mermaid
+mindmap
+  root((瓜分 Offer AI 面试 Agent 平台))
 
+    用户端
+      管理端
+      候选人端
+      REST / WebSocket
+      面试实时交互
+
+    网关层
+      WebSocket Handler
+      JWT 与权限控制
+
+    AI Agent 层
+      LangGraph4j
+      面试计划生成
+      智能提问与追问
+      面试评估与报告
+      多模型路由
+
+    AI 能力层
+      Advisor 链
+      对话记忆
+      模型降级与重试
+
+    基础设施层
+      PostgreSQL + pgvector
+      Redis
+      Kafka
+      MinIO
+      TTS 服务
+
+    核心业务
+      岗位管理
+      题库管理
+      简历解析
+      RAG 检索
+      实时面试
+      五维评估
+      综合报告
+
+    工程部署
+      Maven 多模块
+      Docker Compose
+      Flyway 数据库迁移
+      Actuator 监控
+      Prometheus 指标
+```
 ## 一、瓜分 Offer 是什么
 
 ### 1. 一句话定位
