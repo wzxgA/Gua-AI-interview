@@ -26,6 +26,57 @@
 
 基于 Spring Boot 3.5 + Spring AI 1.1 + Java 21 虚拟线程 + LangGraph4j 构建的 AI 面试 Agent 服务平台。覆盖岗位/题库/简历管理、RAG 语义检索、简历 AI 解析、面试实时问答（动态追问、面试官人设、TTS 语音播报、断线恢复）以及五维评估与报告生成。
 
+
+```mermaid
+mindmap
+  root((瓜分 Offer AI 面试 Agent 平台))
+
+    用户端
+      管理端
+      候选人端
+      REST / WebSocket
+      面试实时交互
+
+    网关层
+      WebSocket Handler
+      JWT 与权限控制
+
+    AI Agent 层
+      LangGraph4j
+      面试计划生成
+      智能提问与追问
+      面试评估与报告
+      多模型路由
+
+    AI 能力层
+      Advisor 链
+      对话记忆
+      模型降级与重试
+
+    基础设施层
+      PostgreSQL + pgvector
+      Redis
+      Kafka
+      MinIO
+      TTS 服务
+
+    核心业务
+      岗位管理
+      题库管理
+      简历解析
+      RAG 检索
+      实时面试
+      五维评估
+      综合报告
+
+    工程部署
+      Maven 多模块
+      Docker Compose
+      Flyway 数据库迁移
+      Actuator 监控
+      Prometheus 指标
+```
+
 ## 功能特性
 
 | 模块         | 说明                                                                                                    |

@@ -26,6 +26,49 @@
 
 An AI interview-agent service platform built with Spring Boot 3.5 + Spring AI 1.1 + Java 21 virtual threads + LangGraph4j. It covers position / question-bank / resume management, RAG semantic retrieval, AI resume parsing, real-time interview Q&A (dynamic follow-up questions, interviewer persona, TTS voice playback, disconnect recovery), and five-dimension evaluation with report generation.
 
+```mermaid
+mindmap
+  root((GuaFenOffer AI Interview Agent Platform))
+    User Interfaces
+      Admin Portal
+      Candidate Portal
+      REST / WebSocket
+      Real-time Interview Interaction
+    Gateway Layer
+      WebSocket Handler
+      JWT Authentication & Authorization
+    AI Agent Layer
+      LangGraph4j
+      Interview Plan Generation
+      Intelligent Questioning & Follow-ups
+      Interview Evaluation & Reporting
+      Multi-model Routing
+    AI Capability Layer
+      Advisor Chain
+      Conversation Memory
+      Model Fallback & Retry
+    Infrastructure Layer
+      PostgreSQL + pgvector
+      Redis
+      Kafka
+      MinIO
+      TTS Service
+    Core Business
+      Position Management
+      Question Bank Management
+      Resume Parsing
+      RAG Retrieval
+      Real-time Interviews
+      Five-dimensional Evaluation
+      Comprehensive Reports
+    Engineering & Deployment
+      Maven Multi-module Project
+      Docker Compose
+      Flyway Database Migrations
+      Actuator Monitoring
+      Prometheus Metrics
+```
+
 ## Features
 
 | Module | Description |
