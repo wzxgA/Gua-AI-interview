@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { StarfieldBackground } from '@/components/starfield/StarfieldBackground';
 import { AppShell } from '@/components/layout/AppShell';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AdminRoute } from '@/components/AdminRoute';
 import { LoginPage } from '@/routes/LoginPage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
 import { PositionListPage } from '@/routes/positions/PositionListPage';
@@ -19,6 +20,7 @@ import { InterviewRoomPage } from '@/routes/interview/InterviewRoomPage';
 import { InterviewReportPage } from '@/routes/interview/InterviewReportPage';
 import { RagDebugPage } from '@/routes/rag/RagDebugPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
+import { MonitorPage } from '@/routes/monitor/MonitorPage';
 import { CandidateAccessPage } from '@/routes/access/CandidateAccessPage';
 import { CandidateRoomPage } from '@/routes/access/CandidateRoomPage';
 
@@ -54,6 +56,15 @@ export default function App() {
           <Route path="interviews/:id/report" element={<InterviewReportPage />} />
           <Route path="rag" element={<RagDebugPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          {/* 监控：仅 ADMIN 可见 */}
+          <Route
+            path="monitor"
+            element={
+              <AdminRoute>
+                <MonitorPage />
+              </AdminRoute>
+            }
+          />
         </Route>
       </Routes>
     </>

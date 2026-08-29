@@ -72,7 +72,8 @@
       "/questions": "題庫管理",
       "/resumes": "簡歷管理",
       "/rag": "RAG 檢索",
-      "/settings": "設定"
+      "/settings": "設定",
+      "/monitor": "監控"
     },
     "serviceOnline": "服務在線",
     "serviceOffline": "服務離線",
@@ -87,7 +88,8 @@
       "resumes": "簡歷管理",
       "interviews": "面試管理",
       "rag": "RAG 檢索",
-      "settings": "設定"
+      "settings": "設定",
+      "monitor": "監控"
     }
   },
   "theme": {
@@ -747,5 +749,34 @@
     "eventUnknown": "其他",
     "empty": "暫無防作弊事件",
     "totalOffFocusLabel": "累計偏離時長"
+  },
+  "monitor": {
+    "subtitle": "AI 成本 / 延遲 / 節點耗時即時監控",
+    "range": {
+      "1h": "近 1 小時",
+      "6h": "近 6 小時",
+      "24h": "近 24 小時"
+    },
+    "openInGrafana": "在 Grafana 開啟",
+    "noData": "暫無監控數據（服務產生流量後即有數據）",
+    "stat": {
+      "round": "當前 / 總輪次",
+      "cost": "LLM 累計成本（元）",
+      "tokens1h": "Token 總量（近 1h）",
+      "errorRetry1h": "錯誤 / 重試（近 1h）",
+      "errorRetryHint": "格式：錯誤數 / 重試數"
+    },
+    "chart": {
+      "nodeDuration": "Graph 節點耗時 P50 / P95 / P99",
+      "llmLatency": "LLM 延遲 P95（檔位 / 模型）",
+      "nodeP95": "各節點 P95 耗時",
+      "tokenRate": "Token 消耗速率",
+      "errorRate": "節點錯誤速率",
+      "jvmHeap": "JVM 堆記憶體"
+    },
+    "legend": {
+      "used": "已用",
+      "max": "上限"
+    }
   }
 }

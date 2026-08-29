@@ -72,7 +72,8 @@
       "/questions": "题库管理",
       "/resumes": "简历管理",
       "/rag": "RAG 检索",
-      "/settings": "设置"
+      "/settings": "设置",
+      "/monitor": "监控"
     },
     "serviceOnline": "服务在线",
     "serviceOffline": "服务离线",
@@ -87,7 +88,8 @@
       "resumes": "简历管理",
       "interviews": "面试管理",
       "rag": "RAG 检索",
-      "settings": "设置"
+      "settings": "设置",
+      "monitor": "监控"
     }
   },
   "theme": {
@@ -747,5 +749,34 @@
     "eventUnknown": "其他",
     "empty": "暂无防作弊事件",
     "totalOffFocusLabel": "累计偏离时长"
+  },
+  "monitor": {
+    "subtitle": "AI 成本 / 延迟 / 节点耗时实时监控",
+    "range": {
+      "1h": "近 1 小时",
+      "6h": "近 6 小时",
+      "24h": "近 24 小时"
+    },
+    "openInGrafana": "在 Grafana 打开",
+    "noData": "暂无监控数据（服务产生流量后即有数据）",
+    "stat": {
+      "round": "当前 / 总轮次",
+      "cost": "LLM 累计成本（元）",
+      "tokens1h": "Token 总量（近 1h）",
+      "errorRetry1h": "错误 / 重试（近 1h）",
+      "errorRetryHint": "格式：错误数 / 重试数"
+    },
+    "chart": {
+      "nodeDuration": "Graph 节点耗时 P50 / P95 / P99",
+      "llmLatency": "LLM 延迟 P95（档位 / 模型）",
+      "nodeP95": "各节点 P95 耗时",
+      "tokenRate": "Token 消耗速率",
+      "errorRate": "节点错误速率",
+      "jvmHeap": "JVM 堆内存"
+    },
+    "legend": {
+      "used": "已用",
+      "max": "上限"
+    }
   }
 }

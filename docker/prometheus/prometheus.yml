@@ -1,0 +1,13 @@
+# AIMS Prometheus 抓取配置（P7 监控接入）
+# 应用运行在宿主机 8080，容器内通过 host.docker.internal 访问
+# （docker-compose 中已为该服务配置 extra_hosts: host-gateway）
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: aims-gateway
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]

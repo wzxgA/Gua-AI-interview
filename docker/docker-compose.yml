@@ -127,8 +127,44 @@ services:
     ports:
       - "8085:8080"
 
+  # ---- P7 监控：Prometheus 抓取宿主机 AIMS 应用 /actuator/prometheus ----
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aims-prometheus-wzxg
+    # Linux 下宿主机地址解析（应用在宿主机 8080 运行）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+
+  # ---- P7 监控：Grafana 可视化（provisioned 数据源 + AIMS 概览仪表盘，kiosk 嵌入管理端） ----
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: aims-grafana-wzxg
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-aims12345}
+      # 允许管理端 iframe 嵌入（kiosk 模式）
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      # 受限匿名访问：仅 Viewer 只读，无法进入管理页，防止监控暴露外网时权限外泄
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_HIDE_VERSION: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+
 volumes:
   pgdata:
   redisdata:
   kafkadata:
   miniodata:
+  grafanadata:

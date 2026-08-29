@@ -20,6 +20,8 @@ dependency-reduced-pom.xml
 docker/.env
 !.env.example
 !docker/.env.example
+# Vite 本地覆盖（端口等机器特定配置）
+frontend/.env.*.local
 
 # ---- 日志与临时文件 ----
 logs/
@@ -38,3 +40,6 @@ frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 frontend/node_modules/.tmp/
+# ---- 本地运行时生成 ----
+dump.rdb
+frontend/pnpm-workspace.yaml

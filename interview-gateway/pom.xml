@@ -41,6 +41,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- P7 Prometheus 接入：/actuator/prometheus 端点（版本由 spring-boot-dependencies 管理） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
         <!-- 安全与认证 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
