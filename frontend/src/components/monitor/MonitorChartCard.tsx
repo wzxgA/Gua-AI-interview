@@ -48,14 +48,17 @@ export function MonitorChartCard({
   series,
   unit,
   isLine = false,
+  noFill = false,
   isLoading = false,
 }: {
   title: string;
   series: ChartSeries[];
-  /** y 值单位（tooltip 展示），如 s / ops / bytes */
+  /** y 值单位（Y 轴标签 + Tooltip 展示），如 s / ops / bytes */
   unit?: string;
   /** 多 series 时用折线避免面积重叠 */
   isLine?: boolean;
+  /** 去掉面积填充阴影（仅描边线），用于浅色模式下渐变观感差的图 */
+  noFill?: boolean;
   isLoading?: boolean;
 }) {
   const { t } = useTranslation();
@@ -68,6 +71,13 @@ export function MonitorChartCard({
   const gridColor = isDark ? 'rgba(220,224,230,0.1)' : 'rgba(0,0,0,0.06)';
   const axisColor = isDark ? 'rgba(220,224,230,0.55)' : 'rgba(0,0,0,0.45)';
   const dataKeys = series.map((s) => s.name);
+  const tooltipFormatter = (value: unknown, name: unknown) => [
+    unit ? `${fmtNumber(Number(value))} ${unit}` : fmtNumber(Number(value)),
+    String(name),
+  ];
+  const yAxisLabel = unit
+    ? { value: unit, angle: -90, position: 'insideLeft' as const, fontSize: 10, fill: axisColor }
+    : undefined;
 
   return (
     <GlassCard className="p-5">
@@ -98,9 +108,10 @@ export function MonitorChartCard({
                   tickLine={false}
                   axisLine={false}
                   width={48}
+                  label={yAxisLabel}
                 />
                 <Tooltip
-                  formatter={(value, name) => [fmtNumber(Number(value)), String(name)]}
+                  formatter={tooltipFormatter}
                   labelFormatter={(ms) => timeTick(Number(ms))}
                   contentStyle={{
                     background: 'var(--surface-overlay)',
@@ -123,14 +134,16 @@ export function MonitorChartCard({
               </LineChart>
             ) : (
               <AreaChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
-                <defs>
-                  {dataKeys.map((key, i) => (
-                    <linearGradient key={key} id={`grad-${title}-${i}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={palette[i % palette.length]} stopOpacity={0.3} />
-                      <stop offset="100%" stopColor={palette[i % palette.length]} stopOpacity={0.02} />
-                    </linearGradient>
-                  ))}
-                </defs>
+                {!noFill && (
+                  <defs>
+                    {dataKeys.map((key, i) => (
+                      <linearGradient key={key} id={`grad-${title}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={palette[i % palette.length]} stopOpacity={0.3} />
+                        <stop offset="100%" stopColor={palette[i % palette.length]} stopOpacity={0.02} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                )}
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
                 <XAxis
                   dataKey="x"
@@ -148,9 +161,10 @@ export function MonitorChartCard({
                   tickLine={false}
                   axisLine={false}
                   width={48}
+                  label={yAxisLabel}
                 />
                 <Tooltip
-                  formatter={(value, name) => [fmtNumber(Number(value)), String(name)]}
+                  formatter={tooltipFormatter}
                   labelFormatter={(ms) => timeTick(Number(ms))}
                   contentStyle={{
                     background: 'var(--surface-overlay)',
@@ -166,7 +180,7 @@ export function MonitorChartCard({
                     dataKey={key}
                     stroke={palette[i % palette.length]}
                     strokeWidth={2}
-                    fill={`url(#grad-${title}-${i})`}
+                    fill={noFill ? 'none' : `url(#grad-${title}-${i})`}
                     connectNulls
                   />
                 ))}
@@ -175,7 +189,6 @@ export function MonitorChartCard({
           </ResponsiveContainer>
         )}
       </div>
-      {unit && <p className="mt-1 text-right text-[11px] text-text-muted">{unit}</p>}
     </GlassCard>
   );
 }

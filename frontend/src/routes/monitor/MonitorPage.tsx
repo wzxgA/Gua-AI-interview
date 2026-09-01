@@ -180,6 +180,7 @@ export function MonitorPage() {
           title={t('monitor.chart.tokenRate')}
           series={toChartSeries(tokenRate.data, ['type'])}
           unit="ops"
+          noFill
           isLoading={tokenRate.isLoading}
         />
         <MonitorChartCard
@@ -193,6 +194,7 @@ export function MonitorPage() {
           title={t('monitor.chart.jvmHeap')}
           series={jvmSeries}
           unit="bytes"
+          noFill
           isLoading={heapUsed.isLoading}
         />
       </div>
