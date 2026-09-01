@@ -40,6 +40,12 @@ frontend/node_modules/
 frontend/dist/
 frontend/tsconfig.tsbuildinfo
 frontend/node_modules/.tmp/
+
 # ---- 本地运行时生成 ----
 dump.rdb
 frontend/pnpm-workspace.yaml
+=======
+
+# other
+lessons/README.md
+
