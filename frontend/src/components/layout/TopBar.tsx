@@ -23,6 +23,7 @@ export function TopBar() {
     '/questions': t('topBar.pageTitle./questions'),
     '/resumes': t('topBar.pageTitle./resumes'),
     '/rag': t('topBar.pageTitle./rag'),
+    '/monitor': t('topBar.pageTitle./monitor'),
     '/settings': t('topBar.pageTitle./settings'),
   };
   const title = pageTitles[path] ?? pageTitles[Object.keys(pageTitles).find((k) => path.startsWith(k) && k !== '/') ?? '/'] ?? t('common.appName');

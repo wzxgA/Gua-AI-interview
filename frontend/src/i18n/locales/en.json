@@ -72,7 +72,8 @@
       "/questions": "Question Bank",
       "/resumes": "Resumes",
       "/rag": "RAG Search",
-      "/settings": "Settings"
+      "/settings": "Settings",
+      "/monitor": "Monitoring"
     },
     "serviceOnline": "Service online",
     "serviceOffline": "Service offline",
@@ -87,7 +88,8 @@
       "resumes": "Resumes",
       "interviews": "Interviews",
       "rag": "RAG Search",
-      "settings": "Settings"
+      "settings": "Settings",
+      "monitor": "Monitoring"
     }
   },
   "theme": {
@@ -747,5 +749,34 @@
     "eventUnknown": "Other",
     "empty": "No proctoring events yet",
     "totalOffFocusLabel": "Total off-focus time"
+  },
+  "monitor": {
+    "subtitle": "Real-time AI cost / latency / node duration monitoring",
+    "range": {
+      "1h": "Last 1h",
+      "6h": "Last 6h",
+      "24h": "Last 24h"
+    },
+    "openInGrafana": "Open in Grafana",
+    "noData": "No metrics yet (data appears after service traffic)",
+    "stat": {
+      "round": "Current / Total Rounds",
+      "cost": "LLM Total Cost (CNY)",
+      "tokens1h": "Tokens (last 1h)",
+      "errorRetry1h": "Errors / Retries (last 1h)",
+      "errorRetryHint": "Format: errors / retries"
+    },
+    "chart": {
+      "nodeDuration": "Graph Node Duration P50 / P95 / P99",
+      "llmLatency": "LLM Latency P95 (tier / model)",
+      "nodeP95": "Node P95 Duration",
+      "tokenRate": "Token Throughput",
+      "errorRate": "Node Error Rate",
+      "jvmHeap": "JVM Heap Memory"
+    },
+    "legend": {
+      "used": "Used",
+      "max": "Max"
+    }
   }
 }

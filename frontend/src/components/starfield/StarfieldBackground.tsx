@@ -57,7 +57,7 @@ export function StarfieldBackground() {
         // 大小 1~3px，幂等分布（多为小星、少数亮星）
         const size = 1 + Math.pow(Math.random(), 2) * 2;
         // 亮度 0.3~1.0
-        let baseOpacity = 0.3 + Math.random() * 0.7;
+        const baseOpacity = 0.3 + Math.random() * 0.7;
         // 层次感：远层小暗、近层大亮，近层视差漂移更快
         const layer = Math.random();
         let scaleSize = 1;

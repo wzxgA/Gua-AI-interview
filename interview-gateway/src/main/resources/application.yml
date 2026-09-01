@@ -76,7 +76,8 @@ aims:
         base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
         api-key: ${DASHSCOPE_API_KEY}
       deepseek:
-        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+        # Spring AI 自动拼接 /v1/chat/completions，默认值不要带 /v1（否则请求 /v1/v1/... 404）
+        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
         api-key: ${DEEPSEEK_API_KEY}
     tiers:
       # 档位 -> 提供商/模型/参数映射；fallback 形如 provider:model

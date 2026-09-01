@@ -3,6 +3,7 @@ package com.aims.agent.orchestration.observability;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.aims.agent.orchestration.graph.NodeNames;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,35 @@ class GraphMetricsRegistryTest {
         Timer timer = meterRegistry.find("aims.graph.node.duration").tag("node", "ask").timer();
         assertTrue(timer != null, "Timer 应已注册");
         assertEquals(1, timer.count(), "应记录 1 次");
+    }
+
+    @Test
+    @DisplayName("recordNodeDuration: report 节点（异步报告）不记耗时，但 error/retry 仍统计")
+    void recordNodeDuration_excludesReportNode() {
+        graphMetrics.recordNodeDuration(NodeNames.REPORT, 1_000_000_000L);
+        graphMetrics.incrementNodeError(NodeNames.REPORT, "AiException");
+        graphMetrics.incrementNodeRetry(NodeNames.REPORT);
+
+        assertTrue(
+                meterRegistry.find("aims.graph.node.duration").tag("node", NodeNames.REPORT).timer()
+                        == null,
+                "report 节点不应注册耗时 Timer");
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .find("aims.graph.node.error")
+                        .tag("node", NodeNames.REPORT)
+                        .counter()
+                        .count(),
+                "report 节点错误仍应统计");
+        assertEquals(
+                1.0,
+                meterRegistry
+                        .find("aims.graph.node.retry")
+                        .tag("node", NodeNames.REPORT)
+                        .counter()
+                        .count(),
+                "report 节点重试仍应统计");
     }
 
     @Test

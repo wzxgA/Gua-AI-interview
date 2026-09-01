@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Briefcase, FileQuestion, FileText, Users, Search, Settings } from 'lucide-react';
+import { LayoutDashboard, Briefcase, FileQuestion, FileText, Users, Search, Settings, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const menuItems = [
   { to: '/', labelKey: 'sidebar.menu.dashboard', icon: LayoutDashboard },
@@ -10,12 +11,16 @@ const menuItems = [
   { to: '/resumes', labelKey: 'sidebar.menu.resumes', icon: FileText },
   { to: '/interviews', labelKey: 'sidebar.menu.interviews', icon: Users },
   { to: '/rag', labelKey: 'sidebar.menu.rag', icon: Search },
+  { to: '/monitor', labelKey: 'sidebar.menu.monitor', icon: Activity, adminOnly: true },
   { to: '/settings', labelKey: 'sidebar.menu.settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const location = useLocation();
+  // 监控菜单仅对 ADMIN 可见
+  const visibleItems = menuItems.filter((item) => !('adminOnly' in item && item.adminOnly) || user?.role === 'ADMIN');
 
   return (
     <aside className="sticky top-0 flex h-screen w-56 flex-col border-r border-border-subtle bg-space-800/40 backdrop-blur-xl">
@@ -25,7 +30,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {menuItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             item.to === '/'
               ? location.pathname === '/'

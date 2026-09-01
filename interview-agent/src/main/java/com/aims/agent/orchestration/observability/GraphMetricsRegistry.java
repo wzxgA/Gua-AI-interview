@@ -1,8 +1,10 @@
 package com.aims.agent.orchestration.observability;
 
+import com.aims.agent.orchestration.graph.NodeNames;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import jakarta.annotation.PostConstruct;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Component;
@@ -37,8 +39,14 @@ public class GraphMetricsRegistry {
 
     // ─── aims.graph.node.duration (Timer) ───
 
-    /** 记录节点执行耗时。 */
+    /** 不参与耗时统计的节点：report 为异步评估报告生成，耗时量级远超实时链路节点，混入会污染 P95 观测（error/retry 仍统计）。 */
+    private static final Set<String> DURATION_EXCLUDED_NODES = Set.of(NodeNames.REPORT);
+
+    /** 记录节点执行耗时；{@code report} 节点除外（异步报告链路，见 {@link #DURATION_EXCLUDED_NODES}）。 */
     public void recordNodeDuration(String node, long durationNanos) {
+        if (DURATION_EXCLUDED_NODES.contains(node)) {
+            return;
+        }
         meterRegistry
                 .timer("aims.graph.node.duration", "node", node)
                 .record(durationNanos, TimeUnit.NANOSECONDS);

@@ -46,6 +46,9 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/actuator/health")
                                         .permitAll()
+                                        // Prometheus 抓取无法携带 JWT，指标仅含聚合数据，放行（内网使用）
+                                        .requestMatchers("/actuator/prometheus")
+                                        .permitAll()
                                         .requestMatchers("/actuator/**")
                                         .hasRole("ADMIN")
                                         .requestMatchers(
@@ -79,6 +82,7 @@ public class SecurityConfig {
             org.springframework.security.core.AuthenticationException e)
             throws IOException {
         res.setStatus(HttpStatus.UNAUTHORIZED.value());
+        res.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.getWriter().write(objectMapper.writeValueAsString(Result.fail(ErrorCode.UNAUTHORIZED)));
     }
@@ -88,6 +92,7 @@ public class SecurityConfig {
             HttpServletRequest req, HttpServletResponse res, AccessDeniedException e)
             throws IOException {
         res.setStatus(HttpStatus.FORBIDDEN.value());
+        res.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.getWriter()
                 .write(objectMapper.writeValueAsString(Result.fail(ErrorCode.ACCESS_DENIED)));

@@ -63,6 +63,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // Prometheus HTTP API（MonitorPage 自绘监控面板用，生产由反向代理转发到 9090）
+      '/prometheus': {
+        target: 'http://localhost:9090',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/prometheus/, ''),
+      },
       '/ws': {
         target: 'ws://localhost:8080',
         ws: true,

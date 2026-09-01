@@ -1,0 +1,14 @@
+# AIMS 仪表盘自动注册
+apiVersion: 1
+
+providers:
+  - name: aims-dashboards
+    orgId: 1
+    folder: AIMS
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
